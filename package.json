@@ -1,0 +1,36 @@
+{
+  "name": "dashboarddahao",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "bridge": "node --env-file-if-exists=.env bridge/index.mjs",
+    "bridge:may-that": "BRIDGE_CONFIG=./bridge.config.may-that.json node --env-file-if-exists=.env bridge/index.mjs",
+    "may-in": "node scripts/may-in-up.mjs",
+    "bridge:may-in": "BRIDGE_CONFIG=./bridge.config.may-in.json node --env-file-if-exists=.env bridge/index.mjs",
+    "bridge:check": "node scripts/check-bridge.mjs",
+    "probe:may-in": "node scripts/printer-probe.mjs",
+    "capture:xem": "node scripts/xem-capture.mjs",
+    "verify": "npm run test && npm run lint && npm run build && npm run bridge:check"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  }
+}

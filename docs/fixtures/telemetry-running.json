@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "status": "running",
+  "rpm": 720,
+  "rpmHistory": [680, 700, 705, 715, 720],
+  "odometer": 12750000,
+  "needlePosition": { "x": 12.5, "y": -40 },
+  "threadBreakWindow": { "needle": 3, "breaks": 1, "stitches": 5000 },
+  "job": {
+    "fileName": "LOGO-A.dst",
+    "product": "Áo polo NV",
+    "needle": 3,
+    "threadColor": "Đỏ",
+    "currentStitch": 4200,
+    "totalStitches": 51000,
+    "elapsedSeconds": 640
+  },
+  "controller": {
+    "firmware": "DH-A18-2.14",
+    "hoopName": "Khung 500x400",
+    "frame": { "width": 500, "height": 400 },
+    "designCount": 3,
+    "selectedDesign": {
+      "id": "slot-04",
+      "name": "LOGO-A",
+      "slot": 4,
+      "totalStitches": 51000,
+      "colorChanges": 6,
+      "bounds": { "minX": -120, "maxX": 120, "minY": -90, "maxY": 90 }
+    },
+    "designs": [
+      { "id": "slot-04", "name": "LOGO-A", "slot": 4, "totalStitches": 51000, "colorChanges": 6 },
+      { "id": "slot-05", "name": "LOGO-B", "slot": 5, "totalStitches": 18400, "colorChanges": 3 },
+      { "id": "slot-06", "name": "TEN-NV", "slot": 6, "totalStitches": 2400, "colorChanges": 1 }
+    ],
+    "network": { "transport": "wifi", "band": "5 GHz", "signalPercent": 74, "ssid": "XUONG-THEU" }
+  },
+  "events": []
+}

@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "status": "running",
+  "rpm": "khoảng bảy trăm",
+  "job": { "currentStitch": 90000, "totalStitches": 51000 }
+}

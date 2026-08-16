@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "status": "running",
+  "rpm": 650,
+  "rpmHistory": [600, 620, 640, 650, 650],
+  "odometer": 46453000,
+  "needlePosition": { "x": -12.4, "y": 88.6 },
+  "threadBreakWindow": { "needle": 7, "breaks": 2, "stitches": 5000 },
+  "job": {
+    "fileName": "80_4127~.DST",
+    "product": "Logo áo khoác",
+    "needle": 7,
+    "threadColor": "Vàng kim",
+    "currentStitch": 18240,
+    "totalStitches": 46453,
+    "elapsedSeconds": 1680
+  },
+  "controller": {
+    "firmware": "DH-A18-2.14",
+    "hoopName": "Khung 1500x700",
+    "frame": { "width": 1500, "height": 700 },
+    "designCount": 81,
+    "selectedDesign": {
+      "id": "slot-80",
+      "name": "4127~.DST",
+      "slot": 80,
+      "totalStitches": 46453,
+      "colorChanges": 11,
+      "bounds": { "minX": -141.3, "maxX": 138.5, "minY": -109.3, "maxY": 193.8 }
+    },
+    "designs": [
+      { "id": "slot-73", "name": "73_4096~.DST", "slot": 73, "totalStitches": 4096, "colorChanges": 6 },
+      { "id": "slot-74", "name": "74_5120~.DST", "slot": 74, "totalStitches": 5120, "colorChanges": 8 },
+      { "id": "slot-75", "name": "75_5123~.DST", "slot": 75, "totalStitches": 5123, "colorChanges": 8 },
+      { "id": "slot-76", "name": "76_4118~.DST", "slot": 76, "totalStitches": 4118, "colorChanges": 7 },
+      { "id": "slot-77", "name": "77_4118~.DST", "slot": 77, "totalStitches": 4118, "colorChanges": 7 },
+      { "id": "slot-78", "name": "78_4123~.DST", "slot": 78, "totalStitches": 4123, "colorChanges": 7 },
+      { "id": "slot-79", "name": "79_4126~.DST", "slot": 79, "totalStitches": 4126, "colorChanges": 7 },
+      { "id": "slot-80", "name": "80_4127~.DST", "slot": 80, "totalStitches": 46453, "colorChanges": 11 }
+    ],
+    "network": { "transport": "ethernet", "signalPercent": null, "ssid": null }
+  },
+  "events": []
+}

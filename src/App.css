@@ -1,0 +1,1461 @@
+/*
+ * Workshop dashboard styling.
+ *
+ * Rules that are not negotiable here:
+ *  - state is never communicated by colour alone; every badge carries a word and a symbol
+ *  - contrast targets a bright workshop, not a dim office
+ *  - focus is always visible, because these screens get driven by keyboard and by glove
+ */
+
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --line: #ccd5e0;
+  --ink: #17243a;
+  --ink-soft: #4c5b70;
+  --ink-muted: #667589;
+  --accent: #12507e;
+  --accent-ink: #ffffff;
+  --critical: #a3161d;
+  --critical-bg: #fdecec;
+  --warning: #8a5200;
+  --warning-bg: #fdf3e2;
+  --ok: #1c6b3f;
+  --ok-bg: #e8f5ed;
+  --neutral-bg: #eef1f6;
+  --radius: 8px;
+}
+
+.app {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 10px clamp(12px, 2vw, 28px) 32px;
+  color: var(--ink);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- header ---------- */
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--line);
+}
+
+/* Tabs chiếm trọn dòng thứ hai của header và dùng chung đường viền dưới của header. */
+.app-header .tabs {
+  flex: 1 0 100%;
+  margin: 0;
+  border-bottom: none;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+.app-sub,
+.detail-sub {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.access-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  max-width: 640px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Chú thích cố định của chế độ single-admin: giữ một dòng, cắt bớt bằng ellipsis thay vì
+   xuống dòng — nhưng vẫn là chữ đọc được, không giấu vào tooltip. */
+.access-bar-slim {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  padding: 4px 10px;
+}
+
+.access-bar-slim .reading-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-bar input {
+  min-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/* ---------- banners ---------- */
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 6px solid;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.banner-critical { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.banner-warning { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.banner-info { background: #e6eff7; border-color: var(--accent); color: #0d3b5e; }
+
+.banner button {
+  margin-left: auto;
+}
+
+/* ---------- tabs ---------- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  padding: 7px 15px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.tab-active {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+
+/* ---------- layout ---------- */
+
+.fleet-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* Panel chi tiết cố định 480 px ở màn hình rộng: bảng bên trái giữ nguyên số cột dù mở hay
+   đóng panel, nên không có cảnh cột nhảy chỗ mỗi lần bấm vào một máy. */
+@media (min-width: 1200px) {
+  .fleet-layout-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 34%);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1366px) {
+  .fleet-layout-detail {
+    grid-template-columns: minmax(0, 1fr) 480px;
+  }
+}
+
+.fleet-main {
+  min-width: 0;
+}
+
+/* ---------- KPI ---------- */
+
+.kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.kpi-critical.kpi-active { border-top-color: var(--critical); background: var(--critical-bg); }
+.kpi-warning.kpi-active { border-top-color: var(--warning); background: var(--warning-bg); }
+
+.kpi-value { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+.kpi-label { font-weight: 600; font-size: 0.85rem; }
+.kpi-hint { color: var(--ink-muted); font-size: 0.72rem; }
+
+/* Dải chỉ số của đội máy: một con số to, phần còn lại là chip nhỏ bấm được. */
+.kpi-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 8px;
+  min-height: 56px;
+}
+
+.kpi-attention {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  min-width: 132px;
+  padding: 4px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--ink-muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.kpi-attention-label { font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+.kpi-attention-value { font-size: 1.75rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+
+.kpi-attention-on {
+  border-left-color: var(--critical);
+  background: var(--critical-bg);
+  color: #5c0c11;
+}
+
+.kpi-attention-on .kpi-attention-label { color: #5c0c11; }
+
+.kpi-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kpi-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.kpi-chip:hover { background: var(--neutral-bg); }
+.kpi-chip-symbol { font-size: 0.85em; }
+.kpi-chip-value { font-weight: 700; font-size: 0.95rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.kpi-chip-critical.kpi-chip-active { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.kpi-chip-warning.kpi-chip-active { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.kpi-chip-critical.kpi-chip-active .kpi-chip-value { color: #5c0c11; }
+.kpi-chip-warning.kpi-chip-active .kpi-chip-value { color: #5a3600; }
+
+/* Chip đang lọc: viền dày + dấu ✓ chứ không chỉ đổi màu — màu không bao giờ là kênh duy nhất. */
+.kpi-chip-applied,
+.kpi-attention.kpi-chip-applied {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.kpi-chip-applied .kpi-chip-label::after { content: ' ✓'; font-weight: 700; }
+
+/* ---------- thanh thành phần đội máy ---------- */
+
+/*
+ * Bộ màu của thanh đã chạy qua bộ kiểm màu (lightness band, tách màu cho người mù màu, tương
+ * phản nền) trước khi viết vào đây, không chọn bằng mắt. Hai điều đáng ghi:
+ *
+ *  - `--seg-warn` (#b8860b) **không** dùng lại `--warning` (#8a5200). Màu kia là màu *chữ*,
+ *    chọn để đọc được trên nền trắng; đặt cạnh #a3161d thì người mù màu đỏ-lục nhìn ra ΔE 3,0
+ *    tức là gần như cùng một màu. #b8860b đo được ΔE 19+ mà vẫn đủ tương phản nền.
+ *  - Hai sắc xám là cố ý: "dừng" và "không đọc được" là hai trạng thái *không có gì xảy ra*,
+ *    nên chúng lùi lại phía sau ba màu cần người xử lý.
+ */
+/*
+ * Thanh và chú giải nằm **cùng một hàng**, không xếp chồng.
+ *
+ * Xếp chồng đọc dễ hơn một chút, nhưng nó cao 42 px — đúng bằng một dòng máy. Đo tại
+ * 1920×1080 ở chế độ bảng: có thanh thì vừa 18 dòng, bỏ thanh ra thì vừa 19, tức là bức tranh
+ * tổng quan đang lấy mất một máy khỏi màn hình. Chỉ tiêu mật độ của PRD (≥19 dòng ở 1920×1080)
+ * là cam kết vận hành, còn cách bày thanh thì không; nên thanh phải nhường. Nằm ngang hết
+ * 20 px và giữ nguyên cỡ chữ. Màn hẹp thì chú giải tự xuống dòng, ở đó chỉ tiêu là ≥9 dòng
+ * nên còn dư chỗ.
+ */
+.fleet-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+}
+
+.fleet-bar-track {
+  display: flex;
+  /* Co giãn: chiếm phần bề ngang còn lại sau chú giải, tối thiểu 240 px thì mới xuống dòng. */
+  flex: 1 1 240px;
+  /* Khe giữa các khúc là màu nền, không phải viền: viền là mực không mang dữ liệu và ở khúc
+     hẹp thì nó chiếm chỗ nhiều hơn chính khúc đó. */
+  gap: 2px;
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--neutral-bg);
+}
+
+.fleet-bar-seg { display: block; height: 100%; min-width: 3px; }
+.fleet-bar-fault { background: #a3161d; }
+.fleet-bar-unreadable { background: #5b6b82; }
+.fleet-bar-attention { background: #b8860b; }
+.fleet-bar-idle { background: #7b8798; }
+.fleet-bar-running { background: #1c6b3f; }
+
+.fleet-bar-keys {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fleet-bar-key {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 8px 2px 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.fleet-bar-key:hover { background: var(--neutral-bg); }
+
+/* Ô màu là thứ mang màu; chữ giữ nguyên màu chữ. Một nhãn tô #b8860b trên nền trắng là chữ
+   không đọc được, và nó cũng khiến màu phải gánh hai việc cùng lúc. */
+.fleet-bar-swatch {
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.fleet-bar-key-symbol { font-size: 0.8em; color: var(--ink-muted); }
+.fleet-bar-key-count { font-size: 0.92rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.fleet-bar-key-pct { font-size: 0.72rem; }
+
+.fleet-bar-key-applied {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.fleet-bar-key-applied .fleet-bar-key-label::after { content: ' ✓'; font-weight: 700; }
+
+.fleet-bar-excluded { align-self: center; font-size: 0.72rem; }
+
+/* ---------- filters ---------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.fleet-filters {
+  margin-bottom: 8px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: 38px;
+}
+
+.filter-row > select,
+.filter-row .filter-search input {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.filter-row .filter-search { flex: 1 1 260px; min-width: 200px; }
+.filter-row .filter-search input { width: 100%; }
+.filter-sort { margin-left: auto; }
+
+/* Nút đổi cách bày: hai nút dính nhau thành một cụm, để đọc ra ngay là "chọn một trong hai"
+   chứ không phải hai hành động rời. */
+.layout-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.layout-btn {
+  padding: 5px 10px;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.layout-btn + .layout-btn { border-left: 1px solid var(--line); }
+.layout-btn:hover { background: var(--neutral-bg); }
+.layout-btn-on { background: #e6eff7; color: #0d3b5e; font-weight: 600; }
+.layout-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.filter-more { position: relative; }
+
+.filter-more > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.filter-more > summary::-webkit-details-marker { display: none; }
+.filter-more[open] > summary { background: var(--neutral-bg); border-color: var(--accent); }
+
+.filter-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(23 36 58 / 18%);
+}
+
+.filter-popover .filter-check,
+.filter-popover .btn { grid-column: 1 / -1; }
+
+.filter-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px 0;
+}
+
+.filter-token {
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px 9px;
+  background: #e6eff7;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: #0d3b5e;
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.filter-token:hover { background: #d3e4f2; }
+.filter-clear { font-size: 0.76rem; }
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.filter-field input,
+.filter-field select,
+.draft-grid input,
+.draft-grid select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.filter-search input { min-width: 260px; }
+
+.filter-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.filter-count {
+  margin: 0 0 0 auto;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.field-hint {
+  max-width: 380px;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+/* ---------- lưới ô vuông ---------- */
+
+/* `auto-fill` + `minmax`: 1920 được 6 ô/hàng, 1366 được 4, tablet 1024 được 3, điện thoại
+   quay dọc 1 — không cần một media query nào, và không bao giờ có ô rộng 900 px. */
+.fleet-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.fleet-card-slot { display: flex; }
+
+.fleet-card {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--radius);
+  /* `--card-bg` đi kèm mọi luật `background` bên dưới: vòng tách quanh chấm sparkline phải là
+     đúng nền của ô nó nằm trong, nếu không nó thành một vòng trắng trên nền hồng. */
+  --card-bg: var(--surface);
+  background: var(--card-bg);
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+}
+
+.fleet-card:hover { border-color: #9fb2c6; --card-bg: #fbfcfe; }
+.fleet-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fleet-card-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); --card-bg: #f2f7fc; }
+.fleet-card-archived { opacity: 0.65; font-style: italic; }
+
+/* Nền + vạch trái tô theo cùng `andonTone` với bảng, nên đổi qua lại hai cách bày thì màu của
+   một máy không đổi. `running`/`idle` cố ý không có luật: ô bình thường để trắng. */
+.fleet-card.fleet-tone-fault { --card-bg: #fdecec; border-left-color: var(--critical); }
+.fleet-card.fleet-tone-offline { --card-bg: #fdf2f2; border-left-color: var(--critical); }
+.fleet-card.fleet-tone-alert,
+.fleet-card.fleet-tone-idle-long { --card-bg: var(--warning-bg); border-left-color: var(--warning); }
+.fleet-card.fleet-tone-stale,
+.fleet-card.fleet-tone-unknown { --card-bg: #f1f3f7; border-left-color: #8b97a8; }
+.fleet-card.fleet-tone-running { border-left-color: var(--ok); }
+
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.card-name { font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
+.card-head .badge { margin: 0; flex: 0 0 auto; }
+.card-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 15px;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+.card-sub .badge { margin: 0; padding: 0 6px; }
+
+/* Chữ to nhất của ô, và là lý do lưới ô vuông tồn tại. Hai dòng là trần: tên sản phẩm dài
+   hơn thì cắt, ô vẫn cao bằng nhau — lưới so le đọc chậm hơn hẳn. */
+.card-product {
+  margin-top: 4px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+/* "Chưa đọc được từ controller" là một *lý do*, không phải một tên sản phẩm: nghiêng, nhạt,
+   nhỏ hơn — nhìn phát biết ngay ô này không có số, không phải ô đang thêu món tên lạ. */
+.card-product-unread { font-size: 0.86rem; font-weight: 500; font-style: italic; color: var(--ink-muted); }
+.card-file {
+  min-height: 15px;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * ---------- ảnh mẫu ----------
+ *
+ * Ô ảnh **luôn chiếm chỗ**, kể cả khi không có ảnh. Ô trống co lại khi thiếu ảnh là lưới nhảy
+ * lung tung mỗi lần máy đổi mẫu, mà chỗ trống có viền đứt còn nói được một câu ("Chưa có",
+ * "Trùng tên") — chỗ trống biến mất thì không nói được gì.
+ *
+ * Nét vẽ trong SVG là một màu `#1f3550` do bridge đặt, không phải màu chỉ thật: file DST không
+ * chứa màu. Nên ở đây cũng không tô nền màu cho ô ảnh — nền trắng để hình đọc được, và để
+ * không ai tưởng cái màu ấy nói lên điều gì.
+ */
+.card-job { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.card-job-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+.design-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.design-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; padding: 2px; }
+.design-thumb-card { width: 46px; height: 46px; margin-top: 4px; }
+.design-thumb-detail { width: 132px; height: 132px; }
+
+/* Chưa có ảnh: viền đứt + chữ, không phải ô xám im lặng. Chữ ngắn thôi, câu đầy đủ ở `title`
+   và ở panel chi tiết — 46 px không chứa nổi một câu. */
+.design-thumb-empty {
+  border-style: dashed;
+  background: var(--neutral-bg);
+  color: var(--ink-muted);
+  font-size: 0.6rem;
+  line-height: 1.15;
+  text-align: center;
+  padding: 2px;
+  cursor: help;
+}
+.design-thumb-detail.design-thumb-empty { font-size: 0.78rem; }
+
+/* Khớp theo tên rút gọn là "gần đúng". Dấu ~ ở góc nói ra điều đó ngay trên ảnh, vì tooltip
+   không đọc được trên máy tính bảng và ảnh sai thì nhìn không ra là sai. */
+.design-thumb-approx {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 3px;
+  background: var(--warning-bg);
+  border-top-left-radius: 4px;
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.design-figure { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 10px; }
+.design-figure figcaption { flex: 1; min-width: 0; }
+
+/*
+ * Tiến độ là **một tỉ lệ trên một mốc**, nên hình đúng của nó là cái thước đo, không phải
+ * vòng tròn — vòng tròn ở đây là biểu đồ quạt hai miếng, và mắt so chiều dài chính xác hơn so
+ * góc. Máng nền là một bậc nhạt hơn của cùng màu chứ không phải xám, để trạng thái đọc được
+ * trên toàn bộ chiều dài thanh chứ không chỉ ở phần đã tô.
+ */
+.card-progress { display: flex; align-items: center; gap: 8px; min-height: 18px; margin: 3px 0 1px; }
+.card-progress .progress-card {
+  flex: 1;
+  height: 12px;
+  margin: 0;
+  background: #dce8f2;
+  border-color: #b9cfe1;
+  border-radius: 6px;
+}
+/* Đầu thanh bo 4 px, chân thanh vuông: đầu bo là "đang tới đây", chân vuông neo vào vạch 0. */
+.card-progress .progress-card .progress-bar {
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.card-pct { flex: 0 0 auto; font-weight: 700; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.card-progress-none { color: var(--ink-muted); font-size: 0.74rem; }
+
+.card-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.76rem; }
+.card-foot .badge { margin: 0; }
+.card-duration { font-weight: 600; font-variant-numeric: tabular-nums; }
+.card-duration[title] { cursor: help; }
+.card-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Đường tốc độ: nét 2 px, không tô nền, không lưới — ở 72×20 px thì lưới chỉ còn là nhiễu.
+   Đường nói *hình dạng*, con số bên cạnh nói giá trị hiện tại. */
+/* Không `overflow: visible`: mực tràn ra khỏi khung là đè lên chữ bên cạnh, và cắt cụt ở mép
+   là dấu hiệu nhìn thấy được rằng phần đệm trong `RpmSpark` bị tính sai. */
+.card-spark { display: block; flex: none; }
+.card-spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* Vòng màu nền quanh chấm "bây giờ" để nó không lẫn vào đường khi đường đi ngang qua nó. */
+.card-spark-now { fill: var(--accent); stroke: var(--card-bg); stroke-width: 2; }
+
+.card-reason { margin-top: 2px; font-size: 0.76rem; color: var(--ink-soft); }
+.card-reason-alert { display: flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; }
+.card-reason .badge { margin: 0; }
+.card-age { margin-top: 1px; }
+
+/* Panel chi tiết mở ra: cột trái còn ~2/3, ô hẹp lại thay vì đẩy lưới ra ngoài màn hình.
+   240 chứ không phải 215: dưới ~235 px thì "Máy thêu 06" và badge kết nối không còn nằm vừa
+   một dòng, tên máy xuống dòng và cả lưới cao thêm một dòng chữ để không được gì. */
+.fleet-layout-detail .fleet-cards { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+/* ---------- table ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.fleet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+/* Nền trắng chứ không phải nền xám: nền xám của header gần trùng với nền xám dùng để đánh dấu
+   hàng "chưa rõ / dữ liệu cũ", và hai thứ khác nghĩa mà cùng màu thì màu mất tác dụng. Vạch
+   2 px dưới header đủ để tách, và giữ được toàn bộ dải xám cho việc báo trạng thái. */
+.fleet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 10px;
+  background: var(--surface);
+  border-bottom: 2px solid #aab7c7;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+/* 40–44 px mỗi hàng: hai dòng chữ, padding vừa đủ. Cao hơn nữa là mất hàng máy trên màn
+   1080, thấp hơn nữa là bấm trượt khi dùng tablet ngoài xưởng. */
+/* 40 px/hàng là ngân sách dọc của PRD: 1080 px phải chứa ≥ 19 hàng máy mà không cuộn. */
+/* Vạch kẻ nhạt hơn `--line`: 13 đường #ccd5e0 kẻ ngang cả bề rộng màn hình tạo ra một cái
+   lưới đậm hơn chính dữ liệu nằm trong nó. Chỉ cần đủ để mắt bám hàng khi rê sang phải. */
+.fleet-row > * {
+  padding: 3px 10px;
+  height: 40px;
+  border-bottom: 1px solid #e4e9ef;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.fleet-row { cursor: pointer; }
+.fleet-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.fleet-row-archived { opacity: 0.65; font-style: italic; }
+
+/* ---------- sức nặng theo tone: chỉ hàng bất thường mới được tô ---------- */
+
+/* Tô theo `andonTone`, đúng thang đang sắp xếp "Ưu tiên xử lý", nên hàng càng lên cao càng
+   đậm. `running` và `idle` cố ý KHÔNG có luật nào ở đây: nền trắng là trạng thái bình thường,
+   và mười hàng trắng liền nhau chính là thứ làm ba hàng có màu nổi lên. */
+.fleet-tone-fault { background: #fdecec; }
+.fleet-tone-offline { background: #fdf2f2; }
+.fleet-tone-alert,
+.fleet-tone-idle-long { background: var(--warning-bg); }
+.fleet-tone-stale,
+.fleet-tone-unknown { background: #f1f3f7; }
+
+/* Vạch mép trái: mắt bắt được cả cột vạch trong một lần liếc, nhanh hơn đọc 13 nền nhạt.
+   Đặt trên ô đầu chứ không trên `<tr>` để không tranh chỗ với vạch xanh của hàng đang chọn. */
+.fleet-tone-fault > .cell-name,
+.fleet-tone-offline > .cell-name { box-shadow: inset 3px 0 0 var(--critical); }
+.fleet-tone-alert > .cell-name,
+.fleet-tone-idle-long > .cell-name { box-shadow: inset 3px 0 0 var(--warning); }
+.fleet-tone-stale > .cell-name,
+.fleet-tone-unknown > .cell-name { box-shadow: inset 3px 0 0 #8b97a8; }
+
+/* Sau các luật tone, nếu không thì rê chuột lên hàng có màu sẽ không thấy phản hồi gì. */
+.fleet-row:hover { background: #e9edf3; }
+.fleet-row-selected,
+.fleet-row-selected:hover { background: #e6eff7; box-shadow: inset 4px 0 0 var(--accent); }
+
+.cell-name { min-width: 190px; font-weight: 400; }
+.row-title { display: block; font-weight: 700; line-height: 1.2; }
+.row-sub { display: block; color: var(--ink-muted); font-size: 0.72rem; line-height: 1.25; }
+.cell-number, .cell-ip { font-variant-numeric: tabular-nums; }
+.cell-job { min-width: 200px; }
+.cell-status { min-width: 150px; }
+.cell-status-line { display: flex; align-items: baseline; gap: 5px; }
+.cell-duration { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cell-job-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.cell-product { color: var(--ink-soft); }
+.cell-eta { color: var(--ink-muted); white-space: nowrap; }
+
+/* Thanh tiến độ nằm CÙNG dòng với ETA. Để nó chiếm cả dòng thì hàng máy đang chạy cao 59 px
+   thay vì 44 px — mất 4 hàng máy trên màn 1080 chỉ vì một cái gạch ngang. */
+.cell-job .row-sub { display: flex; align-items: center; gap: 6px; min-height: 16px; }
+/* Con số đứng trước thanh và là thứ đậm nhất của dòng phụ: người ta đọc "62%", cái thanh chỉ
+   để so nhanh giữa các hàng. Bề rộng cố định + tabular-nums để cột thanh thẳng hàng dọc. */
+.cell-pct {
+  flex: 0 0 30px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.76rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.cell-job .progress-slim { flex: 0 0 64px; height: 6px; margin-top: 0; border-radius: 3px; }
+.cell-overrun { color: #5a3600; font-weight: 600; }
+.cell-maintenance { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.cell-maintenance.bt-overdue { color: var(--critical); font-weight: 700; }
+.cell-maintenance.bt-due { color: var(--warning); font-weight: 600; }
+.cell-maintenance.bt-none { color: var(--ink-muted); }
+.cell-quality { font-size: 0.76rem; }
+.fleet-table .col-num { text-align: right; }
+
+/* Số cũ mang dấu ngay tại ô: một badge "dữ liệu cũ" ở cột khác không cứu được con số này. */
+.cell-stale { color: var(--ink-soft); }
+.cell-stale-at { font-size: 0.72rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.cell-unread { color: var(--ink-muted); font-size: 0.8rem; white-space: nowrap; }
+/* "Không có cảnh báo" là tin tốt và nó đúng với gần như mọi hàng: xám hơn cả chữ phụ, để mắt
+   lướt qua được. Ô có cảnh báo thật thì đeo badge màu, tương phản là chỗ đó. */
+.cell-none { color: #9aa6b6; font-size: 0.8rem; white-space: nowrap; }
+
+/* Chú thích cho dấu `≥` ở cột thời lượng. Chỉ render khi thật sự có hàng mang dấu. */
+.table-footnote { padding: 6px 10px 8px; margin: 0; border-top: 1px solid var(--line); }
+.cell-duration[title] { cursor: help; }
+
+/* Dòng phụ cột tên: badge giữ nguyên, phần mã tài sản cắt bớt. */
+.cell-name .row-sub-name { display: flex; align-items: center; gap: 4px; min-height: 14px; }
+/* `flex: 0 1 auto` + `min-width: 0`: badge đứng ngay sau mã tài sản, không bị đẩy sang mép
+   phải ô; mã tài sản là phần co lại và cắt bằng ellipsis khi cột hẹp. */
+.row-sub-name .row-sub-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Badge trong dòng phụ bỏ margin dọc mặc định: 2 px trên dưới của nó đội cả hàng lên 48 px. */
+.row-sub-name .badge { margin: 0; padding: 0 6px; }
+
+/* Máy tính bảng 1024 ngang: bỏ cột IP và BT thay vì bắt người dùng cuộn ngang. Cả hai cột
+   này chỉ dùng khi đã dừng lại xem một máy cụ thể — và lúc đó panel chi tiết có đủ. */
+/* `.reading-meta` khai báo sau nên phải tăng cụ thể, nếu không dòng này hiện cả ở 1920. */
+.fleet-main .table-dropped-cols { display: none; }
+/* Mở panel chi tiết cũng là một lần bỏ cột, nên cũng phải nói ra — cùng độ cụ thể (0,2,0) với
+   luật ẩn ở trên nên phải đứng SAU nó. */
+.table-wrap-compact .table-dropped-cols { display: block; margin: 0 0 4px; padding: 6px 8px 0; }
+
+@media (max-width: 1120px) {
+  .fleet-table .col-ip,
+  .fleet-table .col-bt { display: none; }
+  .fleet-main .table-dropped-cols { display: block; margin: 0 0 4px; }
+  /* Bỏ hai cột vẫn còn thừa ~30 px: thu padding ngang và min-width các cột chữ. 6 cột × 6 px
+     đủ để bảng vừa khung 966 px mà không cắt chữ nào. */
+  .fleet-table thead th,
+  .fleet-table tbody th,
+  .fleet-table tbody td { padding-left: 7px; padding-right: 7px; }
+  .fleet-table .cell-name { min-width: 170px; }
+  .fleet-table .cell-job { min-width: 175px; }
+  .fleet-table .cell-job-line { max-width: 175px; }
+  .fleet-table .cell-status { min-width: 140px; }
+}
+
+/* Panel chi tiết mở ra lấy mất ~1/3 chiều ngang: bảng thu padding và cột tên lại để vừa
+   khung thay vì đẩy cột BT ra sau thanh cuộn ngang. */
+.fleet-table-compact { font-size: 0.82rem; }
+.fleet-table-compact thead th,
+.fleet-table-compact tbody th,
+.fleet-table-compact tbody td { padding-left: 7px; padding-right: 7px; }
+.fleet-table-compact .cell-name { min-width: 160px; }
+.fleet-table-compact .cell-job { min-width: 170px; }
+.fleet-table-compact .cell-job-line { max-width: 200px; }
+.fleet-table-compact .cell-status { min-width: 140px; }
+
+.shortcut-hint { margin: 8px 2px 0; }
+.shortcut-hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.table-empty,
+.muted {
+  padding: 12px;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+.mini-table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.mini-table caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
+.mini-table th, .mini-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.mini-table thead th { background: var(--neutral-bg); }
+.audit-denied { background: var(--critical-bg); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; }
+
+/* ---------- badges: word + symbol, never colour alone ---------- */
+
+.badge {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin: 2px 4px 2px 0;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--neutral-bg);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-symbol { font-size: 0.8em; }
+
+.badge-online { background: var(--ok-bg); border-color: var(--ok); color: #10432a; }
+.badge-stale { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.badge-offline { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.badge-unknown { background: var(--neutral-bg); border-color: #8b97a8; color: var(--ink-soft); }
+
+.badge-status-running { background: var(--ok-bg); border-color: var(--ok); color: #10432a; }
+.badge-status-fault { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.badge-status-paused, .badge-status-stopped { background: var(--neutral-bg); color: var(--ink-soft); }
+.badge-status-idle-long { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+
+.badge-severity-critical { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.badge-severity-warning { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.badge-severity-info { background: var(--neutral-bg); color: var(--ink-soft); }
+
+.badge-verified { background: var(--ok-bg); border-color: var(--ok); color: #10432a; }
+.badge-unverified { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.badge-archived { background: var(--neutral-bg); color: var(--ink-soft); }
+.badge-role { background: #e6eff7; border-color: var(--accent); color: #0d3b5e; }
+
+.badge-maintenance-overdue { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.badge-maintenance-due { background: var(--warning-bg); border-color: var(--warning); color: #5a3600; }
+.badge-maintenance-ok { background: var(--ok-bg); border-color: var(--ok); color: #10432a; }
+
+/* ---------- viên badge im lặng cho trạng thái bình thường (chỉ trong bảng đội máy) ---------- */
+
+/* Trong danh sách 13 máy, "Đang kết nối" và "Đang chạy" là mặc định của 10 hàng. Cho chúng
+   viền + nền như "Mất kết nối" nghĩa là bắt mắt đọc 26 viên badge để tìm ra 3 viên đáng đọc.
+   Ở đây chúng tụt xuống thành chữ thường: chữ vẫn còn nguyên (đúng quy tắc "màu không bao giờ
+   là kênh duy nhất" — thông tin nằm ở chữ, màu chỉ là lớp thứ hai), chỉ mất tiếng ồn.
+   Giới hạn trong `.fleet-row`: panel chi tiết và bảng andon vẫn dùng badge đầy đủ, vì ở đó
+   người dùng đang nhìn đúng một máy chứ không quét danh sách. */
+.fleet-row .badge-online,
+.fleet-row .badge-status-running {
+  padding-left: 0;
+  padding-right: 4px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.fleet-row .badge-online .badge-symbol { color: var(--ok); font-size: 0.95em; }
+
+/* ---------- progress ---------- */
+
+.progress {
+  position: relative;
+  display: block;
+  height: 16px;
+  margin-top: 4px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-large { height: 22px; margin-top: 10px; }
+/* Thanh mảnh không có chữ đè lên nên tô được màu đậm hơn; ở 8% một vệt #b8d4ea 5 px trên nền
+   xám gần như không thấy. */
+.progress-slim .progress-bar { background: var(--accent); }
+.progress-bar { position: absolute; inset: 0 auto 0 0; background: #b8d4ea; }
+.progress-text {
+  position: relative;
+  display: block;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.progress-large .progress-text { line-height: 22px; font-size: 0.8rem; }
+
+/* ---------- detail ---------- */
+
+.detail {
+  padding: 14px 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.detail-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-header h2 { margin: 0; font-size: 1.2rem; }
+.badge-row { margin-top: 6px; }
+.detail-back { white-space: nowrap; }
+
+/* Dòng to nhất của panel: trạng thái + thời lượng. Mở panel ra là đọc được từ xa nửa mét. */
+.detail-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 4px;
+}
+
+.detail-state-main { display: flex; align-items: baseline; gap: 8px; }
+.detail-state-main .badge { font-size: 0.95rem; padding: 4px 12px; }
+.detail-state-duration { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.detail-state-side { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.detail-state-side .reading-meta { display: inline; }
+
+.detail-reason { margin: 6px 0; color: var(--ink-soft); font-size: 0.84rem; }
+.detail-reason-alert { color: var(--ink); font-weight: 600; }
+
+.detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 12px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-tabs .tab { font-size: 0.82rem; padding: 6px 10px; }
+.tab-dot { color: var(--critical); font-size: 0.7em; margin-left: 4px; }
+
+/* Số dashboard tự tính: luôn kèm một dòng nói nó dựa trên cái gì. */
+.derived {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: var(--neutral-bg);
+  border-radius: 6px;
+}
+
+.derived-value { display: block; font-weight: 600; font-size: 0.88rem; }
+.derived-off .derived-value { color: var(--ink-muted); font-weight: 400; font-style: italic; }
+
+.sparkline { margin: 10px 0 0; }
+.sparkline svg {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 4px 0;
+  background: var(--neutral-bg);
+  border-radius: 6px;
+  color: var(--accent);
+}
+.sparkline figcaption { margin-top: 3px; }
+
+.detail-error,
+.detail-notice {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 5px solid;
+  border-radius: 6px;
+  font-size: 0.84rem;
+}
+
+.detail-error { background: var(--critical-bg); border-color: var(--critical); color: #5c0c11; }
+.detail-notice { background: var(--ok-bg); border-color: var(--ok); color: #10432a; }
+.detail-error-time { display: block; }
+
+.detail-block {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-block h3 { margin: 0 0 8px; font-size: 1rem; }
+.detail-block h4 { margin: 14px 0 6px; font-size: 0.88rem; }
+
+.block-note {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: var(--neutral-bg);
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.detail-footer { margin-top: 16px; }
+
+/* ---------- readings ---------- */
+
+.reading-list { margin: 0; display: grid; gap: 6px; }
+
+.reading {
+  display: grid;
+  grid-template-columns: minmax(140px, 34%) minmax(0, 1fr);
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #fafbfd;
+}
+
+.reading dt { color: var(--ink-soft); font-size: 0.8rem; font-weight: 600; }
+.reading dd { margin: 0; }
+.reading-value { display: block; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.reading-meta { display: block; color: var(--ink-muted); font-size: 0.72rem; }
+.reading-unread .reading-value { color: var(--ink-muted); font-style: italic; }
+.reading-stale { background: var(--warning-bg); }
+.reading-stale .reading-value::after { content: ' ◐'; }
+
+/* ---------- timeline ---------- */
+
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.timeline-item {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.84rem;
+}
+
+.timeline-item p { margin: 4px 0 0; }
+.timeline-critical { border-left-color: var(--critical); background: var(--critical-bg); }
+.timeline-warning { border-left-color: var(--warning); background: var(--warning-bg); }
+.timeline-acked { opacity: 0.75; }
+.timeline-compact .timeline-item { font-size: 0.78rem; }
+
+.timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------- maintenance ---------- */
+
+.maintenance-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.maintenance-item {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--line);
+  border-radius: 6px;
+}
+
+.maintenance-overdue { border-left-color: var(--critical); background: var(--critical-bg); }
+.maintenance-due { border-left-color: var(--warning); background: var(--warning-bg); }
+.maintenance-item ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* ---------- pairing ---------- */
+
+.pairing,
+.audit-panel,
+.production,
+.empty-state {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.pairing h2, .audit-panel h2, .production h2, .empty-state h2 { margin-top: 0; font-size: 1.15rem; }
+
+.production .kpi-bar { margin: 12px 0; }
+.production .mini-table { margin-top: 12px; }
+/* Số tiền và số mũi phải thẳng cột để quản đốc dò bằng mắt được. */
+.production .cell-number { text-align: right; white-space: nowrap; }
+.production .badge + .badge { margin-left: 6px; }
+
+.scan-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  padding: 12px;
+  background: #fafbfd;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.scan-warning {
+  flex: 1 1 100%;
+  max-width: 760px;
+  padding: 10px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+  color: #5a3600;
+}
+
+.scan-result { margin-top: 14px; }
+
+.draft-block { margin-top: 18px; }
+
+.draft-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.draft {
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.draft legend { padding: 0 6px; font-weight: 700; }
+
+.draft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.draft-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.empty-state ol { line-height: 1.6; }
+.empty-state code, .field-hint code { background: var(--neutral-bg); padding: 1px 4px; border-radius: 4px; }
+
+/* ---------- buttons ---------- */
+
+button {
+  padding: 7px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.ghost { background: transparent; color: var(--accent); }
+button.danger { background: var(--critical); border-color: var(--critical); }
+button.primary { padding: 9px 18px; }
+
+.app-footer {
+  margin-top: 28px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- tablet ---------- */
+
+@media (max-width: 900px) {
+  .app { padding: 12px; }
+  .app-header { flex-direction: column; }
+  .filter-search input { min-width: 100%; }
+  .reading { grid-template-columns: minmax(0, 1fr); }
+  .fleet-table { font-size: 0.8rem; }
+  button { min-height: 40px; }
+}
+
+/* ---------- andon wall board ---------- */
+
+/*
+ * Sized for a TV read from five metres, not for a desk. Tone is backed by a word and a
+ * symbol on every tile, and the "needs a person" states get a thick left bar so the wall
+ * still parses in a glance, in daylight, from an angle.
+ */
+
+.andon {
+  background: #0e1726;
+  color: #f2f5fa;
+  border-radius: var(--radius);
+  padding: clamp(12px, 1.6vw, 24px);
+  margin-top: 12px;
+}
+
+.app-kiosk { max-width: none; padding: 8px; }
+.andon-kiosk { min-height: calc(100vh - 60px); }
+
+.andon-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2b3a52;
+  padding-bottom: 12px;
+}
+
+.andon-title h2 { margin: 0; font-size: clamp(1.3rem, 2.2vw, 2.2rem); color: #ffffff; }
+.andon-clock { margin: 2px 0 0; font-size: clamp(1.6rem, 3vw, 3rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.andon-counts { display: flex; flex-wrap: wrap; gap: clamp(8px, 1vw, 18px); }
+
+.andon-count {
+  min-width: 110px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border-left: 8px solid currentcolor;
+  background: #16233a;
+}
+
+.andon-count-value { display: block; font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 800; line-height: 1; }
+.andon-count-label { display: block; font-size: clamp(0.75rem, 1vw, 1rem); color: #c3cede; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.andon-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 12px 0;
+}
+
+.andon-controls .filter-field span, .andon-controls .filter-check { color: #c3cede; }
+.andon-controls select { background: #16233a; color: #f2f5fa; border-color: #3a4a64; }
+.andon-controls button.ghost { color: #9fd0ff; border-color: #3a4a64; }
+.andon-page { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+
+.andon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 22vw, 380px), 1fr));
+  gap: clamp(8px, 1vw, 16px);
+}
+
+.andon-card {
+  background: #16233a;
+  border-radius: var(--radius);
+  border-left: 12px solid currentcolor;
+  padding: clamp(10px, 1vw, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.andon-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.andon-card-name { font-size: clamp(1.1rem, 1.6vw, 1.8rem); font-weight: 700; color: #ffffff; }
+.andon-card-duration {
+  font-size: clamp(0.9rem, 1.3vw, 1.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.andon-card-tag { margin: 0; font-size: clamp(0.72rem, 0.9vw, 1rem); color: #9aa8bd; }
+
+.andon-hold {
+  margin: 0;
+  padding: 8px 12px;
+  background: #3a2a12;
+  border-left: 5px solid #f0902b;
+  border-radius: 6px;
+  color: #ffd9a8;
+  font-size: clamp(0.85rem, 1.1vw, 1.15rem);
+  font-weight: 600;
+}
+
+.andon-state { margin: 2px 0 0; display: flex; align-items: baseline; gap: 10px; }
+.andon-symbol { font-size: clamp(1.4rem, 2.2vw, 2.4rem); line-height: 1; }
+.andon-state-text { font-size: clamp(1.2rem, 2vw, 2.1rem); font-weight: 800; letter-spacing: 0.02em; }
+.andon-reason { margin: 0; font-size: clamp(0.8rem, 1vw, 1.05rem); color: #cfd9e8; }
+
+.andon-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 6px 0 0; }
+.andon-metrics dt { font-size: clamp(0.68rem, 0.8vw, 0.85rem); color: #9aa8bd; text-transform: uppercase; }
+.andon-metrics dd { margin: 0; font-size: clamp(0.85rem, 1.1vw, 1.25rem); font-weight: 600; font-variant-numeric: tabular-nums; color: #f2f5fa; }
+
+.andon-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: clamp(0.7rem, 0.85vw, 0.95rem);
+  color: #9aa8bd;
+}
+
+.andon-empty { color: #cfd9e8; }
+.andon-foot { color: #9aa8bd; padding-top: 10px; }
+
+/* Tone colours are the third channel, after the word and the symbol. */
+.andon-tone-running { color: #46c37b; }
+.andon-tone-idle { color: #8fa3bd; }
+.andon-tone-stale { color: #e0a53a; }
+.andon-tone-alert { color: #f0902b; }
+.andon-tone-unknown { color: #7f8fa6; }
+.andon-tone-offline { color: #d1d5db; }
+.andon-tone-fault { color: #ff5a5f; }
+.andon-tone-idle-long { color: #ffc46b; }
+
+.andon-tone-fault.andon-card, .andon-tone-offline.andon-card { background: #2a1620; }
+.andon-tone-alert.andon-card, .andon-tone-idle-long.andon-card { background: #2a2213; }
+
+@media (max-width: 900px) {
+  .andon-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+}

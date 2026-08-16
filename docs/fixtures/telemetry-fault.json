@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "status": "fault",
+  "rpm": 0,
+  "odometer": 8420000,
+  "job": {
+    "fileName": "TEN-NV.dst",
+    "needle": 7,
+    "currentStitch": 1180,
+    "totalStitches": 2400,
+    "elapsedSeconds": 95
+  },
+  "controller": {
+    "firmware": "DH-A18-2.14",
+    "network": { "transport": "ethernet", "signalPercent": null }
+  },
+  "events": [
+    {
+      "id": "evt-thread-1",
+      "code": "EC12",
+      "severity": "critical",
+      "occurredAt": "2026-08-14T06:59:12Z",
+      "message": "Controller báo dừng vì lỗi kim 7",
+      "needle": 7
+    }
+  ]
+}
