@@ -134,6 +134,32 @@ Sổ tiến độ theo 6 slice của PRD (`PRD_CLAUDE_READONLY_FLEET.md`). Mỗi
 - [x] `totals.anomalies` của bridge gộp `resets` + `anomalies`; giao diện tách lại thành
       *Khoảng đọc bị loại* có phân tích để KPI đối chiếu được với từng dòng bảng.
 
+## Slice 13 — Trung tâm cảnh báo trên dashboard
+
+- [x] `src/lib/alerts.ts` gom cảnh báo cả đội về một danh sách: cảnh báo bridge/controller giữ,
+      cộng thêm nhóm dashboard tự suy ra từ kết nối và trạng thái (`state:fault`,
+      `connection:offline`, `telemetry:error`, `state:idle-long`, `connection:stale`).
+      `alerts.mjs` bên bridge cố ý không sinh nhóm này: tuổi dữ liệu chạy tiếp giữa hai tin
+      nhắn bridge nên chỉ trình duyệt mới biết lúc này máy đã cũ bao lâu.
+- [x] **Không ghi vào `machine.alerts`.** Danh sách là một khung nhìn dựng thêm; `andonTone()`
+      và `summarize()` đọc thẳng `machine.alerts`, nhét cảnh báo dashboard vào đó sẽ lặng lẽ đổi
+      màu bảng andon và đổi số KPI. Có test khoá lại điều này.
+- [x] Cảnh báo dashboard **không xác nhận được**: bridge từ chối alert id nó không giữ
+      (`bridge-service.mjs` ⇒ 400), nên một nút "đã xem" chỉ sống trong tab trình duyệt là nút
+      nói dối — người bên cạnh không thấy, F5 là mất. Nhóm đó tự tắt khi máy trở lại. Panel nói
+      thẳng lý do thay vì để một khoảng trống cạnh những dòng đang có nút.
+- [x] Máy `archived` im hoàn toàn; máy `enabled: false` không bị báo mất kết nối; máy adapter
+      `manual` không bị báo "dữ liệu cũ" (nó chưa bao giờ được kỳ vọng trả lời).
+- [x] Chuông trên header (`a`) + panel trượt phải, lọc *Đang chờ / Tất cả* và lọc theo xưởng,
+      nút nhảy sang máy tương ứng. Không làm tab thứ hai: thanh tab đang cố ý chỉ có một mục.
+- [x] Thẻ nổi góc dưới (tối đa 4 + dòng đếm phần dồn) và con số trên tiêu đề tab. Lần tải đầu
+      không nổ thẻ nào; mức `info` không bao giờ nổi lên; cảnh báo tự hết thì rời khỏi tập "đã
+      thấy" để lần tái phát còn được báo — máy chập chờn chính là thứ cần thấy.
+- [x] **Cố ý không có tiếng.** `PRD_UI_MONITORING.md` §14 đã loại âm thanh khỏi bảng xưởng
+      ("TV xưởng thường tắt tiếng, tiếng ồn nền lớn; tạo cảm giác an toàn giả") và lý do vẫn
+      đúng trên trình duyệt: trình duyệt còn chặn phát tiếng khi người dùng chưa bấm vào trang.
+      Kênh hình + chữ + số thì kiểm được bằng mắt.
+
 ## Còn phụ thuộc bên ngoài
 
 - [ ] **Adapter Dahao thật.** `manual`, `http-json`, `tcp-json-line` là ba cơ chế truyền, không
@@ -143,6 +169,7 @@ Sổ tiến độ theo 6 slice của PRD (`PRD_CLAUDE_READONLY_FLEET.md`). Mỗi
 - [ ] **OIDC/SSO doanh nghiệp** cho `user:manage` (hiện chỉ có ranh giới quyền).
 - [ ] **Xuất CSV/JSON** nhật ký audit và cấu hình retention qua giao diện (sản lượng đã có).
 - [ ] **Cảnh báo đẩy ra Zalo/điện thoại.** Cần Zalo OA token và đường ra Internet của doanh
-      nghiệp; chưa dựng vì không thể kiểm thử thật ở đây.
+      nghiệp; chưa dựng vì không thể kiểm thử thật ở đây. Cảnh báo *trên dashboard* đã có
+      (slice 13) — phần còn thiếu chỉ là kênh ra khỏi màn hình.
 - [ ] **Bảng phân công công nhân ↔ máy ↔ ca** để quy lương khoán về từng người; hiện báo cáo
       dừng ở mức "máy nào ra bao nhiêu tiền".

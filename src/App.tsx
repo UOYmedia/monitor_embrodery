@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { AccessBar } from './components/AccessBar'
+import { AlertCenter } from './components/AlertCenter'
+import { AlertToasts } from './components/AlertToasts'
 import { AndonBoard } from './components/AndonBoard'
 import { AuditPanel } from './components/AuditPanel'
 import { ConnectionBanner } from './components/ConnectionBanner'
@@ -14,8 +16,10 @@ import { KpiBar } from './components/KpiBar'
 import { MachineDetail } from './components/MachineDetail'
 import { PairingPanel } from './components/PairingPanel'
 import { ProductionPanel } from './components/ProductionPanel'
+import { useAlertWatch } from './hooks/useAlertWatch'
 import { useDesignIndex } from './hooks/useDesignIndex'
 import { useFleetData } from './hooks/useFleetData'
+import { alertDigest, alertFeed } from './lib/alerts'
 import { andonHeartbeat } from './lib/andon'
 import { ageFleet, applyFilter, distinctZones, sortMachines, summarize } from './lib/fleet'
 import type { FleetFilter, SortKey } from './lib/fleet'
@@ -59,6 +63,7 @@ export default function App() {
   const [kiosk] = useState(isKiosk)
   const [view, setView] = useState(() => decodeView(typeof window === 'undefined' ? '' : window.location.search))
   const { tab, machineId: selectedId, filter, sortKey, sortDirection, layout } = view
+  const [alertsOpen, setAlertsOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const patchView = useCallback((next: Partial<typeof view>) => setView((current) => ({ ...current, ...next })), [])
@@ -94,6 +99,18 @@ export default function App() {
   const timeZone = activeSite?.timeZone
   const scopeLabel = filter.siteId === 'all' ? 'toàn bộ nhà xưởng' : (activeSite?.name ?? filter.siteId)
 
+  // Cảnh báo dựng trên `aged` chứ không trên `scoped`: lọc màn hình về một xưởng không được
+  // làm tắt chuông của xưởng kia. Phạm vi lọc nằm bên trong panel cảnh báo, do người dùng
+  // chọn ở đó.
+  const alertRows = useMemo(() => alertFeed(aged, fleet.nowMs, timeZone), [aged, fleet.nowMs, timeZone])
+  const digest = useMemo(() => alertDigest(alertRows), [alertRows])
+  // `ready` = đã có ít nhất một tin từ bridge; trước đó mọi máy đều "chưa đọc được" và thông
+  // báo sẽ nổ ra một tràng vô nghĩa.
+  const watch = useAlertWatch(alertRows, digest, fleet.lastMessageAt !== null, !kiosk)
+  const { markSeen } = watch
+
+  const openAlerts = useCallback(() => { setAlertsOpen(true); markSeen() }, [markSeen])
+
   // URL đi theo màn hình, nhưng bằng replaceState: mỗi lần gõ một chữ trong ô tìm kiếm mà
   // đẩy một mục vào history thì nút Back của trình duyệt thành vô dụng.
   useEffect(() => {
@@ -116,6 +133,7 @@ export default function App() {
       if (isTyping(event.target)) return
 
       if (event.key === '/') { event.preventDefault(); setTab('fleet'); searchRef.current?.focus(); return }
+      if (event.key === 'a') { event.preventDefault(); openAlerts(); return }
       const digit = Number(event.key)
       if (Number.isInteger(digit) && digit >= 1 && digit <= tabs.length) { setTab(tabs[digit - 1]); return }
       if (tab !== 'fleet' || visible.length === 0) return
@@ -132,7 +150,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [kiosk, selectedId, setSelectedId, setTab, tab, visible])
+  }, [kiosk, openAlerts, selectedId, setSelectedId, setTab, tab, visible])
 
   if (kiosk) {
     return (
@@ -162,6 +180,21 @@ export default function App() {
             {fleet.health?.lastPollAt ? ` · lượt đọc gần nhất ${formatTime(fleet.health.lastPollAt, timeZone)}` : ''}
           </p>
         </div>
+        {/* Chuông: con số là số cảnh báo *chưa xác nhận và không phải mức thông tin* — đúng
+            những dòng đang đợi một con người. Có chữ "Cảnh báo" cạnh số, vì một chấm đỏ trơ
+            trọi không nói được nó đang đếm cái gì. */}
+        <button
+          type="button"
+          className={digest.open > 0 ? 'alert-bell alert-bell-on' : 'alert-bell'}
+          onClick={openAlerts}
+          title="Phím tắt a"
+          aria-label={digest.open > 0 ? `Cảnh báo: ${digest.open} đang chờ` : 'Cảnh báo: không có gì đang chờ'}
+        >
+          <span aria-hidden="true" className="alert-bell-symbol">{digest.open > 0 ? '▲' : '■'}</span>
+          <span className="alert-bell-label">Cảnh báo</span>
+          <span className="alert-bell-count">{digest.open}</span>
+        </button>
+
         <AccessBar session={fleet.session} onToken={fleet.setToken} />
 
         {/* Tabs nằm trong header, không phải một dải riêng bên dưới: hai dải viền chồng nhau
@@ -256,7 +289,7 @@ export default function App() {
             <p className="shortcut-hint reading-meta">
               Phím tắt: <kbd>/</kbd> tìm máy
               {tabs.length > 1 && <> · <kbd>1</kbd>–<kbd>{tabs.length}</kbd> đổi tab</>}
-              {' '}· <kbd>j</kbd>/<kbd>k</kbd> đi trong danh sách · <kbd>Esc</kbd> đóng chi tiết.
+              {' '}· <kbd>j</kbd>/<kbd>k</kbd> đi trong danh sách · <kbd>a</kbd> mở cảnh báo · <kbd>Esc</kbd> đóng chi tiết.
               Địa chỉ trên thanh trình duyệt luôn khớp màn hình đang xem, sao chép để gửi cho người khác.
             </p>
           </div>
@@ -320,6 +353,34 @@ export default function App() {
             <AuditPanel api={fleet.api} timeZone={timeZone} />
           </ErrorBoundary>
         </main>
+      )}
+
+      {alertsOpen && (
+        <ErrorBoundary label="Trung tâm cảnh báo">
+          <AlertCenter
+            rows={alertRows}
+            digest={digest}
+            sites={fleet.sites}
+            siteId={filter.siteId}
+            timeZone={timeZone}
+            api={fleet.api}
+            can={fleet.can}
+            onMachine={fleet.applyMachine}
+            onSelect={(machineId) => { setTab('fleet'); setSelectedId(machineId); setAlertsOpen(false) }}
+            onClose={() => setAlertsOpen(false)}
+          />
+        </ErrorBoundary>
+      )}
+
+      {/* Thẻ nổi tắt khi panel đang mở: cùng một cảnh báo hiện hai lần chỉ che mất danh sách. */}
+      {!alertsOpen && (
+        <AlertToasts
+          toasts={watch.toasts}
+          overflow={watch.overflow}
+          onDismiss={watch.dismiss}
+          onDismissAll={watch.dismissAll}
+          onOpen={openAlerts}
+        />
       )}
 
       <footer className="app-footer reading-meta">
