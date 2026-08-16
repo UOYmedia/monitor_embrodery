@@ -1,4 +1,4 @@
-import type { AuditEntry, AuditPage, AuditRetention, BridgeHealth, MachineView, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
+import type { AuditEntry, AuditPage, AuditRetention, BridgeHealth, IngestStatus, MachineView, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
 
 /**
  * REST client for the bridge.
@@ -118,6 +118,8 @@ export class BridgeApi {
   session() { return this.request<SessionSummary>('GET', '/session') }
   health() { return this.request<BridgeHealth>('GET', '/health') }
   fleet() { return this.request<{ machines: MachineView[] }>('GET', '/fleet') }
+  /** Cổng máy tự gọi vào + các địa chỉ vừa gọi tới, kể cả địa chỉ chưa ghép máy. */
+  ingest() { return this.request<IngestStatus>('GET', '/ingest') }
   /**
    * Nhật ký kiểm toán, có lọc.
    *

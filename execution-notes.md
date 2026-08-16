@@ -184,6 +184,34 @@ Sổ tiến độ theo 6 slice của PRD (`PRD_CLAUDE_READONLY_FLEET.md`). Mỗi
       đĩa và gọi tên các mảnh *sắp* bị xoá, nhưng không sửa được. Một nút rút ngắn hạn giữ trên
       trình duyệt cho phép người bị kiểm toán tự dọn dấu vết của mình.
 
+## Slice 15 — Màn hình "máy đang gọi vào"
+
+- [x] `DialInListener` nhớ **tối đa 24 địa chỉ gần nhất, kể cả địa chỉ bị từ chối**, kèm số lần
+      kết nối, khung đọc được / chưa giải mã được, lý do gần nhất và byte đầu tiên. Trước đó một
+      máy gọi vào từ địa chỉ chưa ghép chỉ để lại một dòng warn trong log — người đứng ở xưởng
+      không thấy gì, nên không phân biệt được "quên khai máy" với "sai dây, sai IP, chặn firewall"
+      và đi kéo lại dây trong khi mạng đã thông. Đây là bảng chẩn đoán trong bộ nhớ, **không phải
+      nhật ký**: mất khi bridge khởi động lại.
+- [x] Bảng này đi qua `GET /api/v2/ingest` với quyền **`scan:run`**, không nằm trong `describe()`
+      của health (quyền `fleet:read`). Danh sách địa chỉ chưa ghép là thông tin dò mạng; có test
+      khẳng định `describe().callers` không tồn tại còn `describeIngest().callers` thì có.
+- [x] `ingestStatus()` **không gọi `identifyDialIn()`**. Hàm đó ghi lỗi lên bản ghi máy và phát
+      bản tin cập nhật; một endpoint đọc không được phép chạy nó chỉ vì có người mở dashboard.
+      Việc đối chiếu địa chỉ ↔ máy làm bằng một helper thuần (`dialInMachinesAt`).
+- [x] Trạng thái từng dòng tính theo **lần gọi gần nhất**, không theo bộ đếm cộng dồn. Lỗi này
+      phát hiện lúc chạy thử thật: một máy đang chạy tốt rồi bị lưu kho vẫn ghi "đang nhận dữ
+      liệu" mãi mãi vì `framesAccepted` không bao giờ giảm, trong khi mọi lần gọi mới đều bị từ
+      chối. Câu tổng kết của cả cổng cũng dựng từ chính các dòng bên dưới nên không thể nói ngược
+      với bảng.
+- [x] Ba câu trả lời được tách hẳn nhau vì dẫn tới ba việc khác nhau: *chưa ai gọi tới* (đi sửa
+      mạng/tham số), *có gọi nhưng bị từ chối* (mạng thông rồi, chỉ thiếu ghép máy), *gọi vào
+      được nhưng byte chưa giải mã được* (đấu nối xong, còn lại là chuyện giao thức).
+- [x] Nút **"Ghép máy ở địa chỉ này"** mở biểu mẫu điền sẵn IP (chỉ đọc) và cố định adapter
+      `dial-in`. Tên, mã tài sản, khu vực và bằng chứng vẫn nhập tay tại máy — biểu mẫu chặn ngay
+      khi chọn chứng cứ mà chưa nhập ô tương ứng, thay vì để bridge trả lỗi sau khi bấm.
+- [x] Khối chỉ hỏi lại mỗi 5s **khi đang mở**. Đây là màn hình của buổi đấu nối, không phải một
+      vòng poll nền cho mọi tab mở suốt ca.
+
 ## Còn phụ thuộc bên ngoài
 
 - [ ] **Adapter Dahao thật.** `manual`, `http-json`, `tcp-json-line` là ba cơ chế truyền, không

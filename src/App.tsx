@@ -6,6 +6,7 @@ import { AlertToasts } from './components/AlertToasts'
 import { AndonBoard } from './components/AndonBoard'
 import { AuditPanel } from './components/AuditPanel'
 import { ConnectionBanner } from './components/ConnectionBanner'
+import { DialInPanel } from './components/DialInPanel'
 import { EmptyState } from './components/EmptyState'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FleetBar } from './components/FleetBar'
@@ -286,6 +287,21 @@ export default function App() {
                     />
                   )}
             </ErrorBoundary>
+            {/* Khối đấu nối: chỉ hiện với người được phép dò mạng, và mặc định gấp lại.
+                Nó nằm ở tab đội máy vì tab ghép máy đang tắt, và vì lúc cần nó thì người ta
+                đang đứng ở xưởng chứ không đi tìm tab. */}
+            {fleet.can('scan:run') && (
+              <ErrorBoundary label="Máy đang gọi vào">
+                <DialInPanel
+                  api={fleet.api}
+                  sites={fleet.sites}
+                  canPair={fleet.can('machine:pair')}
+                  timeZone={timeZone}
+                  nowMs={fleet.nowMs}
+                  onPaired={(machines) => { machines.forEach(fleet.applyMachine); void fleet.reload() }}
+                />
+              </ErrorBoundary>
+            )}
             <p className="shortcut-hint reading-meta">
               Phím tắt: <kbd>/</kbd> tìm máy
               {tabs.length > 1 && <> · <kbd>1</kbd>–<kbd>{tabs.length}</kbd> đổi tab</>}

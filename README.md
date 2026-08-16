@@ -70,8 +70,10 @@ export const tabs: Tab[] = ['fleet', 'production', 'andon', 'pairing', 'audit']
 
 Hai điều cần biết khi đang tắt:
 
-- **Ghép máy mới phải bật lại tab `pairing`** (mục 9 bên dưới), hoặc gọi thẳng API. Không có
-  đường nào khác để đưa một máy vào hệ thống từ giao diện.
+- **Máy đã tự gọi vào thì ghép được ngay trên tab Tổng quan** — khối *Máy đang gọi vào* liệt kê
+  các địa chỉ vừa gọi tới (kể cả bị từ chối) và có nút ghép điền sẵn IP. Cần quyền `scan:run`.
+- **Máy chưa gọi lần nào thì vẫn phải bật lại tab `pairing`** (mục 9 bên dưới) hoặc gọi thẳng API
+  — quét mạng chủ động chỉ có ở tab đó.
 - **Bảng andon treo TV vẫn chạy bình thường**: nó là địa chỉ riêng `?andon=1`, không phải một
   tab, nên tắt tab không ảnh hưởng màn hình trong xưởng.
 
@@ -236,6 +238,13 @@ Mốc thiết kế: 100 máy/xưởng, 10 xưởng logic, 100 dòng hiển thị
 Máy mới ghép mặc định adapter `manual`: có trong sổ tài sản, mọi thông số là "Chưa đọc được từ
 controller". Telemetry chỉ chạy sau khi cấu hình adapter đúng giao thức.
 
+**Đường thứ hai, cho máy Dahao đã đặt `C44 Server IP` trỏ về bridge:** khối *Máy đang gọi vào* ở
+đầu tab Tổng quan hiện mọi địa chỉ vừa gọi tới cổng ingest, kể cả địa chỉ bị từ chối vì chưa ghép.
+Bấm **"Ghép máy ở địa chỉ này"** là mở biểu mẫu đã điền sẵn IP và cố định adapter `dial-in`. Tên,
+mã tài sản và bằng chứng xác minh vẫn phải nhập tay tại máy — vẫn là bước 4 ở trên, chỉ bớt được
+việc đi tìm địa chỉ. Không có nó thì một máy gọi vào từ địa chỉ chưa ghép chỉ để lại một dòng warn
+trong log bridge, và người ở xưởng không phân biệt được "quên khai máy" với "sai dây".
+
 ### 10. Tích hợp giao thức thật
 
 Repo **không** chứa giao thức Dahao. Bốn adapter là bốn *cơ chế truyền*, không phải bốn cách
@@ -347,6 +356,11 @@ bình thường. Nếu `fleet-store.json` không đọc được, bridge tự d�
 - `/api/v2/session` — endpoint duy nhất caller ẩn danh đọc được, cho biết token có quyền gì.
 - `GET /api/v2/production?from=&to=&siteId=&machineId=` — cần `fleet:read`. Sản lượng theo
   ngày/ca/máy và tiền khoán. Chỉ đọc, không có mutation nào ở đây (xem *Sản lượng ca*).
+- `GET /api/v2/ingest` — cần **`scan:run`**, không phải `fleet:read`. Trạng thái cổng "máy tự gọi
+  vào" kèm danh sách địa chỉ vừa gọi tới, **kể cả địa chỉ bị từ chối**. Đứng sau `scan:run` vì một
+  danh sách địa chỉ chưa ghép là thông tin dò mạng, không phải thông tin đội máy — `/api/v2/health`
+  vẫn chỉ có bộ đếm tổng, không có danh sách này. Đọc thuần: endpoint cố ý **không** chạy nhánh
+  nhận diện máy, để việc mở dashboard không ghi được lỗi lên bản ghi máy nào.
 - WebSocket `/ws`: `hello` → `fleet_state` → `machine_update` / `machine_removed`, kèm
   `revision` tăng dần. Trình duyệt gửi token qua `Sec-WebSocket-Protocol: bearer, <token>`
   (không dùng query string vì query string lọt vào access log của proxy).
@@ -493,6 +507,8 @@ fullscreen của trình duyệt; trình duyệt TV nên bật chế độ kiosk 
 | Bridge không khởi động, báo ca chồng lấn | Hai ca phủ lên nhau | Sửa `shifts`. Cố ý chặn: ca chồng nhau sẽ trả lương hai lần cho cùng số mũi. |
 | KPI "Bộ đếm bất thường" tăng | Bộ đếm nhảy quá `maxStitchesPerMinute`, hoặc controller đổi bo | Khoảng đó **không** được tính tiền. Kiểm tra máy trước khi nới trần. |
 | TV andon ngủ hoặc hiện tab khác | Trình duyệt TV chưa ở chế độ kiosk | Mở `?andon=1`, bật kiosk, tắt screensaver/sleep của TV. |
+| Đặt `C44`/`C41` xong mà máy không lên dashboard | Chưa ghép máy cho địa chỉ đó, hoặc máy chưa gọi ra | Mở khối *Máy đang gọi vào*: có dòng bị từ chối nghĩa là mạng đã thông, chỉ cần bấm ghép; không có dòng nào mới là chuyện dây/tham số. |
+| Khối *Máy đang gọi vào* không hiện | Thiếu quyền `scan:run`, hoặc `ingest` tắt trong cấu hình | Dùng token kỹ thuật viên/admin; bật khối `ingest` rồi khởi động lại bridge. |
 
 Mọi phản hồi lỗi kèm `correlationId`; tìm đúng dòng log bằng
 `journalctl -u dahao-bridge | grep <correlationId>`.

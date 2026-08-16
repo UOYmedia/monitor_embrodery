@@ -258,6 +258,45 @@ export interface BridgeHealth {
   session?: SessionSummary
 }
 
+/**
+ * Một địa chỉ đã gọi vào cổng ingest — kể cả địa chỉ bị bridge từ chối.
+ *
+ * `machineId` là máy đã nhận kết nối lúc đó; `pairedMachineId` là máy đang khai ở địa chỉ
+ * đó bây giờ. Vừa ghép máy xong mà controller chưa gọi lại thì hai giá trị này khác nhau,
+ * và đó chính là lúc màn hình phải nói khác đi.
+ */
+export interface DialInCaller {
+  remote: string
+  firstSeenAt: string
+  lastSeenAt: string
+  connections: number
+  framesAccepted: number
+  framesUndecoded: number
+  machineId: string | null
+  accepted: boolean
+  lastReason: string | null
+  lastBytes: { bytes: number; hex: string; ascii: string; truncated: boolean; reason: string } | null
+  pairedMachineId: string | null
+  pairedMachineName: string | null
+  pairedCount: number
+}
+
+/** Cổng "máy tự gọi vào": trạng thái cổng + các địa chỉ vừa gọi tới. */
+export interface IngestStatus {
+  enabled: boolean
+  address: { host: string; port: number } | null
+  capture: boolean
+  connections: number
+  openConnections: number
+  framesAccepted: number
+  framesUndecoded: number
+  rejections: Record<string, number>
+  lastFrameAt: string | null
+  lastUndecodedAt: string | null
+  maxCallers: number
+  callers: DialInCaller[]
+}
+
 /** One TCP-open host. Deliberately never described as a Dahao machine. */
 export interface DiscoveredDevice {
   ipAddress: string

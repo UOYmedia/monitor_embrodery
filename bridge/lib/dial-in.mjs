@@ -30,6 +30,14 @@ import { appendFile } from 'node:fs/promises'
 
 const cooldownMs = 30_000
 
+/**
+ * Số địa chỉ gần đây được nhớ để hiển thị.
+ *
+ * Đủ cho một xưởng đang dò kết nối; đây là bảng chẩn đoán, không phải nhật ký. Nhật ký thật
+ * là log của bridge và file bắt gói.
+ */
+const maxCallers = 24
+
 /** `::ffff:192.168.7.100` is the same host as `192.168.7.100`; store one form. */
 export function normalizeRemoteAddress(address) {
   if (typeof address !== 'string' || address === '') return null
@@ -78,6 +86,15 @@ export class DialInListener {
     this.rates = new Map()
     this.cooldowns = new Map()
     this.capturedBytes = 0
+    /**
+     * Địa chỉ đã gọi vào gần đây, **kể cả địa chỉ bị từ chối**.
+     *
+     * Đây là điểm mấu chốt của buổi đấu nối tại xưởng: controller vừa đặt `C44` trỏ về bridge
+     * sẽ gọi vào từ một IP chưa ghép máy nào, và bridge cắt kết nối đó. Nếu lần gọi ấy chỉ
+     * nằm trong file log thì người đứng ở xưởng không có cách nào biết mình đã đi đúng
+     * hướng — họ sẽ đi sửa dây, sửa IP, sửa firewall, trong khi mọi thứ đã chạy.
+     */
+    this.callers = new Map()
     this.stats = {
       connections: 0,
       openConnections: 0,
@@ -91,6 +108,34 @@ export class DialInListener {
 
   countRejection(reason) {
     this.stats.rejections[reason] = (this.stats.rejections[reason] ?? 0) + 1
+  }
+
+  /** Ghi nhận một địa chỉ vừa gọi vào; tạo mới nếu chưa có, và giữ bảng trong giới hạn. */
+  touchCaller(remote, patch = {}) {
+    if (!remote) return null
+    const at = new Date(this.now()).toISOString()
+    const existing = this.callers.get(remote)
+    const caller = existing ?? {
+      remote,
+      firstSeenAt: at,
+      lastSeenAt: at,
+      connections: 0,
+      framesAccepted: 0,
+      framesUndecoded: 0,
+      machineId: null,
+      accepted: false,
+      lastReason: null,
+      lastBytes: null,
+    }
+    caller.lastSeenAt = at
+    Object.assign(caller, patch)
+    // Đưa xuống cuối Map để mục cũ nhất luôn nằm đầu khi cần loại bớt.
+    this.callers.delete(remote)
+    this.callers.set(remote, caller)
+    while (this.callers.size > maxCallers) {
+      this.callers.delete(this.callers.keys().next().value)
+    }
+    return caller
   }
 
   /** Sliding one-minute budget per machine, so one chatty controller cannot flood the fleet. */
@@ -130,6 +175,7 @@ export class DialInListener {
     const remote = normalizeRemoteAddress(socket.remoteAddress)
     const close = (reason) => {
       this.countRejection(reason)
+      this.touchCaller(remote, { accepted: false, lastReason: reason })
       this.logger?.warn?.('Từ chối kết nối dial-in.', { remote, reason })
       socket.destroy()
     }
@@ -143,6 +189,8 @@ export class DialInListener {
 
     this.stats.connections += 1
     this.stats.openConnections += 1
+    const caller = this.touchCaller(remote, { accepted: true, machineId: machine.id, lastReason: null })
+    if (caller) caller.connections += 1
     this.sockets.add(socket)
     this.logger?.info?.('Máy gọi vào bridge.', { machineId: machine.id, remote })
 
@@ -188,12 +236,14 @@ export class DialInListener {
     if (frame.length === 0) return
     if (frame.length > this.config.maxFrameBytes) {
       this.countRejection('frame_too_large')
+      this.touchCaller(remote, { lastReason: 'frame_too_large' })
       this.cooldowns.set(remote, this.now() + cooldownMs)
       socket.destroy()
       return
     }
     if (!this.withinRate(machine.id)) {
       this.countRejection('rate_limited')
+      this.touchCaller(remote, { lastReason: 'rate_limited' })
       this.cooldowns.set(remote, this.now() + cooldownMs)
       socket.destroy()
       return
@@ -213,12 +263,15 @@ export class DialInListener {
     // A claimed id is checked, never trusted: the source address already decided who this is.
     if (payload.machineId !== undefined && payload.machineId !== machine.id) {
       this.countRejection('machine_id_mismatch')
+      this.touchCaller(remote, { lastReason: 'machine_id_mismatch' })
       this.logger?.warn?.('Khung dial-in khai sai machineId.', { machineId: machine.id, claimed: String(payload.machineId).slice(0, 64), remote })
       return
     }
 
     this.stats.framesAccepted += 1
     this.stats.lastFrameAt = new Date().toISOString()
+    const caller = this.touchCaller(remote, { machineId: machine.id, accepted: true, lastReason: null })
+    if (caller) caller.framesAccepted += 1
     this.accept(machine, payload, { remote })
   }
 
@@ -227,6 +280,10 @@ export class DialInListener {
     this.stats.framesUndecoded += 1
     this.stats.lastUndecodedAt = new Date().toISOString()
     this.countRejection(reason)
+    // Byte đầu tiên hiện thẳng trên dashboard: đó là bằng chứng "máy có nói, chỉ là chưa
+    // giải mã được", khác hẳn với "máy không gọi vào".
+    const caller = this.touchCaller(remote, { machineId: machine.id, lastReason: reason, lastBytes: description })
+    if (caller) caller.framesUndecoded += 1
     this.undecoded(machine, description, { remote })
     void this.capture(machine, bytes, description, remote)
   }
@@ -257,6 +314,22 @@ export class DialInListener {
       address: this.address(),
       capture: Boolean(this.config.capture),
       ...this.stats,
+    }
+  }
+
+  /**
+   * Trạng thái cổng ingest kèm bảng địa chỉ gọi vào.
+   *
+   * Tách khỏi `describe()` vì `describe()` nằm trong health (quyền `fleet:read`), còn danh
+   * sách địa chỉ chưa ghép là việc của người đi đấu nối — nó đi kèm quyền `scan:run` như
+   * mọi thao tác dò mạng khác.
+   */
+  describeIngest() {
+    return {
+      ...this.describe(),
+      maxCallers,
+      // Mới nhất lên đầu: người đứng ở xưởng vừa bật máy nào thì thấy máy đó ngay dòng một.
+      callers: [...this.callers.values()].reverse(),
     }
   }
 

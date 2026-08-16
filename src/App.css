@@ -1259,6 +1259,49 @@
   font-size: 0.8rem;
 }
 
+/* ---------- máy đang gọi vào ---------- */
+
+.dial-in-panel {
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.dial-in-panel > details > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dial-in-panel > details[open] > summary { border-bottom: 1px solid var(--line); }
+.dial-in-panel > details > *:not(summary) { margin-left: 16px; margin-right: 16px; }
+.dial-in-panel > details > *:last-child { margin-bottom: 14px; }
+.dial-in-panel .mini-table { margin-top: 12px; }
+.dial-in-panel .draft { margin-top: 14px; }
+.dial-in-panel .field-hint { display: block; }
+
+/* Chấm màu chỉ để liếc nhanh; chữ bên cạnh mới là thứ nói trạng thái — xem quy tắc đầu file. */
+.ingest-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-soft);
+  vertical-align: baseline;
+}
+
+.ingest-off { background: var(--neutral-bg); }
+.ingest-waiting { background: var(--warning-bg); border-color: var(--warning); }
+.ingest-rejected { background: var(--critical-bg); border-color: var(--critical); }
+.ingest-undecoded { background: var(--warning-bg); border-color: var(--warning); }
+.ingest-ok { background: var(--ok-bg); border-color: var(--ok); }
+
 .production .kpi-bar { margin: 12px 0; }
 .production .mini-table { margin-top: 12px; }
 /* Số tiền và số mũi phải thẳng cột để quản đốc dò bằng mắt được. */

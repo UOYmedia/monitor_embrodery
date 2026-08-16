@@ -84,16 +84,19 @@ Nếu nó in `127.0.0.1` thì đang chạy nhầm file cấu hình.
 
 ---
 
-## 3. Ghép máy TRƯỚC khi bật `C44` — bắt buộc
-
-Đây là bước dễ bỏ sót nhất và nó làm hỏng cả buổi test.
+## 3. Ghép máy — làm trước cho gọn, quên thì vẫn cứu được
 
 Bridge nhận diện máy gọi vào **bằng địa chỉ nguồn**, đối chiếu với danh sách máy đã ghép. Máy
-chưa ghép thì kết nối bị đóng ngay với lý do `unknown_source` — máy thêu sẽ báo kết nối thất bại
-và bạn sẽ đi tìm lỗi ở dây mạng trong khi dây không có tội gì.
+chưa ghép thì kết nối bị đóng ngay với lý do `unknown_source` — máy thêu chỉ báo "kết nối thất
+bại", và người ta hay đi tìm lỗi ở dây mạng trong khi dây không có tội gì.
 
-Ghép bằng dashboard (`http://192.168.7.10:8787` → tab **Quét mạng & ghép máy**), hoặc nhanh hơn
-bằng dòng lệnh:
+Ghép trước thì đỡ được một vòng tắt/bật nguồn máy. Nhưng nếu bật `C44` trước rồi mới nhớ ra, đừng
+làm lại từ đầu: khối **"Máy đang gọi vào"** trên dashboard liệt kê cả những địa chỉ **bị từ chối**,
+nên địa chỉ vừa gọi tới sẽ hiện ngay ở đó kèm nút **"Ghép máy ở địa chỉ này"** đã điền sẵn IP. Xem
+mục 5.
+
+Ghép bằng dashboard (`http://192.168.7.10:8787` → khối **Máy đang gọi vào**, hoặc tab **Quét mạng
+& ghép máy** nếu muốn khai máy chưa gọi lần nào), hoặc nhanh hơn bằng dòng lệnh:
 
 ```bash
 curl -sS -X POST http://192.168.7.10:8787/api/v2/machines \
@@ -140,30 +143,46 @@ cần **tắt bật lại nguồn** thì mới bắt đầu gọi ra.
 
 ---
 
-## 5. Xem có gì xảy ra không
+## 5. Xem có gì xảy ra không — trên màn hình, không phải trong log
 
-Trên terminal đang chạy bridge, thứ cần thấy:
+Mở `http://192.168.7.10:8787` và mở khối **"Máy đang gọi vào"** ở đầu bảng máy. Khối này tự làm
+mới mỗi 5 giây khi đang mở, nên có thể vừa đứng gõ trên bảng điều khiển Dahao vừa liếc màn hình.
+
+Nó nhớ **mọi địa chỉ vừa gọi tới, kể cả địa chỉ bị từ chối** — đây mới là điều quan trọng. Trước
+đây một máy gọi vào từ địa chỉ chưa ghép chỉ để lại một dòng warn trong log, người ở xưởng không
+thấy gì và không phân biệt được "quên khai máy" với "sai dây".
+
+| Câu trên khối | Nghĩa là | Việc phải làm |
+| --- | --- | --- |
+| *Chưa có máy nào gọi tới* | Chưa một địa chỉ nào chạm tới cổng | Sai `C44`/`C41`, chưa lưu tham số, chưa tắt bật nguồn, hoặc đứt mạng |
+| *Có máy gọi tới nhưng bị từ chối* | **Mạng đã thông.** Còn thiếu bước ghép | Bấm **"Ghép máy ở địa chỉ này"** ngay trên dòng đó |
+| *Máy có gửi dữ liệu, nhưng chưa giải mã được* | **Trường hợp mong đợi.** Đấu nối xong | Sang bước 6 |
+| *Đang nhận dữ liệu* | May mắn hiếm: máy nói JSON | Dashboard có số thật luôn |
+| *Đã ghép xong, đang chờ máy gọi lại* | Vừa ghép, controller chưa gọi lượt mới | Chờ một chu kỳ; lâu quá thì tắt/bật nguồn máy |
+
+Mỗi dòng còn có số lần kết nối, số khung đọc được / chưa giải mã được, và **byte đầu tiên** dạng
+hex — đủ để biết máy có thật sự gửi gì không mà chưa cần mở file capture.
+
+> Bảng này chỉ nhớ tạm trong bộ nhớ bridge (tối đa 24 địa chỉ gần nhất) và mất khi bridge khởi
+> động lại. Nó là bảng chẩn đoán cho buổi đấu nối, **không phải nhật ký** — nhật ký thật là log
+> của bridge và file capture.
+
+Cần con số thô thì vẫn còn hai đường cũ. Log của bridge:
 
 ```
 Máy gọi vào bridge.  { machineId: 'mch-may-01', remote: '192.168.7.100' }
 ```
 
-Kiểm tra bằng API — `dialIn` trong health cho biết chính xác đang ở đâu:
+và API — `/api/v2/ingest` là đúng thứ khối trên màn hình đang đọc (cần quyền `scan:run`), còn
+`dialIn` trong health chỉ có bộ đếm tổng:
 
 ```bash
+curl -sS http://192.168.7.10:8787/api/v2/ingest | python3 -m json.tool
 curl -sS http://192.168.7.10:8787/api/v2/health | python3 -m json.tool
 ```
 
-| Thấy gì trong `dialIn` | Nghĩa là |
-| --- | --- |
-| `connections: 0` | Máy chưa gọi ra. `C44`/`C41` chưa lưu, hoặc cần tắt bật nguồn máy. |
-| `connections > 0`, `framesAccepted > 0` | May mắn hiếm: máy nói JSON. Dashboard có số thật luôn. |
-| `connections > 0`, `framesUndecoded > 0` | **Trường hợp mong đợi.** Có byte, chưa đọc được — sang bước 6. |
-| `rejections: { unknown_source: n }` | Chưa ghép máy, hoặc ghép sai `adapter`. Quay lại bước 3. |
-| `connections > 0` nhưng cả hai bộ đếm = 0 | Máy mở kết nối rồi im. Xem khung cảnh báo cuối trang. |
-
-Mở `http://192.168.7.10:8787` trên trình duyệt: máy phải hiện trong bảng, cột kết nối chuyển
-`online`, các ô RPM / mẫu / tiến độ ghi **"Chưa đọc được từ controller"**.
+Máy đã ghép và đã gọi vào thì phải hiện trong bảng máy, cột kết nối chuyển `online`, còn các ô
+RPM / mẫu / tiến độ ghi **"Chưa đọc được từ controller"** cho tới khi giải mã xong bước 6.
 
 ---
 

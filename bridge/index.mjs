@@ -145,6 +145,13 @@ const routes = [
   { method: 'GET', pattern: /^\/api\/v2\/health$/, permission: 'fleet:read', handler: (ctx) => ({ ...service.health(), session: sessionSummary(ctx.session) }) },
   { method: 'GET', pattern: /^\/api\/v2\/readiness$/, permission: null, handler: () => service.readiness() },
   { method: 'GET', pattern: /^\/api\/v2\/fleet$/, permission: 'fleet:read', handler: () => service.fleetState() },
+  /**
+   * Cổng "máy tự gọi vào" và các địa chỉ vừa gọi tới — kể cả địa chỉ bị từ chối.
+   *
+   * Cùng quyền với dò mạng (`scan:run`): đây là danh sách địa chỉ chưa ghép máy, phục vụ
+   * người đang đấu nối tại xưởng, không phải thông tin để treo lên màn hình chuyền.
+   */
+  { method: 'GET', pattern: /^\/api\/v2\/ingest$/, permission: 'scan:run', handler: () => service.ingestStatus() },
   // Sản lượng ca là dữ liệu đọc: bảng chấm mũi theo ca, không có đường ghi ngược xuống máy.
   {
     method: 'GET',

@@ -182,3 +182,73 @@ describe('DialInListener', () => {
     expect(described.lastFrameAt).not.toBeNull()
   })
 })
+
+/**
+ * Bảng "máy đang gọi vào".
+ *
+ * Đây là thứ quyết định một buổi đấu nối tại xưởng thành hay bại: nếu địa chỉ bị từ chối
+ * không hiện ra ở đâu cả thì người đứng máy không phân biệt được "chưa khai máy" với "sai
+ * dây, sai IP, chặn firewall", và sẽ đi sửa nhầm chỗ.
+ */
+describe('DialInListener callers', () => {
+  it('remembers an address that was refused for not being paired', async () => {
+    const { listener } = makeListener({}, { identify: () => ({ reason: 'unknown_source' }) })
+    const { port } = await listener.listen()
+    await dial(port, ['{"status":"running"}\n'])
+    const [caller] = listener.describeIngest().callers
+    expect(caller.remote).toBe('127.0.0.1')
+    expect(caller.accepted).toBe(false)
+    expect(caller.lastReason).toBe('unknown_source')
+    expect(caller.machineId).toBeNull()
+    expect(caller.firstSeenAt).not.toBeNull()
+  })
+
+  it('records the machine, connection and frame counts of an accepted address', async () => {
+    const { listener } = makeListener()
+    const { port } = await listener.listen()
+    await dial(port, ['{"a":1}\n{"a":2}\n'])
+    await dial(port, ['{"a":3}\n'])
+    const [caller] = listener.describeIngest().callers
+    expect(caller.accepted).toBe(true)
+    expect(caller.machineId).toBe('mch-hn-001')
+    expect(caller.connections).toBe(2)
+    expect(caller.framesAccepted).toBe(3)
+  })
+
+  /** Byte đầu tiên là bằng chứng "máy có nói", chỉ là chưa ai giải mã được nó. */
+  it('keeps the first bytes of traffic nobody could decode', async () => {
+    const { listener } = makeListener()
+    const { port } = await listener.listen()
+    await dial(port, [Buffer.from([0x02, 0x41, 0xff]), '\n'])
+    const [caller] = listener.describeIngest().callers
+    expect(caller.framesUndecoded).toBe(1)
+    expect(caller.lastReason).toBe('not_json')
+    expect(caller.lastBytes).toMatchObject({ bytes: 3, hex: '02 41 ff' })
+  })
+
+  it('does not leak the caller table into health, which every viewer can read', async () => {
+    const { listener } = makeListener()
+    const { port } = await listener.listen()
+    await dial(port, ['{"a":1}\n'])
+    expect(listener.describe().callers).toBeUndefined()
+    expect(listener.describeIngest().callers).toHaveLength(1)
+  })
+
+  it('keeps the table bounded, newest first, so it cannot grow into a second log', () => {
+    const { listener } = makeListener()
+    for (let index = 0; index < 30; index += 1) listener.touchCaller(`192.168.7.${index}`, { lastReason: 'unknown_source' })
+    const { callers, maxCallers } = listener.describeIngest()
+    expect(callers).toHaveLength(maxCallers)
+    expect(callers[0].remote).toBe('192.168.7.29')
+    expect(callers.some((caller) => caller.remote === '192.168.7.0')).toBe(false)
+  })
+
+  it('moves an address that dials again back to the top without duplicating it', () => {
+    const { listener } = makeListener()
+    listener.touchCaller('192.168.7.10', { lastReason: 'unknown_source' })
+    listener.touchCaller('192.168.7.11', { lastReason: 'unknown_source' })
+    listener.touchCaller('192.168.7.10', { lastReason: 'unknown_source' })
+    const { callers } = listener.describeIngest()
+    expect(callers.map((caller) => caller.remote)).toEqual(['192.168.7.10', '192.168.7.11'])
+  })
+})

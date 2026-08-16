@@ -467,12 +467,17 @@ export class BridgeService {
    * the registry is wrong, and attributing telemetry to the first match would silently write
    * one machine's production onto another's ledger.
    */
+  /** Máy dial-in đang nhận telemetry tại một địa chỉ. Nhiều hơn một là lỗi khai báo. */
+  dialInMachinesAt(address) {
+    return this.store.machines.filter(
+      (machine) => machine.adapter === 'dial-in' && machine.enabled && !machine.archived && machine.ipAddress === address,
+    )
+  }
+
   identifyDialIn(remote) {
     const address = normalizeRemoteAddress(remote)
     if (!address) return { reason: 'unknown_source' }
-    const matches = this.store.machines.filter(
-      (machine) => machine.adapter === 'dial-in' && machine.enabled && !machine.archived && machine.ipAddress === address,
-    )
+    const matches = this.dialInMachinesAt(address)
     if (matches.length === 0) return { reason: 'unknown_source' }
     if (matches.length > 1) {
       this.logger.error('Nhiều máy dial-in cùng một địa chỉ.', { remote: address, machineIds: matches.map((machine) => machine.id) })
@@ -524,6 +529,34 @@ export class BridgeService {
     })
     this.logger.warn('Dữ liệu dial-in chưa giải mã được.', { machineId: machine.id, remote: meta?.remote ?? null, reason: description.reason, bytes: description.bytes })
     this.publishMachine(machine)
+  }
+
+  /**
+   * Cổng ingest + danh sách địa chỉ đã gọi vào, dùng cho màn hình "máy đang gọi vào".
+   *
+   * Mỗi dòng được đối chiếu lại với sổ máy *tại thời điểm đọc*: `machineId` là máy đã nhận
+   * kết nối lúc đó, còn `pairedMachineId` là máy đang khai ở địa chỉ đó bây giờ. Hai giá trị
+   * này khác nhau đúng ở khoảnh khắc quan trọng nhất — vừa ghép máy xong, controller chưa
+   * gọi lại — nên màn hình có thể nói "đã ghép, chờ máy gọi lại" thay vì vẫn báo lạ.
+   *
+   * Không gọi identifyDialIn() ở đây: hàm đó ghi lỗi lên máy và phát bản tin, không được
+   * phép chạy chỉ vì có người mở dashboard.
+   */
+  ingestStatus() {
+    const ingest = this.dialIn.describeIngest()
+    return {
+      ...ingest,
+      callers: ingest.callers.map((caller) => {
+        const matches = this.dialInMachinesAt(caller.remote)
+        const paired = matches.length === 1 ? matches[0] : null
+        return {
+          ...caller,
+          pairedMachineId: paired?.id ?? null,
+          pairedMachineName: paired?.name ?? null,
+          pairedCount: matches.length,
+        }
+      }),
+    }
   }
 
   recordReachability(machineId, reachable) {
