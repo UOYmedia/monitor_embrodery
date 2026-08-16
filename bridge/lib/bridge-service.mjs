@@ -41,7 +41,12 @@ export class BridgeService {
     this.publish = publish
     this.now = now
     this.store = new FleetStore(config.dataPath, { logger })
-    this.audit = audit ?? new AuditLog(config.auditPath, { logger })
+    this.audit = audit ?? new AuditLog(config.auditPath, {
+      logger,
+      maxBytes: config.audit?.maxBytes,
+      retentionDays: config.audit?.retentionDays ?? null,
+      now,
+    })
     this.scheduler = new PollScheduler(config.poll, { now })
     this.production = new ProductionLog({
       filePath: config.productionPath,
@@ -67,12 +72,16 @@ export class BridgeService {
     this.mutationQueue = Promise.resolve()
     this.startedAt = new Date().toISOString()
     this.lastPollAt = null
+    this.lastAuditPruneAt = null
   }
 
   async load() {
     await this.store.load({ sites: this.config.sites })
     await this.production.load()
     this.production.prune()
+    // Không khai `audit.retentionDays` thì lời gọi này không xoá gì cả.
+    await this.audit.prune()
+    this.lastAuditPruneAt = this.now()
     for (const machine of this.store.machines) this.scheduler.seed(machine.id)
     return this.store.machines
   }
@@ -91,6 +100,12 @@ export class BridgeService {
     this.productionFlush = setInterval(() => {
       this.production.prune()
       void this.production.flush()
+      // Bridge ở xưởng chạy hàng tháng không nghỉ, nên hạn giữ nhật ký phải tự đến hạn mà
+      // không cần khởi động lại. Mỗi ngày một lần là đủ: xoá theo ngày, không theo phút.
+      if (this.now() - (this.lastAuditPruneAt ?? 0) >= 86_400_000) {
+        this.lastAuditPruneAt = this.now()
+        void this.audit.prune()
+      }
     }, intervalMs)
     this.productionFlush.unref?.()
   }

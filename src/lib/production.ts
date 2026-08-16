@@ -1,3 +1,4 @@
+import { csvCell as cell, csvDocument, csvSeparator } from './csv'
 import type { ProductionReport, ProductionRow } from '../types/fleet'
 
 /**
@@ -88,15 +89,6 @@ export function groupByShift(rows: ProductionRow[]): ProductionGroup[] {
   return [...groups.values()].sort((a, b) => b.key.localeCompare(a.key))
 }
 
-/** Escapes one CSV cell. A machine name with a comma must not shift every later column. */
-function cell(value: string | number | null): string {
-  if (value === null) return ''
-  const text = String(value)
-  // A leading =, +, - or @ would be executed as a formula by Excel; prefix it to neutralise.
-  const guarded = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
-  return /[",\n;]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded
-}
-
 const CSV_HEADERS = [
   'Ngày', 'Ca', 'Xưởng', 'Chuyền', 'Mã tài sản', 'Máy', 'Số mũi', 'Giờ chạy (giây)',
   'Đơn giá /1000 mũi (đ)', 'Thành tiền (đ)', 'Đã xác minh', 'Bộ đếm bất thường', 'Tính vào tổng',
@@ -107,7 +99,7 @@ const CSV_HEADERS = [
  * Excel reads "Máy thêu" as mojibake and puts the whole row in one column.
  */
 export function toCsv(report: ProductionReport): string {
-  const lines = [CSV_HEADERS.join(';')]
+  const lines = [CSV_HEADERS.join(csvSeparator)]
   for (const row of report.rows) {
     lines.push([
       cell(row.date),
@@ -123,12 +115,12 @@ export function toCsv(report: ProductionReport): string {
       cell(row.verified ? 'có' : 'chưa'),
       cell(row.anomalies + row.resets),
       cell(row.countedInTotals ? 'có' : 'không'),
-    ].join(';'))
+    ].join(csvSeparator))
   }
   lines.push('')
-  lines.push([cell('TỔNG (chỉ máy đã xác minh)'), '', '', '', '', '', cell(report.totals.stitches), cell(report.totals.runSeconds), '', cell(report.totals.amount)].join(';'))
-  lines.push([cell(`Kỳ ${report.range.from} → ${report.range.to}, xuất lúc ${report.generatedAt}`)].join(';'))
-  return `﻿${lines.join('\r\n')}\r\n`
+  lines.push([cell('TỔNG (chỉ máy đã xác minh)'), '', '', '', '', '', cell(report.totals.stitches), cell(report.totals.runSeconds), '', cell(report.totals.amount)].join(csvSeparator))
+  lines.push(cell(`Kỳ ${report.range.from} → ${report.range.to}, xuất lúc ${report.generatedAt}`))
+  return csvDocument(lines)
 }
 
 export function csvFileName(report: ProductionReport): string {

@@ -154,6 +154,7 @@ sudo systemctl enable --now dahao-bridge && journalctl -u dahao-bridge -f
 | `auth` | `mode`, `localActor`, `tokens[]` (`tokenEnv`, không đặt token trong file). |
 | `allowedOrigins` | CORS **mặc định deny**; liệt kê đúng origin của dashboard. |
 | `dataPath`, `auditPath`, `uiPath` | Kho máy, nhật ký audit, thư mục `dist`. |
+| `audit` | `maxBytes` (ngưỡng xoay vòng), `retentionDays` (**bỏ trống = giữ mãi**; khai số ≥30 thì mảnh cũ hơn bị xoá, và lần xoá đó cũng được ghi audit). |
 
 ### 5. Firewall / VLAN
 
@@ -316,6 +317,7 @@ Bridge ghi hai file trong `bridge-data/`:
 | --- | --- | --- |
 | `fleet-store.json` | Sổ máy, verification, zone/site, kế hoạch bảo trì | Ghi tạm → `fsync` → `rename`; bản trước giữ lại thành `fleet-store.json.bak` |
 | `audit-log.jsonl` | Nhật ký append-only | Nối dòng JSON, không sửa, không xoá ngầm |
+| `audit-log.jsonl.<thời-điểm>` | Mảnh đã xoay vòng khi file chính vượt `audit.maxBytes` | Chỉ đọc; chỉ bị xoá khi có khai `audit.retentionDays`, và lần xoá được ghi vào nhật ký |
 
 ```bash
 # Backup (cron hằng ngày, giữ 30 bản)
@@ -500,8 +502,9 @@ Mọi phản hồi lỗi kèm `correlationId`; tìm đúng dòng log bằng
 - **Chưa có adapter Dahao thật.** Cần tài liệu giao thức hoặc bản bắt gói được cho phép. Cho tới
   lúc đó mọi máy `manual` hiển thị "Chưa đọc được từ controller" thay vì số liệu suy đoán.
 - **Chưa có OIDC/SSO.** Hiện là single-admin hoặc token theo vai trò.
-- **Chưa có xuất CSV/JSON** cho audit (sản lượng thì đã có; audit để giai đoạn sau, ranh giới
-  quyền `retention:manage` đã sẵn).
+- **Hạn giữ nhật ký audit không sửa được từ dashboard** — cố ý. Màn hình đọc và giải thích
+  `audit.retentionDays`, còn muốn đổi thì sửa `bridge.config.json` trên máy bridge: một nút
+  rút ngắn hạn giữ trên trình duyệt sẽ cho phép người bị kiểm toán tự dọn dấu vết.
 - **Chưa có cảnh báo đẩy ra Zalo/điện thoại.** Cần Zalo OA token và đường ra Internet của doanh
   nghiệp nên chưa dựng; hiện cảnh báo chỉ nằm trên dashboard và bảng andon.
 - **Lương khoán tính theo máy, chưa theo người.** Chưa có bảng phân công công nhân ↔ máy ↔ ca,

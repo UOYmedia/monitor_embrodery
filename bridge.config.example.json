@@ -110,6 +110,15 @@
 
   "dataPath": "./bridge-data/fleet-store.json",
   "auditPath": "./bridge-data/audit-log.jsonl",
+
+  "//audit": [
+    "maxBytes: quá cỡ này thì file hiện tại được xoay vòng sang mảnh có dấu thời gian.",
+    "retentionDays: BỎ TRỐNG = giữ mãi (mặc định). Khai một con số (tối thiểu 30) thì bridge",
+    "sẽ xoá các mảnh đã xoay vòng cũ hơn số ngày đó — chỉ khai khi đã có nơi lưu trữ khác,",
+    "vì đây là nhật ký dùng để đối chiếu lương và tranh chấp."
+  ],
+  "audit": { "maxBytes": 8388608 },
+
   "productionPath": "./bridge-data/production.json",
   "capturePath": "./bridge-data/dial-in-capture.jsonl",
   "uiPath": "./dist"

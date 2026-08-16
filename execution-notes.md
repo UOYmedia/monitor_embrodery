@@ -160,6 +160,30 @@ Sổ tiến độ theo 6 slice của PRD (`PRD_CLAUDE_READONLY_FLEET.md`). Mỗi
       đúng trên trình duyệt: trình duyệt còn chặn phát tiếng khi người dùng chưa bấm vào trang.
       Kênh hình + chữ + số thì kiểm được bằng mắt.
 
+## Slice 14 — Xuất nhật ký kiểm toán & hạn giữ
+
+- [x] `audit.mjs` đọc **xuyên qua các mảnh đã xoay vòng**, mới nhất trước. Trước đây `tail()`
+      chỉ đọc file đang ghi, nên ngay sau một lần xoay vòng bản xuất sẽ im lặng cụt mất phần
+      cũ — đúng lúc người ta cần nó nhất. `read()` trả kèm `truncated`, và giao diện lẫn file
+      xuất ra đều nói ra điều đó; một bản thiếu mà không báo sẽ bị đọc thành "khoảng này không
+      ai làm gì".
+- [x] Lọc theo ngày / người thực hiện / hành động / kết quả **ngay trong lúc đọc**, không phải
+      cắt 100 dòng rồi mới lọc. Tab audit của một máy trước đây trả về rỗng khi đội máy đông vì
+      100 dòng mới nhất không còn dòng nào của máy đó (`targetPrefix`).
+- [x] Hai định dạng cho hai việc: **CSV** (BOM UTF-8, dấu `;`, chống chèn công thức Excel) để
+      đọc và in; **JSON** giữ nguyên `before`/`after` để đối chiếu "trước khi sửa nó là gì".
+      Hàm thoát ô CSV tách sang `src/lib/csv.ts` dùng chung với báo cáo sản lượng — hai bản
+      copy của cái chống chèn công thức sớm muộn cũng lệch nhau.
+- [x] `audit.retentionDays` **mặc định `null` = giữ mãi**. Muốn xoá theo hạn phải tự tay ghi số
+      ngày (tối thiểu 30) vào `bridge.config.json`, và bridge in một cảnh báo lúc khởi động.
+- [x] `prune()` không bao giờ đụng file đang ghi, và **ghi lại chính lần xoá** thành một dòng
+      `audit.retention.prune`. Xoá bằng chứng mà không để dấu vết thì việc xoá trở thành lỗ
+      hổng. Chạy lúc `load()` và mỗi ngày một lần, để bridge chạy hàng tháng không nghỉ vẫn tới
+      hạn đúng lúc.
+- [x] **Hạn giữ chỉ đọc trên giao diện.** Màn hình hiển thị chính sách, kiểm kê từng mảnh trên
+      đĩa và gọi tên các mảnh *sắp* bị xoá, nhưng không sửa được. Một nút rút ngắn hạn giữ trên
+      trình duyệt cho phép người bị kiểm toán tự dọn dấu vết của mình.
+
 ## Còn phụ thuộc bên ngoài
 
 - [ ] **Adapter Dahao thật.** `manual`, `http-json`, `tcp-json-line` là ba cơ chế truyền, không
@@ -167,7 +191,8 @@ Sổ tiến độ theo 6 slice của PRD (`PRD_CLAUDE_READONLY_FLEET.md`). Mỗi
       phép bằng văn bản trên máy của chính doanh nghiệp. Chưa có thì mọi trường hiển thị
       "Chưa đọc được từ controller" thay vì số liệu suy đoán.
 - [ ] **OIDC/SSO doanh nghiệp** cho `user:manage` (hiện chỉ có ranh giới quyền).
-- [ ] **Xuất CSV/JSON** nhật ký audit và cấu hình retention qua giao diện (sản lượng đã có).
+- [ ] **Sửa hạn giữ nhật ký từ giao diện** — cố ý chưa làm (xem slice 14). Xuất CSV/JSON và
+      xem hạn giữ thì đã có; đổi hạn vẫn phải sửa `bridge.config.json` trên máy bridge.
 - [ ] **Cảnh báo đẩy ra Zalo/điện thoại.** Cần Zalo OA token và đường ra Internet của doanh
       nghiệp; chưa dựng vì không thể kiểm thử thật ở đây. Cảnh báo *trên dashboard* đã có
       (slice 13) — phần còn thiếu chỉ là kênh ra khỏi màn hình.

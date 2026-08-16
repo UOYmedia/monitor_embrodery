@@ -1,4 +1,4 @@
-import type { AuditEntry, BridgeHealth, MachineView, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
+import type { AuditEntry, AuditPage, AuditRetention, BridgeHealth, MachineView, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
 
 /**
  * REST client for the bridge.
@@ -118,7 +118,23 @@ export class BridgeApi {
   session() { return this.request<SessionSummary>('GET', '/session') }
   health() { return this.request<BridgeHealth>('GET', '/health') }
   fleet() { return this.request<{ machines: MachineView[] }>('GET', '/fleet') }
-  audit(limit = 100) { return this.request<{ entries: AuditEntry[] }>('GET', `/audit?limit=${limit}`) }
+  /**
+   * Nhật ký kiểm toán, có lọc.
+   *
+   * Trả về cả `truncated` chứ không chỉ danh sách: màn hình phải nói được "còn nữa" thay vì
+   * để người đọc tưởng khoảng trống là không có ai làm gì.
+   */
+  audit(query: { limit?: number; from?: string; to?: string; actor?: string; action?: string; result?: string } = {}) {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') params.set(key, String(value))
+    }
+    if (!params.has('limit')) params.set('limit', '200')
+    return this.request<AuditPage>('GET', `/audit?${params.toString()}`)
+  }
+
+  /** Hạn giữ nhật ký + hiện trạng file trên đĩa. Chỉ đọc: không có đường sửa từ trình duyệt. */
+  auditRetention() { return this.request<AuditRetention>('GET', '/audit/retention') }
   production(query: { from?: string; to?: string; siteId?: string; machineId?: string } = {}) {
     const params = new URLSearchParams()
     for (const [key, value] of Object.entries(query)) {

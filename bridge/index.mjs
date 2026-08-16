@@ -157,13 +157,32 @@ const routes = [
       machineId: ctx.url.searchParams.get('machineId'),
     }),
   },
-  { method: 'GET', pattern: /^\/api\/v2\/audit$/, permission: 'audit:read', handler: (ctx) => service.audit.tail({ limit: clampLimit(ctx.url.searchParams.get('limit')) }).then((entries) => ({ entries })) },
+  /**
+   * Nhật ký kiểm toán, có lọc để xuất được ra file.
+   *
+   * `truncated` đi kèm kết quả: bản xuất thiếu mà không nói là thiếu thì nguy hiểm hơn không
+   * xuất được, vì người đọc sẽ tưởng khoảng trống là "không có ai làm gì".
+   */
+  {
+    method: 'GET',
+    pattern: /^\/api\/v2\/audit$/,
+    permission: 'audit:read',
+    handler: (ctx) => service.audit.read({
+      limit: clampAuditLimit(ctx.url.searchParams.get('limit')),
+      from: ctx.url.searchParams.get('from'),
+      to: ctx.url.searchParams.get('to'),
+      actor: ctx.url.searchParams.get('actor'),
+      action: ctx.url.searchParams.get('action'),
+      result: ctx.url.searchParams.get('result'),
+    }),
+  },
+  { method: 'GET', pattern: /^\/api\/v2\/audit\/retention$/, permission: 'audit:read', handler: () => service.audit.retention() },
   {
     method: 'GET',
     pattern: /^\/api\/v2\/machines\/([^/]+)\/audit$/,
     permission: 'audit:read',
-    handler: (ctx) => service.audit.tail({ limit: clampLimit(ctx.url.searchParams.get('limit')) })
-      .then((entries) => ({ entries: entries.filter((entry) => String(entry.targetId ?? '').startsWith(ctx.params[0])) })),
+    handler: (ctx) => service.audit.read({ limit: clampLimit(ctx.url.searchParams.get('limit')), targetPrefix: ctx.params[0] })
+      .then(({ entries }) => ({ entries })),
   },
   { method: 'GET', pattern: /^\/api\/v2\/network$/, permission: 'scan:run', handler: () => localNetworkIdentity() },
   /**
@@ -254,6 +273,17 @@ const routes = [
 function clampLimit(value) {
   const parsed = Number(value ?? 100)
   return Number.isFinite(parsed) ? Math.min(500, Math.max(1, Math.floor(parsed))) : 100
+}
+
+/**
+ * Trần riêng, rộng hơn, cho màn hình nhật ký kiểm toán.
+ *
+ * Xuất một quý nhật ký mà mỗi lần chỉ lấy được 500 dòng thì người ta sẽ đi copy thẳng file
+ * JSONL trên máy bridge — và lúc đó bản sao ấy nằm ngoài mọi kiểm soát.
+ */
+function clampAuditLimit(value) {
+  const parsed = Number(value ?? 200)
+  return Number.isFinite(parsed) ? Math.min(5_000, Math.max(1, Math.floor(parsed))) : 200
 }
 
 /** v1 was removed rather than shimmed, because its payloads implied a transfer feature. */

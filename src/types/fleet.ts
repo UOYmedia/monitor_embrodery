@@ -293,6 +293,41 @@ export interface AuditEntry {
   after: unknown
 }
 
+/** Kết quả đọc nhật ký: kèm `truncated` để giao diện không trình bày bản thiếu như bản đủ. */
+export interface AuditPage {
+  entries: AuditEntry[]
+  truncated: boolean
+  scannedSegments: number
+  totalSegments: number
+}
+
+/** Một file nhật ký trên đĩa: file đang ghi (`active`) hoặc một mảnh đã xoay vòng. */
+export interface AuditSegment {
+  name: string
+  bytes: number
+  modifiedAt: string
+  /** `null` với mảnh đang ghi — nó chưa xoay vòng. */
+  rotatedAt: string | null
+  active: boolean
+}
+
+/**
+ * Chính sách giữ nhật ký đang có hiệu lực, đọc từ `bridge.config.json`.
+ *
+ * Chỉ đọc: dashboard hiển thị và giải thích, không sửa. Một màn hình có thể tự rút ngắn hạn
+ * giữ nhật ký kiểm toán thì nhật ký đó không còn dùng làm bằng chứng được nữa.
+ */
+export interface AuditRetention {
+  maxBytes: number
+  /** `null` = giữ mãi. */
+  retentionDays: number | null
+  segments: AuditSegment[]
+  totalBytes: number
+  oldestAt: string | null
+  /** Tên các mảnh sẽ bị xoá ở lần dọn tới. */
+  expiring: string[]
+}
+
 /** Một dòng sản lượng: một máy, một ca, một ngày làm việc theo giờ của site. */
 export interface ProductionRow {
   key: string

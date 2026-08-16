@@ -47,6 +47,12 @@ export const defaultConfig = {
     maxRunGapSeconds: 120,
     flushIntervalMs: 60_000,
   },
+  /**
+   * Nhật ký kiểm toán. `retentionDays: null` = **giữ mãi**, và đó là mặc định có chủ ý:
+   * một nhật ký tự xoá bớt thì không còn dùng làm bằng chứng được. Muốn xoá theo hạn thì
+   * phải tự tay ghi số ngày vào `bridge.config.json`; giao diện không có nút nào làm việc đó.
+   */
+  audit: { maxBytes: 8_388_608, retentionDays: null },
   // Cổng cho máy tự gọi vào (Dahao C44 Server IP / C41 Server Port). Mặc định tắt: mở một
   // cổng lắng nghe cho thiết bị ngoài phải là quyết định có chủ ý.
   ingest: { ...defaultIngestConfig },
@@ -118,6 +124,23 @@ function normalizeIngest(raw, base) {
   }
   if (ingest.maxFrameBytes > 1_048_576) fail('ingest.maxFrameBytes tối đa 1048576 byte.')
   return ingest
+}
+
+/**
+ * Không dùng `mergeNumbers` được: `retentionDays` cần phân biệt "không khai" (giữ mãi) với
+ * một con số, mà `positiveInt` thì coi mọi giá trị không dương là lỗi cấu hình.
+ */
+function normalizeAudit(raw) {
+  if (raw !== undefined && (raw === null || typeof raw !== 'object')) fail('audit phải là object.')
+  const configured = raw ?? {}
+  const maxBytes = positiveInt(configured.maxBytes, defaultConfig.audit.maxBytes, 'audit.maxBytes')
+  if (maxBytes < 65_536) fail('audit.maxBytes tối thiểu 65536 byte: xoay vòng quá dày làm nhật ký vỡ vụn thành hàng trăm mảnh.')
+  if (configured.retentionDays === undefined || configured.retentionDays === null) {
+    return { maxBytes, retentionDays: null }
+  }
+  const days = Number(configured.retentionDays)
+  if (!Number.isFinite(days) || days < 30) fail('audit.retentionDays phải từ 30 ngày trở lên, hoặc bỏ trống để giữ mãi.')
+  return { maxBytes, retentionDays: Math.floor(days) }
 }
 
 function readShifts(rawShifts, label) {
@@ -239,6 +262,7 @@ export async function loadConfig(configPath) {
     allowedOrigins,
     dataPath: resolve(base, raw.dataPath ?? defaultConfig.dataPath),
     auditPath: resolve(base, raw.auditPath ?? defaultConfig.auditPath),
+    audit: normalizeAudit(raw.audit),
     uiPath: resolve(base, raw.uiPath ?? defaultConfig.uiPath),
     designLibrary: normalizeDesignLibrary(raw.designLibrary, base),
   }
@@ -262,6 +286,9 @@ export function configWarnings(config) {
   if (config.auth.mode === 'single-admin') warnings.push('auth.mode="single-admin": mọi request trong LAN được coi là admin cục bộ. Chuyển sang "token" trước khi có nhiều người dùng.')
   if (config.scan.allowLoopback) warnings.push('scan.allowLoopback đang bật. Chỉ dùng cho fixture phát triển, không bật ở xưởng.')
   if (config.scan.allowPublicRanges) warnings.push('scan.allowPublicRanges đang bật. Bridge có thể chạm địa chỉ ngoài dải LAN riêng.')
+  if (config.audit?.retentionDays) {
+    warnings.push(`audit.retentionDays=${config.audit.retentionDays}: bridge sẽ xoá các mảnh nhật ký kiểm toán cũ hơn ${config.audit.retentionDays} ngày. Bỏ khai báo này nếu cần giữ nhật ký để đối chiếu lương hoặc tranh chấp.`)
+  }
   if (config.ingest.enabled) {
     warnings.push(`ingest đang mở cổng ${config.ingest.host}:${config.ingest.port} cho máy tự gọi vào. Chỉ mở trong LAN xưởng và chỉ nhận địa chỉ đã ghép máy.`)
     if (config.ingest.capture) warnings.push('ingest.capture đang bật: bridge ghi lại byte thô chưa giải mã ra đĩa. Chỉ bật khi đang dò giao thức, và nhớ tắt sau đó.')

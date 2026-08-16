@@ -1226,6 +1226,39 @@
 
 .pairing h2, .audit-panel h2, .production h2, .empty-state h2 { margin-top: 0; font-size: 1.15rem; }
 
+.audit-panel .mini-table { margin-top: 12px; }
+.audit-panel .filters { margin-top: 12px; }
+
+/* Nút của form lọc nằm ngang hàng với các ô, không tụt xuống dòng riêng. */
+.filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+.audit-retention {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.audit-retention h3 { margin: 0 0 6px; font-size: 0.95rem; }
+
+.audit-segments {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  /* Xưởng chạy lâu sẽ có hàng chục mảnh; cuộn trong khối chứ không đẩy dài cả trang. */
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.audit-segments li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+
 .production .kpi-bar { margin: 12px 0; }
 .production .mini-table { margin-top: 12px; }
 /* Số tiền và số mũi phải thẳng cột để quản đốc dò bằng mắt được. */
