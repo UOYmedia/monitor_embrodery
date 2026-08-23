@@ -19,7 +19,7 @@
     "lang-nghe": "node scripts/lang-nghe.mjs",
     "bridge:xuong": "BRIDGE_CONFIG=./bridge.config.xuong.json node --env-file-if-exists=.env bridge/index.mjs",
     "test:enum": "node scripts/test-enum.mjs",
-    "coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.include=src/** --coverage.include=bridge/lib/** --coverage.exclude=**/*.test.* --coverage.exclude=src/test/**"
+    "coverage": "vitest run --coverage --coverage.reporter=text --coverage.include=bridge/lib/** --coverage.include=scripts/lib/** --coverage.exclude=**/*.test.*"
   },
   "dependencies": {
     "ws": "^8.21.3"
