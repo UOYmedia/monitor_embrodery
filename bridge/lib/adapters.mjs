@@ -21,6 +21,35 @@ export class AdapterError extends Error {
 
 const maxResponseBytes = 512 * 1024
 
+async function docTheoLuong(response, tranByte) {
+  if (!response.body) {
+    // Không có luồng (mock, hoặc runtime không cho đọc từng phần): vẫn phải ĐẾM BYTE, không
+    // được bỏ qua phép kiểm — bỏ qua ở đây là để hở đúng cái trần mà hàm này sinh ra để giữ.
+    const text = await response.text()
+    if (Buffer.byteLength(text, 'utf8') > tranByte) {
+      throw new AdapterError(`Phản hồi vượt giới hạn ${tranByte} byte.`, { retriable: false })
+    }
+    return text
+  }
+  const reader = response.body.getReader()
+  const manh = []
+  let daDoc = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      daDoc += value.byteLength
+      if (daDoc > tranByte) {
+        throw new AdapterError(`Phản hồi vượt giới hạn ${tranByte} byte (đã đọc ${daDoc}).`, { retriable: false })
+      }
+      manh.push(value)
+    }
+  } finally {
+    await reader.cancel().catch(() => {})
+  }
+  return Buffer.concat(manh.map((m) => Buffer.from(m))).toString('utf8')
+}
+
 async function pollHttpJson(machine, { timeoutMs }) {
   const { port = 80, path = '/', tls = false } = machine.adapterConfig ?? {}
   const controller = new AbortController()
@@ -35,8 +64,13 @@ async function pollHttpJson(machine, { timeoutMs }) {
     if (!response.ok) throw new AdapterError(`Controller trả về HTTP ${response.status}.`)
     const length = Number(response.headers.get('content-length') ?? 0)
     if (length > maxResponseBytes) throw new AdapterError(`Phản hồi ${length} byte vượt giới hạn ${maxResponseBytes} byte.`, { retriable: false })
-    const body = await response.text()
-    if (body.length > maxResponseBytes) throw new AdapterError(`Phản hồi vượt giới hạn ${maxResponseBytes} byte.`, { retriable: false })
+    // Đọc theo luồng và ĐẾM BYTE, cắt ngay khi vượt.
+    //
+    // Hai lỗi của bản cũ: (1) `await response.text()` nạp TRỌN thân vào RAM rồi mới so — một
+    // thiết bị chảy dữ liệu vô hạn mà không khai `content-length` làm bridge phình bộ nhớ trước
+    // khi phép kiểm kịp chạy; (2) `body.length` đếm ký tự UTF-16 chứ không phải byte, nên trần
+    // "512 KB" lệch tới ~3 lần với payload nhiều dấu tiếng Việt — mà thông điệp lỗi lại ghi "byte".
+    const body = await docTheoLuong(response, maxResponseBytes)
     try { return JSON.parse(body) } catch { throw new AdapterError('Controller không trả về JSON hợp lệ.', { retriable: false }) }
   } catch (error) {
     if (error instanceof AdapterError) throw error

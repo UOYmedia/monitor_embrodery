@@ -35,7 +35,13 @@ async function ghiMotLuot(filePath, document, { backup = true } = {}) {
   const serialized = `${body}\n`
   await mkdir(dirname(filePath), { recursive: true })
   if (backup) {
-    await copyFile(filePath, `${filePath}.bak`).catch((error) => { if (error?.code !== 'ENOENT') throw error })
+    // CHỈ sao lưu bản đọc được. Kịch bản thật của bản cũ: file chính hỏng ⇒ store ghi log
+    // "bản cũ vẫn còn ở .bak" rồi đặt dirty ⇒ lần lưu kế tiếp chép chính file hỏng đè lên
+    // .bak, xoá mất bản sao lưu tốt duy nhất. Backup chỉ giữ một đời, nên chép mù là mất hẳn.
+    const hienTai = await readJsonFile(filePath)
+    if (hienTai.ok) {
+      await copyFile(filePath, `${filePath}.bak`).catch((error) => { if (error?.code !== 'ENOENT') throw error })
+    }
   }
   const temporaryPath = `${filePath}.tmp`
   try {

@@ -348,3 +348,39 @@ describe('số phải là số', () => {
     await expect(load(oneSite({}, { port: ['30'] }))).rejects.toThrow(/port phải là số dương/)
   })
 })
+
+// ---------------------------------------------------------------- hồi quy: sai âm thầm
+
+describe('khoá cấu hình không nhận ra', () => {
+  it('gõ sai tên khoá phải được nói ra — giá trị bạn đặt KHÔNG hề được áp dụng', async () => {
+    // `"poll": {"intervalMss": 5000}` từng cho ra intervalMs mặc định mà không một lời nào.
+    // Cùng cơ chế đó, gõ nhầm freshSecond cho ra đúng cái module này sinh ra để chặn:
+    // một ngưỡng tươi sai âm thầm.
+    const c = await load(oneSite({}, { poll: { intervalMss: 5000 }, khongCoKhoaNay: 1 }))
+    expect(c.khoaLa).toContain('poll.intervalMss')
+    expect(c.khoaLa).toContain('khongCoKhoaNay')
+    expect(configWarnings(c).join(' ')).toMatch(/Không nhận ra khoá cấu hình/)
+  })
+
+  it('khoá chú thích của chính repo KHÔNG bị kêu oan', async () => {
+    // File mẫu cố ý mang `_comment`, `_shifts`, `//audit`. Chặn cứng sẽ làm hỏng tài liệu.
+    const c = await load(oneSite({}, { _comment: 'ghi chú', '//audit': ['dòng'], poll: { _comment: 'x', intervalMs: 5000 } }))
+    expect(c.khoaLa).toEqual([])
+    expect(c.poll.intervalMs).toBe(5000)
+  })
+
+  it('cấu hình đúng thì không cảnh báo gì về khoá', async () => {
+    const c = await load(oneSite({}, { poll: { intervalMs: 5000 }, limits: { maxMachines: 5 } }))
+    expect(c.khoaLa).toEqual([])
+  })
+})
+
+describe('câu lỗi phải chỉ đúng file đang nạp', () => {
+  it('nạp bridge.config.xuong2.json thì lỗi nói tên file đó, không nói bridge.config.json', async () => {
+    // Người ở xưởng đọc câu lỗi rồi đi sửa file — chỉ sai tên là họ sửa file KHÔNG chạy,
+    // còn file đang chạy vẫn sai.
+    const khac = join(dir, 'bridge.config.xuong2.json')
+    await writeFile(khac, JSON.stringify(oneSite({ freshSeconds: 90, staleSeconds: 30 })), 'utf8')
+    await expect(loadConfig(khac)).rejects.toThrow(/bridge\.config\.xuong2\.json/)
+  })
+})

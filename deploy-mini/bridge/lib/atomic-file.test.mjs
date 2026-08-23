@@ -212,3 +212,19 @@ describe('hai lần ghi song song cùng một đường dẫn', () => {
     expect((await readdir(dir)).filter((f) => f.endsWith('.tmp'))).toEqual([])
   })
 })
+
+describe('bản sao lưu .bak', () => {
+  it('KHÔNG để file hỏng ghi đè lên bản sao lưu tốt', async () => {
+    const p = join(dir, 'so.json')
+    await writeJsonAtomic(p, { doi: 1 })          // .bak chưa có
+    await writeJsonAtomic(p, { doi: 2 })          // .bak = {doi:1}
+    await writeFile(p, '{ hong', 'utf8')          // file chính hỏng (mất điện giữa chừng ngoài luồng)
+    await writeJsonAtomic(p, { doi: 3 })          // lần lưu kế tiếp: KHÔNG được chép bản hỏng đè .bak
+    const bak = await readJsonFile(`${p}.bak`)
+    // `.bak` giữ ĐỜI TRƯỚC lần ghi tốt gần nhất, nên sau khi ghi doi:2 thì .bak là doi:1.
+    // Điều đang kiểm không phải là số mấy, mà là nó vẫn ĐỌC ĐƯỢC: bản cũ chép mù file hỏng
+    // đè lên đây và xoá mất bản sao lưu tốt duy nhất.
+    expect(bak.ok, 'bản sao lưu tốt duy nhất đã bị file hỏng xoá mất').toBe(true)
+    expect(bak.value).toEqual({ doi: 1 })
+  })
+})

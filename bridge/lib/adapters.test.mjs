@@ -411,3 +411,24 @@ describe('timeout trong bản ghi bị hỏng', () => {
     await expect(pollMachine(may, { sites: siteLocal, safety: choLoopback, timeoutMs: 300 })).rejects.toBeInstanceOf(AdapterError)
   }, 5000)
 })
+
+// ---------------------------------------------------------------- hồi quy: trần byte của HTTP
+
+describe('trần kích thước phản hồi HTTP', () => {
+  it('đếm BYTE chứ không đếm ký tự — tiếng Việt từng làm trần lệch tới ~3 lần', async () => {
+    // 'ộ' là 3 byte UTF-8 nhưng 1 ký tự UTF-16. Bản cũ so `body.length` nên một payload
+    // 200k ký tự tiếng Việt (~600 KB thật) vẫn lọt qua trần 512 KB, trong khi thông điệp
+    // lỗi lại ghi "byte".
+    const nhieuDau = 'ộ'.repeat(200_000)
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(nhieuDau, { status: 200 })))
+    await expect(pollMachine(httpMachine(), { sites, timeoutMs: 500 }))
+      .rejects.toThrow(/giới hạn/)
+  })
+
+  it('payload nhỏ có dấu tiếng Việt vẫn qua bình thường', async () => {
+    const than = JSON.stringify({ observedAt: '2026-08-14T07:00:00.000Z', status: 'running', note: 'Máy đang chạy ổn định' })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(than, { status: 200 })))
+    const snap = await pollMachine(httpMachine(), { sites, timeoutMs: 500, now: nowFixed })
+    expect(snap.status.value).toBe('running')
+  })
+})

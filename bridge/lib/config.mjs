@@ -72,7 +72,11 @@ export const defaultConfig = {
   designLibrary: { path: null, maxFiles: 5_000, maxFileBytes: 8_388_608 },
 }
 
-function fail(message) { throw new Error(`bridge.config.json: ${message}`) }
+// Tên file đang nạp, để câu lỗi chỉ đúng file cần sửa. `package.json` có bridge:xuong,
+// bridge:may-in, bridge:may-that — gắn cứng "bridge.config.json" nghĩa là người ở xưởng đi
+// sửa một file KHÔNG chạy, còn file đang chạy vẫn sai.
+let fileDangNap = 'bridge.config.json'
+function fail(message) { throw new Error(`${fileDangNap}: ${message}`) }
 
 function positiveInt(value, fallback, label) {
   if (value === undefined) return fallback
@@ -252,6 +256,7 @@ function normalizeAuth(rawAuth) {
 
 /** Reads and validates bridge.config.json. An invalid config stops startup rather than degrading silently. */
 export async function loadConfig(configPath) {
+  fileDangNap = configPath
   let raw = {}
   try {
     raw = JSON.parse(await readFile(configPath, 'utf8'))
@@ -301,7 +306,40 @@ export async function loadConfig(configPath) {
     // tồn tại": cái sau vẫn mời gọi mọi đường dẫn lạ rồi trả 404 nhầm thông điệp.
     uiPath: raw.uiPath === null ? null : resolve(base, raw.uiPath ?? defaultConfig.uiPath),
     designLibrary: normalizeDesignLibrary(raw.designLibrary, base),
+    khoaLa: khoaKhongNhanRa(raw),
   }
+}
+
+/**
+ * Khoá cấu hình mà bridge KHÔNG nhận ra — gần như luôn là gõ sai.
+ *
+ * Trước đây không tầng nào kiểm: `"poll": {"intervalMss": 5000}` cho ra intervalMs mặc định
+ * mà không một lời nào, và gõ nhầm `freshSecond` cho ra đúng cái tình huống module này sinh
+ * ra để chặn — một ngưỡng tươi sai âm thầm.
+ *
+ * CẢNH BÁO chứ không làm hỏng: file mẫu cố ý mang khoá chú thích (`_comment`, `_shifts`,
+ * `//audit`), nên chặn cứng sẽ làm hỏng chính tài liệu của repo. Khoá bắt đầu bằng `_` hoặc
+ * `//` được coi là chú thích và bỏ qua.
+ */
+function khoaKhongNhanRa(raw) {
+  const chuThich = (k) => k.startsWith('_') || k.startsWith('//')
+  const cap1 = new Set([...Object.keys(defaultConfig), 'sites', 'auth', 'schemaVersion'])
+  const la = []
+  for (const k of Object.keys(raw ?? {})) {
+    if (chuThich(k)) continue
+    if (!cap1.has(k)) la.push(k)
+  }
+  // Các khối chỉ gồm số/boolean: so với đúng bộ khoá mặc định của khối đó.
+  for (const khoi of ['freshness', 'poll', 'scan', 'limits', 'production']) {
+    const con = raw?.[khoi]
+    if (!con || typeof con !== 'object' || Array.isArray(con)) continue
+    const biet = new Set(Object.keys(defaultConfig[khoi] ?? {}))
+    for (const k of Object.keys(con)) {
+      if (chuThich(k)) continue
+      if (!biet.has(k)) la.push(`${khoi}.${k}`)
+    }
+  }
+  return la
 }
 
 function normalizeDesignLibrary(raw, base) {
@@ -318,6 +356,9 @@ function normalizeDesignLibrary(raw, base) {
 /** Startup warnings for settings that are legal but widen the bridge's exposure. */
 export function configWarnings(config) {
   const warnings = []
+  if (config.khoaLa?.length) {
+    warnings.push(`Không nhận ra khoá cấu hình: ${config.khoaLa.join(', ')}. Gõ sai tên khoá thì giá trị bạn đặt KHÔNG được áp dụng và bridge lặng lẽ dùng mặc định.`)
+  }
   if (config.host === '0.0.0.0' || config.host === '::') warnings.push('host đang bind mọi interface. Đặt host thành IPv4 LAN của máy bridge để không lộ ra mạng khác.')
   if (config.auth.mode === 'single-admin') warnings.push('auth.mode="single-admin": mọi request trong LAN được coi là admin cục bộ. Chuyển sang "token" trước khi có nhiều người dùng.')
   if (config.scan.allowLoopback) warnings.push('scan.allowLoopback đang bật. Chỉ dùng cho fixture phát triển, không bật ở xưởng.')
