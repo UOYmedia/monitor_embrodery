@@ -36,7 +36,12 @@ export function intToIpv4(value) {
 export function normalizeMac(value) {
   if (!value) return null
   const compact = String(value).replace(/[^a-fA-F0-9]/g, '')
-  return /^[a-fA-F0-9]{12}$/.test(compact) ? compact.match(/.{2}/g).join(':').toUpperCase() : null
+  if (!/^[a-fA-F0-9]{12}$/.test(compact)) return null
+  // Node báo đúng chuỗi toàn 0 cho card KHÔNG có địa chỉ phần cứng (tunnel VPN/utun trên macOS
+  // là non-internal nên lọt qua bộ lọc). Trả nó ra là hiện một MAC trông như thật cho một card
+  // không có MAC — cùng họ với "không đọc được nhưng không nói là không đọc được".
+  if (/^0{12}$/.test(compact)) return null
+  return compact.match(/.{2}/g).join(':').toUpperCase()
 }
 
 /** Parses `a.b.c.d/prefix` into its integer base, mask and broadcast. */

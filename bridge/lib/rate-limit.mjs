@@ -25,7 +25,10 @@ export class RateLimiter {
       return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterMs: 0 }
     }
     if (bucket.count >= limit) {
-      return { allowed: false, remaining: 0, retryAfterMs: bucket.resetAt - at }
+      // Kẹp theo cửa sổ: đồng hồ nhảy lùi làm `resetAt - at` lớn hơn windowMs, tức là bảo người
+      // dùng "thử lại sau 90s" trên một bộ chặn 60 giây. Hỏng theo hướng an toàn, nhưng con số
+      // nói với người dùng thì phải thật.
+      return { allowed: false, remaining: 0, retryAfterMs: Math.min(this.windowMs, Math.max(0, bucket.resetAt - at)) }
     }
     bucket.count += 1
     return { allowed: true, remaining: Math.max(0, limit - bucket.count), retryAfterMs: 0 }

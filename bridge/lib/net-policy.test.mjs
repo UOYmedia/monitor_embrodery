@@ -79,3 +79,16 @@ describe('helpers', () => {
     expect(cidrContainsAddress('192.168.10.0/24', '192.168.11.0')).toBe(false)
   })
 })
+
+describe('MAC toàn số 0', () => {
+  it('không phải một địa chỉ thật — card không có MAC thì phải nói là không có', () => {
+    // Node báo đúng chuỗi này cho card không có địa chỉ phần cứng (tunnel VPN/utun trên macOS
+    // là non-internal nên lọt qua bộ lọc). Trả nó ra là hiện một MAC trông như thật.
+    expect(normalizeMac('00:00:00:00:00:00')).toBeNull()
+    expect(normalizeMac('000000000000')).toBeNull()
+  })
+
+  it('MAC thật vẫn chuẩn hoá bình thường', () => {
+    expect(normalizeMac('ec:30:8e:1d:1a:6a')).toBe('EC:30:8E:1D:1A:6A')
+  })
+})

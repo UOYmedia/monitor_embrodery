@@ -157,3 +157,19 @@ describe('adapterHasProtocol', () => {
     expect(adapterHasProtocol('http-json')).toBe(true)
   })
 })
+
+describe('id dự phòng của sự kiện', () => {
+  it('theo NỘI DUNG chứ không theo vị trí — đổi thứ tự không được làm lệch dấu "đã xem"', () => {
+    // `${code}-${index}` nghĩa là acknowledgement lưu dưới 'event:E12-0' dính sang sự kiện khác
+    // ngay khi danh sách đổi thứ tự: thợ bấm "đã xem" cho lỗi này, dấu lại nằm trên lỗi kia.
+    const su = (code, at) => ({ code, severity: 'warning', source: 'controller', occurredAt: at })
+    const a = su('E12', '2026-08-23T01:00:00Z')
+    const b = su('E07', '2026-08-23T02:00:00Z')
+    const xuoi = normalize({ observedAt: "2026-08-23T03:00:00Z", status: "running", events: [a, b] }).events
+    const nguoc = normalize({ observedAt: "2026-08-23T03:00:00Z", status: "running", events: [b, a] }).events
+    const idCua = (list, code) => list.find((e) => e.code === code).id
+    expect(idCua(xuoi, 'E12')).toBe(idCua(nguoc, 'E12'))
+    expect(idCua(xuoi, 'E07')).toBe(idCua(nguoc, 'E07'))
+    expect(idCua(xuoi, 'E12')).not.toBe(idCua(xuoi, 'E07'))
+  })
+})

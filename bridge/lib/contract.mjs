@@ -233,7 +233,12 @@ function normalizeEvent(raw, index, context) {
   const source = optionalString(raw.source, `${field}.source`) ?? 'controller'
   if (!eventSources.includes(source)) fail(`${field}.source phải là controller hoặc sensor.`, `${field}.source`)
   return {
-    id: optionalString(raw.id, `${field}.id`, { maxLength: 80 }) ?? `${code}-${index}`,
+    // Id dự phòng phải theo NỘI DUNG, không theo vị trí trong mảng. `${code}-${index}` nghĩa là
+    // một acknowledgement lưu dưới 'event:E12-0' dính sang sự kiện khác ngay khi danh sách đổi
+    // thứ tự — thợ bấm "đã xem" cho lỗi này, dấu đã-xem lại nằm trên lỗi kia. Trước đây lỗi này
+    // ngủ vì không adapter nào sinh events; từ khi broker.py chuyển lời máy sang `events[]` thì
+    // nó hết ngủ.
+    id: optionalString(raw.id, `${field}.id`, { maxLength: 80 }) ?? `${code}-${isoOr(occurredAt, null, `${field}.occurredAt`)}`.slice(0, 80),
     occurredAt: isoOr(occurredAt, null, `${field}.occurredAt`),
     code,
     severity,
