@@ -53,6 +53,12 @@ async function ghiMotLuot(filePath, document, { backup = true } = {}) {
       await handle.close()
     }
     await rename(temporaryPath, filePath)
+    // fsync THƯ MỤC CHA, không chỉ nội dung file tạm. Trên nhiều hệ file, bản thân `rename`
+    // chưa bền: mất điện ngay sau đó có thể để lại mục thư mục cũ hoặc một file 0 byte. Docblock
+    // của module này hứa "chịu được mất điện", nên phải giữ trọn lời hứa đó.
+    const thuMuc = await open(dirname(filePath), 'r')
+    try { await thuMuc.sync() } catch { /* vài hệ file không cho fsync thư mục — bỏ qua */ }
+    finally { await thuMuc.close() }
   } catch (error) {
     // rename hỏng (khác volume, thiếu quyền) thì không được để rác nằm lại — đúng thứ hợp
     // đồng của module này hứa là không có.
