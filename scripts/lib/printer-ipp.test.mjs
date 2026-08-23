@@ -1,8 +1,9 @@
+import { createServer } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { normalizeTelemetry } from '../../bridge/lib/contract.mjs'
 import {
-  activeJob, decodeResponse, encodeRequest, groupOf, groupTags, operations, reasonsToEvents,
-  snapshotFromPrinter, valueTags,
+  activeJob, curlTransport, decodeResponse, encodeRequest, fetchTransport, groupOf, groupTags,
+  operations, readPrinter, reasonsToEvents, snapshotFromPrinter, valueTags,
 } from './printer-ipp.mjs'
 
 /** Builds a response body the way a printer would, so the decoder is tested against bytes. */
@@ -185,5 +186,75 @@ describe('đi qua được contract của bridge', () => {
     expect(telemetry.job).toBeNull()
     expect(telemetry.rpm).toBeNull()
     expect(telemetry.odometer).toBeNull()
+  })
+})
+
+/**
+ * Hai transport phải cho cùng một kết quả, và phải đo bằng byte thật qua một socket thật.
+ * `curlTransport` sinh ra vì macOS chặn Node ra LAN (xem `local-network.mjs`); nếu nó lệch với
+ * `fetchTransport` một byte thì cái rig sẽ nói dối đúng vào lúc ta cần nó nói thật nhất.
+ */
+describe('transport', () => {
+  const body = buildResponse({
+    groups: [{ tag: groupTags.printer, values: [[valueTags.enum, 'printer-state', 3], [valueTags.keyword, 'printer-state-reasons', 'none']] }],
+  })
+
+  async function serve(handler) {
+    const server = createServer(handler)
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const url = `http://127.0.0.1:${server.address().port}/printers/x`
+    return { url, close: () => new Promise((resolve) => server.close(resolve)) }
+  }
+
+  it('fetch và curl đọc ra cùng một chuỗi byte', async () => {
+    const seen = []
+    const { url, close } = await serve((request, response) => {
+      const chunks = []
+      request.on('data', (chunk) => chunks.push(chunk))
+      request.on('end', () => {
+        seen.push({ method: request.method, type: request.headers['content-type'], body: Buffer.concat(chunks) })
+        response.writeHead(200, { 'content-type': 'application/ipp' })
+        response.end(body)
+      })
+    })
+    try {
+      const request = encodeRequest({ operation: operations.getPrinterAttributes, printerUri: 'ipp://x/p' })
+      const viaFetch = await fetchTransport(url, request, { timeoutMs: 4000 })
+      const viaCurl = await curlTransport(url, request, { timeoutMs: 4000 })
+      expect(viaCurl.equals(viaFetch)).toBe(true)
+      expect(decodeResponse(viaCurl)).toEqual(decodeResponse(viaFetch))
+      // curl phải POST đúng thân nhị phân và đúng content-type, không được đổi một byte nào.
+      expect(seen).toHaveLength(2)
+      expect(seen[1]).toMatchObject({ method: 'POST', type: 'application/ipp' })
+      expect(seen[1].body.equals(request)).toBe(true)
+    } finally {
+      await close()
+    }
+  })
+
+  it('curl báo đúng mã HTTP khi máy in từ chối', async () => {
+    const { url, close } = await serve((_request, response) => { response.writeHead(503); response.end('busy') })
+    try {
+      await expect(curlTransport(url, Buffer.alloc(0), { timeoutMs: 4000 })).rejects.toThrow('HTTP 503')
+    } finally {
+      await close()
+    }
+  })
+
+  it('không có curl thì nói là không chạy được curl, không giả vờ là lỗi máy in', async () => {
+    await expect(curlTransport('http://127.0.0.1:1/x', Buffer.alloc(0), { timeoutMs: 1000, curlPath: '/khong/co/curl' }))
+      .rejects.toThrow('/khong/co/curl')
+  })
+
+  it('readPrinter dùng transport được truyền vào', async () => {
+    const calls = []
+    const transport = (endpoint, request, options) => {
+      calls.push({ endpoint, options })
+      return Promise.resolve(body)
+    }
+    const { snapshot } = await readPrinter({ endpoint: 'http://10.0.0.1:631/p', transport, now: () => '2026-08-17T00:00:00.000Z' })
+    expect(calls).toHaveLength(2)
+    expect(calls[0].endpoint).toBe('http://10.0.0.1:631/p')
+    expect(snapshot.status).toBe('stopped')
   })
 })

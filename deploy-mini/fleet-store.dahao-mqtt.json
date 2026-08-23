@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-08-21T08:00:00.000Z",
+  "machines": [
+    {
+      "id": "mch-a15-mqtt",
+      "assetTag": "A15-MQTT",
+      "name": "Máy thêu A15 (qua gateway MQTT)",
+      "siteId": "xuong-a15",
+      "zone": "Chuyền A",
+      "model": "BECS-A15-B104H-B",
+      "serial": "602602704E7B",
+      "ipAddress": "127.0.0.1",
+      "macAddress": null,
+      "adapter": "dial-in",
+      "adapterConfig": {},
+      "pricePer1000Stitches": null,
+      "verification": {
+        "status": "unverified",
+        "verifiedAt": null,
+        "verifiedBy": null,
+        "evidence": null
+      },
+      "maintenance": [],
+      "acknowledgements": {},
+      "enabled": true,
+      "archived": false,
+      "archivedAt": null,
+      "archivedBy": null,
+      "note": "Định danh 602602704E7B. Dữ liệu vào qua broker MQTT localhost (auth XXTEA đã crack) → cổng dial-in 1600.",
+      "createdAt": "2026-08-21T08:00:00.000Z",
+      "createdBy": "gateway",
+      "updatedAt": "2026-08-21T08:00:00.000Z",
+      "updatedBy": "gateway"
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "connect": {},
+  "fields": {
+    "body.encode[]": {
+      "count": 1,
+      "example": "<redacted:name-only>",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "redacted": true,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "int"
+      ]
+    },
+    "body.encode[]len": {
+      "count": 1,
+      "example": "<redacted:name-only>",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "redacted": true,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "int"
+      ]
+    },
+    "body.machineName": {
+      "count": 1,
+      "example": "A15",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "str"
+      ]
+    },
+    "body.secret[]": {
+      "count": 1,
+      "example": "<redacted:name-only>",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "redacted": true,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "int"
+      ]
+    },
+    "body.secret[]len": {
+      "count": 1,
+      "example": "<redacted:name-only>",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "redacted": true,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "int"
+      ]
+    },
+    "header.mesgNo": {
+      "count": 1,
+      "example": "1",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "numMax": null,
+      "numMin": null,
+      "states": [
+        "n/a"
+      ],
+      "topics": [
+        "emCAD/client/v1/auth/login/602602704E7B"
+      ],
+      "types": [
+        "str"
+      ]
+    }
+  },
+  "startedAt": "2026-08-22T23:59:09Z",
+  "states": {},
+  "topics": {
+    "emCAD/client/v1/auth/login/602602704E7B": {
+      "count": 1,
+      "decodable": true,
+      "dir": "in",
+      "firstSeen": "2026-08-22T23:59:09Z",
+      "lastSeen": "2026-08-22T23:59:09Z",
+      "maxLen": 172,
+      "minLen": 172
+    }
+  }
+}

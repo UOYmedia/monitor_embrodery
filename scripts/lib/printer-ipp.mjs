@@ -19,6 +19,8 @@
  * the decoder reads everything back generically.
  */
 
+import { spawn } from 'node:child_process'
+
 /** Delimiter tags. Anything ≤ 0x05 starts a new attribute group. */
 const groupTags = { operation: 0x01, job: 0x02, end: 0x03, printer: 0x04, unsupported: 0x05 }
 
@@ -290,10 +292,10 @@ export const jobAttributes = [
 ]
 
 /**
- * One IPP round trip. `fetch` gives the timeout and body-size handling for free, and the
- * printer is a device on the LAN, so a redirect is never something to follow.
+ * How the request bytes leave this process. `fetch` gives the timeout and body-size handling for
+ * free, and the printer is a device on the LAN, so a redirect is never something to follow.
  */
-async function ippRequest(endpoint, body, { timeoutMs }) {
+export async function fetchTransport(endpoint, body, { timeoutMs }) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -305,26 +307,75 @@ async function ippRequest(endpoint, body, { timeoutMs }) {
       signal: controller.signal,
     })
     if (!response.ok) throw new Error(`Máy in trả về HTTP ${response.status}.`)
-    const decoded = decodeResponse(Buffer.from(await response.arrayBuffer()))
+    return Buffer.from(await response.arrayBuffer())
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * The same round trip, handed to `/usr/bin/curl`.
+ *
+ * Why a second transport exists at all: measured on this Mac (Darwin 27), macOS's Local Network
+ * permission blocks Node from every LAN address with `EHOSTUNREACH` while `curl`, an Apple binary,
+ * is allowed through — see scripts/lib/local-network.mjs. A test rig that cannot reach the printer
+ * teaches nothing, so the rig is allowed to borrow curl's permission and keep running.
+ *
+ * This is a workaround for one host's restriction, not a transport the product leans on. The bridge
+ * runs on the shop-floor host, where `fetch` is the only path used, and the right fix on this Mac
+ * is still the permission toggle — which is the user's to flip, not this file's to route around
+ * silently. Hence the callers announce when they fall back.
+ *
+ * Headers go to stderr (`-D /dev/stderr`) so stdout stays pure binary: an IPP response is bytes,
+ * and one stray header line in the middle of them would decode as garbage.
+ */
+export function curlTransport(endpoint, body, { timeoutMs, curlPath = '/usr/bin/curl' } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(curlPath, [
+      '-sS', '--max-time', String(Math.max(1, Math.ceil(timeoutMs / 1000))),
+      '-X', 'POST', '-H', 'Content-Type: application/ipp', '--data-binary', '@-',
+      '-D', '/dev/stderr', endpoint,
+    ])
+    const out = []
+    const err = []
+    const timer = setTimeout(() => { child.kill('SIGKILL') }, timeoutMs + 500)
+    child.stdout.on('data', (chunk) => out.push(chunk))
+    child.stderr.on('data', (chunk) => err.push(chunk))
+    child.on('error', (error) => { clearTimeout(timer); reject(new Error(`Không chạy được ${curlPath}: ${error.message}`)) })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      const stderr = Buffer.concat(err).toString('utf8')
+      if (code !== 0) return reject(new Error(`curl thoát mã ${code}: ${stderr.trim() || 'không có thông báo'}`))
+      const status = Number(stderr.match(/^HTTP\/[\d.]+ (\d{3})/m)?.[1] ?? 0)
+      if (status && (status < 200 || status >= 300)) return reject(new Error(`Máy in trả về HTTP ${status}.`))
+      resolve(Buffer.concat(out))
+    })
+    child.stdin.on('error', () => { /* curl exited first; `close` reports the real reason */ })
+    child.stdin.end(body)
+  })
+}
+
+/** One IPP round trip: send bytes with the chosen transport, then decode and check the IPP status. */
+async function ippRequest(endpoint, body, { timeoutMs, transport = fetchTransport }) {
+  try {
+    const decoded = decodeResponse(await transport(endpoint, body, { timeoutMs }))
     // 0x0000–0x00ff is the successful range; anything above is a real refusal.
     if (decoded.statusCode > 0x00ff) throw new Error(`Máy in từ chối yêu cầu IPP, status 0x${decoded.statusCode.toString(16)}.`)
     return decoded
   } catch (error) {
     if (error?.name === 'AbortError') throw new Error(`Hết ${timeoutMs} ms chờ máy in trả lời IPP.`)
     throw error
-  } finally {
-    clearTimeout(timer)
   }
 }
 
 /** Reads the printer once and returns a contract-shaped snapshot. */
-export async function readPrinter({ endpoint, printerUri = endpoint, timeoutMs = 4000, now = () => new Date().toISOString() }) {
+export async function readPrinter({ endpoint, printerUri = endpoint, timeoutMs = 4000, transport = fetchTransport, now = () => new Date().toISOString() }) {
   const printerResponse = await ippRequest(endpoint, encodeRequest({
     operation: operations.getPrinterAttributes,
     requestId: 1,
     printerUri,
     requested: printerAttributes,
-  }), { timeoutMs })
+  }), { timeoutMs, transport })
 
   const jobsResponse = await ippRequest(endpoint, encodeRequest({
     operation: operations.getJobs,
@@ -332,7 +383,7 @@ export async function readPrinter({ endpoint, printerUri = endpoint, timeoutMs =
     printerUri,
     requested: jobAttributes,
     extra: [{ tag: valueTags.keyword, name: 'which-jobs', value: 'not-completed' }],
-  }), { timeoutMs })
+  }), { timeoutMs, transport })
 
   const printer = groupOf(printerResponse, groupTags.printer)
   const jobs = jobsResponse.groups.filter((group) => group.tag === groupTags.job).map((group) => group.attributes)

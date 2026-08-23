@@ -12,3 +12,9 @@ lại đúng màn hình một controller Dahao thật tại xưởng (mẫu số
 Phần telemetry vận hành (`rpm`, `currentStitch`, `odometer`, `threadBreakWindow`) vẫn là số bịa
 cho kiểm thử — máy thật lúc chụp ảnh chưa nối mạng nên không đọc được các trường đó.
 
+`telemetry-node-cam-bien.json` cũng là số kiểm thử, nhưng **hình dạng** của nó là thật: đó đúng
+là chuỗi JSON mà firmware `firmware/esp32-stitch-node/` sinh ra, sao y bản `EXPECTED_RUNNING_PAYLOAD`
+trong `firmware/esp32-stitch-node/test/stitch_logic_test.c`. Nó không có `job`, `controller`,
+`needlePosition`, `events` — một cảm biến kẹp bên ngoài máy không biết những thứ đó, nên không gửi.
+Khi firmware đổi định dạng, test C đỏ trước, rồi mới tới file này.
+

@@ -1,0 +1,22 @@
+# Cloudflare Tunnel cho tram gateway Dahao tren Mac Mini.
+#
+# Tunnel goi RA Internet, nen Mini KHONG can mo cong vao, khong can IP tinh, khong can
+# dung toi router cua xuong. Day la ly do chon tunnel thay vi NAT port-forward.
+#
+# Thay <TUNNEL-ID> bang id that sau khi chay:  cloudflared tunnel create dahao-gateway
+tunnel: <TUNNEL-ID>
+credentials-file: /Users/phong/.cloudflared/<TUNNEL-ID>.json
+
+# Khong autoupdate: mot ban cloudflared tu doi giua ca san xuat la thu khong ai muon go.
+no-autoupdate: true
+
+ingress:
+  - hostname: redthread.phonh.io.vn
+    # Bridge nghe o loopback. Tunnel la ĐƯỜNG DUY NHẤT vao tu ben ngoai:
+    # khong co cong nao cua Mini phoi ra LAN hay Internet.
+    service: http://127.0.0.1:8790
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
+  # Bat buoc phai co: moi yeu cau khong khop hostname tren deu bi tu choi.
+  - service: http_status:404

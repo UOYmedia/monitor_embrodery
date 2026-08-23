@@ -70,6 +70,18 @@ npm run probe:may-in -- --printer=ipp://10.88.88.28:631/printers/May_In --once -
 In ra toàn bộ thuộc tính IPP đọc được, snapshot sẽ gửi cho bridge, và **danh sách trường máy
 in này không báo**. Chạy bước này trước để biết trước dashboard sẽ trống chỗ nào.
 
+> **Nếu ra `fetch failed (EHOSTUNREACH)` mà `curl` ở mục 1 vẫn vào được máy in: không phải máy in.**
+> Đó là quyền **Local Network** của macOS — `curl` được phép ra LAN, `node` thì chưa (đo trên Darwin 27,
+> 17/08/2026). Sửa: System Settings → Privacy & Security → Local Network → bật cho ứng dụng đang chạy
+> Node (Terminal / iTerm / Claude / `node`), rồi **thoát hẳn** ứng dụng đó và mở lại — quyền chỉ có hiệu
+> lực với tiến trình mới. Probe tự in cách sửa này khi gặp đúng mã lỗi đó; xem
+> `scripts/lib/local-network.mjs`.
+>
+> **Chưa bật kịp thì rig vẫn chạy được.** Probe tự chuyển sang gửi IPP qua `/usr/bin/curl` (cờ tay:
+> `--via-curl`) và nói ra một lần rằng nó đang đi vòng. Nhưng đó chỉ là để thử ở nhà: **bridge chạy
+> ngoài xưởng chỉ dùng `fetch`**, nên máy nào chạy bridge thật thì vẫn phải có quyền ra mạng nội bộ.
+> Và `scripts/dns-log.mjs` thì không có đường vòng nào — nó phải *nhận* gói UDP, curl không làm hộ được.
+
 ## Bật cả bộ bằng một lệnh
 
 Cấu hình xong một lần rồi (mục 3–5 bên dưới) thì từ đó về sau chỉ cần:

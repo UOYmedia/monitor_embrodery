@@ -1,0 +1,5753 @@
+刺绣机电脑
+Computerized Embroidery Machine Controller
+
+BECS-A15
+（General Part）
+Version：2018-01
+
+操作手册
+OWNER’S MANUAL
+http://www.dahaobj.com/en/sh.asp
+
+Contents
+
+Contents
+Chapter 1 General Information .............................. 1
+1.1 Warnings and Cautions .................................................................................. 1
+1.2 Main Features ................................................................................................ 3
+1.3 Technical Specifications ................................................................................ 6
+
+Chapter 2 Embroidery Guide................................ 7
+2.1 Structure and Usage Instruction of Control Panel ......................................... 7
+2.2 Instruction of the Main Interface ................................................................... 8
+2.3 Basic Procedure of Embroidery ................................................................... 15
+2.4 Normal Embroidery, Returning and Patching ............................................. 19
+2.5 Embroidery Operation ................................................................................. 19
+2.6 Thread-Breakage Detection ......................................................................... 19
+2.7 Working Status ............................................................................................. 20
+
+Chapter 3 U Disk Management ............................. 22
+3.1 Select U Disk ............................................................................................... 22
+3.2 Pattern Preview ............................................................................................ 24
+3.3 Pattern Input................................................................................................. 25
+3.4 Directory Operation ..................................................................................... 26
+3.5 Formatting U Disk ....................................................................................... 26
+3.6 Delete Objects from U Disk (including pattern file and directory) ............. 27
+3.7 Create a New Directory in the Current Directory ....................................... 28
+
+Chapter 4 Common Parameters and Color-Changing Order ....... 29
+4.1 Settings of Common Parameters ................................................................. 29
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+I
+
+Contents
+
+4.1.1. Settings of X-Y Scale ............................................................................................ 30
+4.1.2. Settings of Rotate Angle........................................................................................ 31
+4.1.3. Pattern Direction ................................................................................................... 32
+4.1.4. Prior Mode ............................................................................................................ 32
+4.1.5. Rep. Mode ............................................................................................................. 32
+4.1.6. Rep. Order ............................................................................................................. 32
+4.1.7. X-Y Rep. Times..................................................................................................... 33
+4.1.8. X-Y Rep. Interval .................................................................................................. 33
+
+4.2 Settings of Color-changing Order ................................................................33
+4.2.1. Color-changing Interface....................................................................................... 33
+4.2.2. Settings of Color-Changing Order ........................................................................ 35
+4.2.3. Set Needle Bar Color ............................................................................................ 35
+
+Chapter 5 Settings of Embroidery Parameters ................. 37
+5.1 Procedure for Setting General Parameters ...................................................38
+5.2 Instruction on Some Functions within General Parameters .........................39
+5.2.1. Cyclic Embroidery Function ................................................................................. 39
+5.2.2. Brake Adjustment (A Must for New Machine) ..................................................... 39
+
+Chapter 6 Memory Pattern Management ..................... 40
+6.1 Memory Pattern Management Interface and Other Memory Pattern
+Operation Interfaces ..............................................................................................40
+6.2 Select Pattern for Embroidery ......................................................................42
+6.3 Memory Pattern Preview ..............................................................................42
+6.4 Pattern Output...............................................................................................44
+6.5 Copy the Memory Pattern ............................................................................46
+
+II
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Contents
+
+6.6 Create Outline Pattern.................................................................................. 48
+6.7 Create High-speed Pattern ........................................................................... 48
+6.8 Divide Pattern .............................................................................................. 48
+6.9 Create Parameter Pattern ............................................................................. 49
+6.10 Mosaic Pattern ........................................................................................... 50
+6.11 Create Combined Pattern ........................................................................... 51
+6.12 Satin Stitch Adjustment ............................................................................. 54
+
+Chapter 7 Letter Pattern Operation .......................... 55
+7.1 Enter Main Interface for Letter Embroidery................................................ 55
+7.2 Input Letter String for Embroidery .............................................................. 55
+7.3 Adjust Letter Pattern .................................................................................... 56
+7.4 Save Letter Pattern ....................................................................................... 60
+
+Chapter 8 Assistant Operation .............................. 62
+8.1 Frame Selection ........................................................................................... 62
+8.2 Clear XY Displacement ............................................................................... 63
+8.3 Positioning Idling......................................................................................... 63
+8.3.1. Low Speed Idling Forward .................................................................................... 63
+8.3.2. Low Speed Idling Backward ................................................................................. 64
+8.3.3. High Speed Idling Forward ................................................................................... 64
+8.3.4. Go to Next Color ................................................................................................... 64
+
+Chapter 9 Other Functions................................. 65
+9.1 Statistics ....................................................................................................... 65
+9.2 Set Frame Origin.......................................................................................... 67
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+III
+
+Contents
+9.3 Language ......................................................................................................68
+9.4 Machine Information ....................................................................................68
+9.5 Machine Debugging .....................................................................................69
+9.6 Date and Time ..............................................................................................70
+9.7 Touch Screen Correction ..............................................................................70
+
+Chapter 10 Online Update of Main Software .................. 72
+Chapter 11 Update of Software in Peripheral Board............. 75
+Appendix 1 Parameter List ................................ 79
+Appendix 2 Directions of U Disk Operation .................. 91
+Appendix 3 Automatic Position Limitation Function Instructions for
+Apparel Embroidery ..................................... 92
+Appendix 4 A15 Controller Operation Quick Guide ............ 98
+
+There will be no further notice in case of any change of specifications.
+
+IV
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 1
+
+General Information
+
+Chapter 1 General Information
+Thank you for using Dahao Computerized Control System for Embroidery Machine.
+Please read this manual carefully so as to operate the machine correctly and effectively.
+Besides that, you should keep this manual properly for future use.
+
+1.1 Warnings and Cautions
+In order to avoid fire, electrical shock or unpredicted injuries, you should follow the listed
+safety rules.
+Matters for Attention on Usage
+Danger
+
+During the operation, do not try to open the machine box. The high voltage
+contained in some parts is deadly. The rotating parts may cause serious injury.
+
+Forbidden
+
+Don't expose the machine to humidity gas, poisonous gas, water, and dust.
+
+Forbidden
+
+Don’t store or operate the machine in the vibration area, which may cause trouble
+to the machine.
+
+Attention
+
+Please abide all the warnings and safety requirements to ensure the security.
+
+Attention
+
+LCD screen is fragile. Do not use the hard or sharp item to click the screen.
+
+Attention
+
+Please insert U disk correctly and don’t force it in, otherwise, USB interface or U
+disk may get damaged
+
+Attention
+
+We will add appendix if necessary. If there is any difference between the manual
+and appendix, the content in the appendix shall take precedence.
+Matters for Attention on Transportation and Loading
+
+Attention
+
+When moving the machine, please not to hold the cable.
+
+Attention
+
+Please abide all the warnings and safety requirements to ensure the security.
+
+Compulsory Overloading may cause serious loss. Please load according to the instruction on
+the box
+Requirements
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+1
+
+Chapter 1
+
+General Information
+
+Matters for Attention on Installation
+Attention
+
+Don't jam the vent on the device. Don’t insert other items into the machine, or it
+may get fire.
+
+Attention
+
+Make sure the installation direction is correct.
+
+Attention
+
+Don't expose the machine to humidity gas, corrosive gas, water, and other
+flammable material.
+Matters for Attention on Cable Connection
+
+Forbidden
+
+Don't test the insulation of the circuit loop.
+
+Forbidden
+
+Never try to connect the overloaded electronic device on the connectors (like
+sockets or terminals).
+
+Attention
+
+The insulation condition of each cable (no matter signal cable or power cable)
+should be ensured.
+
+Attention
+
+The signal cables and power cables should be separated. Never tie them together.
+
+Attention
+
+All the cables should be well fixed. Don’t put any strength on cables. Make sure
+each turning point of cable is well protected. Add shelter pipes to increase
+insulating capability if necessary.
+
+Attention
+
+Machine should be grounded reliably. The resistance should be smaller than 10
+Ω.
+Matters for Attention on Operation
+
+Danger
+
+Don't operate the machine when there is any damage on the shelter of the running
+parts.
+
+Forbidden
+
+When machine is running, do not touch any running part.
+
+Attention
+
+Make sure the configuration of power supply is in normal. Use stabilized voltage
+power supply when the change of voltage is beyond the range of -10%~10%.
+
+Attention
+
+In case of warning, please check out the problem. Operation can only be carried
+out again when problem is solved.
+
+Attention
+
+The power supply switch has over-current protection function. If the over-current
+switch is activated, the switch can only be closed after 3 minutes.
+
+2
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 1
+
+General Information
+
+Matters for Attention on Maintenance and Inspection
+Warning
+
+If you need to open the machine cover, please cut off the power supply at first.
+Due to the capacitance, operator must wait at least one minute before opening the
+machine cover.
+
+Attention
+
+Circuit boards can be damaged by static. The circuit boards can only be
+disassembled by professional technicians.
+
+Attention
+
+If machine is inactive for a while temporarily, users must power on the machine
+regularly (once by every 2 or 3 days, more than an hour for each time).
+
+Attention
+
+If machine is inactive for a long time, users should have the machine checked
+before power-on.
+Matters for Attention on Rejection
+
+Attention
+
+Rejection should obey the rules and regulations set by national industrial
+electronic standards.
+
+1.2 Main Features
+1.
+
+User-friendly Interface on Touching Panel
+
+The adoption of the touching panel technology offers user the delightful operation and
+easy learning. The beautiful screen display turns everyday work into joyful experiences.
+2.
+
+Huge Memory Capacity
+
+The memory capacity reaches 100 million stitches, which can meet demands of different
+customers.
+3.
+
+Maximum Stitch Amount of One Pattern Reaches Two Million
+
+At present a single pattern in the system has the maximum of 2 million stitches and 1,000
+times of automatic color changing.
+4.
+
+Multi-Task Parallel Operation and Free Shift among Tasks
+
+During the embroidery, actions like pattern input & output, preparation for the following
+patterns and modification of parameters can be carried out.
+5.
+
+Storage of Frequently Used Parameters and Color-Changing Order for Each Pattern
+
+Pattern will be saved along with its parameters, color-changing orders and needle bar
+colors. System can save the operational details for each pattern. Users can set parameters for a
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+3
+
+Chapter 1
+
+General Information
+
+pattern during the embroidery process of the previous pattern, which will save time and
+improve efficiency. Moreover, it is one basis to realize network management.
+6.
+
+Pattern Input/Output via USB
+
+Customers can use USB disk for data transfer. USB disk supports DIR operation, which is
+easy for pattern management. For each directory, system supports operation of 400 patterns or
+sub-directory. There is no limitation of directory levels. Patterns in the formats of Binary,
+Ternary and Z-nary can be loaded.
+7.
+
+Patch Embroidery
+
+This function can set a patch point at the position of color code or stop code, and when the
+machine embroiders to the patch point, it will halt and move out frame for patching. After
+sticking a patch, user would press the start key to return the frame and continue embroidering.
+8.
+
+Brake Adjustment
+
+User can adjust the parameter of brake to let the main shaft stop at the correct position
+according to the characters of his own machines.
+9.
+
+Save Start Point
+
+This function can save the start point of each pattern, which saves the work of user to
+search the start point manually at embroidering the identical pattern.
+10.
+
+Mechanical Maintainence and Debugging
+
+This function is to easily judge the malfunctions at maintaining and debugging the
+machine, such as encoder testing, main shaft speed testing, machine parts testing and the main
+shaft stopping at any position, etc.
+11.
+
+Multi-Language Support
+
+Currently, the system only supports Chinese and English; Arabic, Spanish, Turkish,
+Russian, Portuguese, French and many other languages are under developing.
+12.
+
+Pattern Output
+
+Patterns can be output and saved into USB disk. Adoption of TAJIMA’s binary format
+enjoys the advantage of data transmitting through the World Wide Web (other formats may not
+be transmitted directly).
+
+4
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 1
+13.
+
+General Information
+
+Repetition Embroidery
+
+The user can increase embroidery productivity by using the function of repetition
+embroidery, which can also be used with cyclic embroidery.
+14.
+
+Cyclic Embroidery
+
+With this function, the machine can automatically return to the origin and start the same
+embroidery again when finishing the pattern one time. User also can increase productivity
+rapidly by combining this function with special pattern-making function or repetition
+embroidery function.
+15.
+
+Pattern Compiling
+
+(1) Compiling the Data of Selected Pattern to Generate New Pattern
+Users can compile any pattern according to zoom ratio, rotate angle, normal repetition or
+partial repetition to generate a new pattern and save it to memory. The newly generated pattern
+can be used for embroidering, output or other operations.
+(2) Compiling the Combined Pattern
+After setting the combined pattern, the system can compile that pattern to generate a new
+one and save it to memory. The newly generated pattern can be used for embroidering, output
+or other operations.
+16.
+
+Letter Pattern
+
+There are 28 built-in font libraries. Users can make letter groups and change letter orders
+according to different tasks. This operation is vivid, simple and easy managing.
+17.
+
+Pattern Edit (under developing)
+
+18.
+
+Speed Adjustment
+
+The highest speed for embroidery can be preset. During embroidery, speed may change
+automatically along with the change of needle interval.
+19.
+
+Thread-trimming
+
+Thread-trimming can be manually operated. The machine can trim the thread
+automatically at the end of embroidery process or at color-changing.
+20.
+
+Thread-breakage Detection
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+5
+
+Chapter 1
+
+General Information
+
+In case of thread breakage or running-out of bobbin thread, the machine will stop and give
+warning by indicator.
+21.
+
+Color-changing
+
+At the color-changing point, user can either perform the color-changing manually or let
+the system do it automatically according to the preset order.
+
+1.3 Technical Specifications
+
+6
+
+1.
+
+Maximum number of patterns saved in memory: 800
+
+2.
+
+Memory capacity: 100 million stitches
+
+3.
+
+Screen resolution ratio: 1280*800
+
+4.
+
+Network port speed: 100Mbps
+
+5.
+
+Supported method for data exchange: USB disk, network (temporarily unavailable)
+
+6.
+
+Control precision: Minimum controllable stitch interval is 0.1mm
+
+7.
+
+Stitch range: 0.1mm~12.7mm
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+Embroidery Guide
+
+Chapter 2 Embroidery Guide
+2.1 Structure and Usage Instruction of Control Panel
+I.
+
+Structure of Control Panel
+
+1. Touching Panel
+It adopts high-luminance LCD displayer and touching screen man-machine
+interaction interface.
+2. Buttons
+Press the keys to start the embroidery, pause the embroidery.
+3. Main USB Port
+USB disk can be plugged for data input/output.
+II. Instructions on Touching Panel
+This machine uses the touching panel as its input device. In order to extend the service
+life of the panel and to maintain its performance, please don’t apply too much pressure on the
+screen during operation. Neither can user use the sharp or hard tools to click the screen.
+III. Instructions on USB Disk
+Please pay close attention to electrostatic phenomenon. Don’t forget to discharge (we
+suggest you should touch the machine stand or frame to discharge the static) before plugging
+in/out the USB disk.
+Pay attention to the direction of the USB disk at plug-in. Don’t pull out the USB disk
+when system loads data from or write data to it. If the USB disk is pulled out or the power is
+Owner’s Manual of BECS- A15 Computerized Control System
+
+7
+
+Chapter 2
+
+Embroidery Guide
+
+cut off during the data input/output, the data could be lost. In that case, please check the
+integrity of data in the USB disk and repair it before using.
+Attention: During the process of initialization, if the power is cut off or the USB disk is
+pulled out, the USB disk may be damaged permanently.
+
+2.2 Instruction of the Main Interface
+
+No.
+
+Icon
+
+Name
+Network
+Connection
+Failure
+Status
+
+Description
+Network
+
+Status
+
+(disconnected
+
+, connected
+
+, successful
+
+registration
+
+Reference Page
+
+)
+
+Cyclic embroidery is currently
+available. Press user parameter
+1
+
+8
+
+Cyclic
+Embroidery
+
+or specialist parameter
+
+to enter the parameter
+setting interface, where user can
+change the setting of cyclic
+embroidery.
+This figure will appear when the
+Thread Breakage machine stops due to the
+thread-breakage.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+No.
+
+2
+
+Icon
+
+Name
+Pattern
+Management
+Parameter
+Setting
+Color-changing
+Order Setting
+Main Interface
+
+3
+
+4
+
+Embroidery Guide
+
+Description
+
+Reference Page
+
+Interface for pattern management
+Interface for parameter setting
+Interface for color-changing order
+setting
+Main interface
+
+Pattern Display
+Area
+Basic
+Pattern
+Data
+Clear
+X/Y
+Displacement
+
+The pattern for embroidery will be
+displayed in this area.
+Basic data of the current pattern
+will be displayed here.
+Clear the current value of X/Y
+displacement
+After machine stop, user can click
+Manual
+this key for the operation of
+Thread-trimming manual thread-trimming (including
+bobbin thread trimming).
+After stop, if the main shaft is not
+
+Main
+Shaft
+at the proper position
+,
+Manual
+press this key to adjust the main
+Adjustment
+
+Section 2.3
+
+Section 2.3
+
+shaft to the right position
+
+5
+
+Frame Selection
+Frame selection and position
+and Position
+If the machine is set at Auto
+Color-changing, user should set
+the color-changing order in
+advance.
+When user presses the start key for
+embroidery, no matter where the
+current needle rod locates, the
+Auto
+Color-changing, machine will change the needle
+Auto Start
+according to the set color-changing
+order and perform the embroidery.
+When encountering color-changing
+code, the machine will stop
+automatically and shift to the
+pointed needle position according
+to the auto color-changing order. If
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+9
+
+Chapter 2
+No.
+
+Icon
+
+Name
+
+Embroidery Guide
+
+Description
+
+Reference Page
+
+the machine is set at auto start, the
+machine will begin the embroidery
+automatically; if it is set at manual
+start, the user needs to press the
+start key for embroidery.
+In this status, select the needle
+position
+with
+manual
+color-changing (
+
+Manual
+Color-changing,
+Manual Start
+
+) to select
+
+the needle position and then press
+start key for embroiery.
+When
+encountering
+color-changing code, the machine
+will stop automatically. Icon
+appears, and the system
+awaits the manual color-changing
+At this moment, user needs to
+perform manual color-changing
+
+5
+
+(
+
+) to shift to the needed
+
+needle position, and press the start
+key for embroidery
+Return
+
+、
+
+6
+
+Return to the previous interface
+
+For setting the main shaft
+Main
+Shaft
+acceleration/deceleration.
+When
+Acceleration,
+the main shaft reaches the
+Main
+Shaft
+highest/lowest speed, this key will
+Deceleration
+be unavailable.
+Used to move the frame to
+Idling
+appointed
+position
+without
+embroidery
+When the machine is in Ready
+Status, user can carry out
+preparation
+work
+of
+the
+embroidery, such as pattern
+Embroidery
+selection, setting scale parameter,
+Ready
+Status, setting repetition parameters and
+Confirm
+the so on. Click this key to confirm,
+and the machine will turn from
+Embroidery
+Embroidery
+Ready
+Status
+into
+Confirmation Status
+
+10
+
+Embroidery
+.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+No.
+
+Icon
+
+Name
+
+Embroidery Guide
+
+Description
+
+Reference Page
+
+Currently, the machine is under
+Embroidery Confirmation Status,
+and user can start embroidery at
+any time. When the machine stops,
+Embroidery
+user can click this key and confirm
+Confirmation
+the cancelling of Embroidery
+Status, Cancel Confirmation Status. And the
+machine will return to Embroidery
+the Embroidery
+Ready Status
+from
+Embroidery Confirmation Status
+
+6
+
+.
+Press it to enter the interface for
+other function operations, such as
+statistic inquiry, frame origin
+Other Function setting, power-off recovery, soft
+limitation
+setting,
+machine
+Operations
+authority management, touch
+screen calibration, and time
+management.
+When machine stops at correct
+position
+, the operation is
+valid; press it to enter manual
+color-changing interface, where
+user can click corresponding
+needle position number to make
+color-changing.
+This figure is for the actual needle
+Current Needle
+position at present. 0 is for the
+Position
+invalid needle position.
+The initial value is 1. After the
+Current
+embroidery starts, this value will
+Color-changing
+add 1 at each finish of successful
+Times
+color-changing.
+This order is the sequence of the
+Color-changing
+needle rods for changing color.
+Order
+The 3D figure is for the current
+needle position.
+Scale up pattern in the pattern
+Scale Up Pattern display area. Hold pressing for 2s
+to shift to
+.
+Manual
+The frame will move along with
+Frame-moving
+the direction keys.
+
+Manual
+Color-changing
+
+7
+
+8
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 9
+
+Section 2.3
+
+11
+
+Chapter 2
+
+No.
+
+Icon
+
+Name
+
+Embroidery Guide
+
+Description
+
+9
+
+Pattern List
+
+Display patterns by figures for
+users to select
+
+10
+
+Previous/Next
+Page
+
+Display patterns in different pages
+
+,
+
+Memory Pattern
+Preview
+Letter Pattern
+
+Used to check pattern details, scale
+up/down pattern, move or make
+analog display of pattern
+Letter pattern and its parameter
+setting
+
+Pattern Deletion
+
+Used to delete selected patterns
+
+Pattern Output
+
+Used to transfer memory patterns to
+USB disk
+
+11
+
+Reference Page
+
+Home
+U Disk
+Management
+
+Other Functions
+11
+Single/Multiple
+Selection
+
+12
+
+Press it to enter the U disk
+management
+interface
+for
+operations related to U disk.
+Used to open other operation
+interfaces for memory patterns,
+such as pattern copy, deletion,
+combination, edit, etc.
+Shift between single selection mode
+and multiple selection mode
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+No.
+
+Icon
+
+Name
+
+12
+
+Icon
+
+Description
+
+Reference Page
+
+Enter the next operation interface
+
+Next
+
+No.
+
+Embroidery Guide
+
+Name
+Common
+Parameter
+Setting
+Pattern Preview
+
+Description
+
+Reference Page
+
+User can adjust these parameters to
+control the final embroidery effect
+of the pattern.
+Load the selected pattern, display
+the pattern data and draw up the
+pattern shape.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+13
+
+Chapter 2
+
+No.
+
+Icon
+
+Name
+
+Embroidery Guide
+
+Description
+
+Reference Page
+
+Current Operation
+Position
+Color
+Lump
+Number List
+
+Set, insert or delete needle bar number
+here.
+Display the color lump number of the
+pattern
+Display the needle bar number and
+Needle
+Bar
+needle bar thread color of the
+Number and Color
+corresponding color lump
+Move Up
+
+13
+
+Move up the color-changing list in order to
+select the color lump to be set
+
+Press this key and then press needle bar
+Insert Needle Bar
+number to insert it to the current needle
+Number
+bar number list
+Delete Needle Bar Delete the current needle bar number
+Number
+from the needle bar number list
+Move Down
+
+Move down the color-changing list in
+order to select the color lump to be set
+
+Bar
+Needle
+Select the color for the selected needle
+Number
+Color
+bar number
+Selection Area
+
+Repetition
+
+Repeat the color-changing order
+
+Patch Embroidery
+
+Set as patch embroidery pattern
+
+14
+
+14
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+No.
+
+Icon
+
+Embroidery Guide
+
+Name
+
+Description
+
+Reference Page
+
+Needle Bar Color Set the neeble bar color from default
+colors
+Setting
+
+2.3 Basic Procedure of Embroidery
+The machine carries out embroidery based on the patterns saved in memory. The
+following figure is the basic procedure of the embroidery:
+① Input Patterns
+
+② Select Pattern
+
+③ Assistant Operations
+
+④ Confirm Embroidery
+
+⑤ Start Embroidery
+⑦ Cancel Embroidery
+
+⑥ Manual Operation
+
+I. Input Patterns
+User can input patternss through network or USB disk. Only with
+
+(successful
+
+registration) displayed, can it be possible to transmit patternss by network. For U disk
+operation, in pattern management interface, press
+
+to enter U disk management
+
+interface.
+II. Select Pattern
+In pattern management interface, user can select needed pattern for embroidery.
+III. Assistant Operations
+After selecting the pattern for embroidery, user can make assistant operations according to
+need before embroidery.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+15
+
+Chapter 2
+
+1.
+
+Embroidery Guide
+
+Set repetition, rotation and scaling —— press
+
+to enter parameter
+
+management interface.
+2.
+
+Set color-changing orde —— press
+
+to enter color-changing
+
+setting interface.
+3.
+
+Set patch embroidery —— press
+
+to enter color-changing setting
+
+interface and set patch embroidery of the pattern according to hints.
+4.
+
+For border inquiry, border idling, pattern outline —— press
+
+to enter
+
+frame selection and position operation.
+5.
+
+Locate pattern at frame center —— press to enter frame selection and position
+
+operation. Please note this function is to locate pattern at the frame center set by soft
+limitation.
+6.
+
+Set cyclic embroidery —— press
+
+Press
+
+to enter other function operation.
+
+to enter parameter management interface. Then press “Embroidery
+
+Assistant Parameters” and set cyclic embroidery according to hints.
+IV. Confirm Embroidery
+1. After assistant operations, press
+select
+
+to confirm and turn
+
+to display a hint window, where user can
+(cancel embrodery) to
+
+(confirm embroidery), which indicates the machine has entered Embroidery Ready
+Status.
+If user selects
+
+, the machine will stay at Embroidery Cancel Status. At this time,
+
+the machine will not work even when user presses the start key. A hint window will
+display on the screen for user to confirm the embroidery.
+2. Set Color-changing and Start Mode
+User can shift between
+
+(auto color-changing and auto start) and
+
+(manual
+
+color-changing and manual start).
+
+16
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+Embroidery Guide
+
+V. Manual Operation
+1.
+
+Manual Thread-trimming:
+When the machine stops, press
+
+in the main interface to display a
+
+hint window, where user can press “Trim Upper&Bobbin Thread” to trim threads,
+or click “Trim Bobbin Thread” to trim the bobbin thread only. Press
+
+to
+
+quit the thread-trimming operation.
+
+2.
+
+Manual Frame-Moving:
+When the machine stops, press direction keys (
+
+,
+
+,
+
+,
+
+)
+
+to move frame along the corresponding direction. Press the two neighboring keys at
+the same time to move the frame in the direction of the angle bisector.
+the speed key for manual frame-moving. Press to shift between
+speed) and
+3.
+
+is
+(high
+
+(low speed).
+
+Clear the Frame Coordinates
+When the machine stops, press
+
+to clear the XY displacements displayed
+
+in the main interface. The function can be used with manual frame-moving.
+4.
+
+Manual Color-Changing
+When the machine stops, press
+
+in the main interface to enter manual
+
+color-changing interface. Then click the needle number for color-changing, and the
+machine head will automatically move to the corresponding needle position.
+Please note: if the user wants to automatically save the order of the manual
+color-changing, user should operate it in the manual color-changing interface on the
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+17
+
+Chapter 2
+
+Embroidery Guide
+
+touch screen.
+5.
+
+Adjust Main Shaft Manually
+Usually, the main shaft needs to stop at 100° at needle/color-changing,
+frame-moving and beginning embroidery. User can manually turn the main shaft to
+100° when it hasn’t reached there. Press
+
+in the main interface to carry out
+
+this function.
+After the operation,
+
+(not in position) will changing into
+
+(in
+
+position).
+6.
+
+Back to Origin
+Press
+press
+
+7.
+
+in the main interface to enter idling interface, where user can
+to return the frame to origin.
+
+Back to Stop Point
+Press
+press
+
+8.
+
+in the main interface to enter idling interface, where user can
+to return the frame to stop point.
+
+Positioned Idling
+Use this function after embroidery confirmation. Positioned idling enables the
+machine to move to the appointed position without embroidering according to the
+user’s requests. Press
+
+to set idling backward or forward at the
+
+color-changing code or stop code by one stitch or continuously.
+VI. Cancel Embroidery
+When the machine stops, press
+select
+
+to turn
+
+to display a hint window, where user can
+(embroidery confirmation) to
+
+(cancel
+
+embroidery confirmation).
+
+18
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+Embroidery Guide
+
+2.4 Normal Embroidery, Returning and Patching
+In embroidery confirmation status (
+
+is displayed), press
+
+embroidery, and during embroidery, press
+
+to start normal
+
+to stop embroidery.
+
+When the machine stops, press
+
+to return the frame back along with the original
+
+embroidery path; one press, one stitch back; hold pressing for 2s to return continuously, even
+without holding
+
+; press
+
+again to stop.
+
+The purpose of returning is for patching, and when the machine stops returning, press
+to start normal embroidery.
+
+2.5 Embroidery Operation
+When the machine stops, press
+
+to start embroidery;
+
+When the machine is embroidering, press
+
+to stop embroidery.
+
+2.6 Thread-Breakage Detection
+Based on different working principles, thread-breakage detection devices have three
+types: thread take-up spring type, thread winding wheel (chopper wheel) type and mixed type.
+For thread take-up spring type, it detects the thread-breakage by searching connection of
+take-up spring and contact point. When thread breaks, the spring will close to the contact point.
+In normal condition, this detecting type is sensitive to the face thread breakage, but can hardly
+detect bobbin thread run-out. In case you change the embroidery thread, or thread tension
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+19
+
+Chapter 2
+
+Embroidery Guide
+
+changes, you need to adjust spring pressure between the take-up spring and contact point.
+When the spring pressure is too large, there will be False Alarm; when the spring pressure is
+too small, there will be Missing Alarm.
+For thread winding wheel type, it judges thread-breakage by detecting the winding wheel
+angle. It is very sensitive in case of face thread breakage; in most cases of bobbin thread
+run-out, the consumption of face thread will reduce, as a result, system will judge by statistic
+method and send out warning. Though it can almost avoid False Positive, it is not as sensitive
+as the spring-type.
+For the mixed type method, the two can complement each other with their advantages,
+which results in sensitive and stabilized detecting effect.
+
+2.7 Working Status
+There are three working statuses:
+ preset parameters, choose embroidery
+
+1. Embroidery Ready Status
+
+patterns and make other preparation work for embroidery.
+ confirm the parameter settings to
+
+2. Embroidery Confirmation status
+enter the quasi-running status.
+3. Embroidery Running Status
+
+ embroidery.
+
+Shift among these three working statuses:
+In embroidery ready status (
+
+is displayed in the main interface), if users have
+
+selected pattern and related parameters, press
+
+and then press
+
+and the system will enter embroidery confirmation status (
+
+to confirm,
+
+is displayed in the main
+
+interface). At this time, press start key to start embroidery, when the machine is under
+embroidery running status (
+
+is displayed in the main interface).
+
+In embroidery running status (
+
+20
+
+is displayed in the main interface), press stop key to
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 2
+
+Embroidery Guide
+
+stop embroidery and return to embroidery confirmation status, where user can press start key
+again to enter embroidery running status.
+In embroidery confirmation status (
+and then press
+return to embroidery ready status (
+
+is displayed in the main interface), press
+
+to confirm, user can release the confirmation status and
+is displayed in the main interface).
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+21
+
+Chapter 3
+
+U Disk Management
+
+Chapter 3 U Disk Management
+In U disk management interface, user can input patternss from U disk to machine, and
+vise versa; meanwhile, user can undertake some common U disk managements, like erasing
+file or directory, initializing the disk, etc. User can save patterns data under different directories
+of the U disk based on different types. Patterns formats like DSB, DST and DSZ can be read by
+the system. For data output, patterns will be saved in the U disk as DSB format.
+
+3.1 Select U Disk
+Since the system supports several storage devices, user need select the U disk for operation.
+1.
+
+Press
+
+in pattern management interface.
+
+2.
+
+System will display “Select U Disk” window, where user need select U disk by
+
+pressing corresponding icon.
+
+In this window all the storage devices will be displayed. Their information includes the
+icon, words and numbers. The icon is the device type. Icon
+
+indicates U disk. The
+
+words are the label of the U disk (if the U disk has no label, the default letter will be used), and
+the number refers to the U disk’s digital symbol.
+
+22
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 3
+3.
+
+No.
+1
+
+2
+
+3
+
+4
+
+U Disk Management
+
+Enter U disk operation interface.
+
+Icon
+
+Name
+
+Description
+Display the pattern files and file folders within the U
+disk in icons. It’s used to select files.
+
+File List
+
+Page
+The current page number and total page number
+Information
+Back to Upper
+Return to upper level
+Level
+Basic Pattern
+Display the basic data of current pattern
+Data
+Load the selected pattern. Check its details, scale
+Pattern
+up/down the pattern, and move or make analog
+Preview
+display of the pattern.
+Create
+Create new file folder
+Directory
+Deletion
+Formatting
+Disk
+
+Delete the file or file folder
+U
+
+Formatting the U disk
+
+Pattern Input
+
+Import the patterns in the U disk to memory.
+
+Exit
+
+Exit U disk management.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+23
+
+Chapter 3
+
+U Disk Management
+
+3.2 Pattern Preview
+1.
+
+In the U disk management interface, press the pattern for preview.
+
+Pattern files and directories are shown in figure in the list. One page of the list contains 8
+items. If the amount of the object within the current directory is more than 8, the object list will
+be displayed in many pages. Click the key to turn page and look for patternss in another page.
+The selected object has a different frame and background color.
+2.
+
+24
+
+Press
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 3
+
+U Disk Management
+
+The system loads the data from the U disk and user can check details of the pattern,
+scaleup/down the pattern, move or make analog display of the pattern. For more information,
+please refer to section 6.3.
+
+3.3 Pattern Input
+To input patterns within the U disk to the machine’s memory, user need select the pattern
+files to be inputted, and then input the number and name for the patterns to be saved in
+memory.
+1.
+
+Select pattern files of the U disk;
+
+2.
+
+Press
+
+3.
+
+Input the pattern number and name to be saved in memory;
+
+and the system will require input of pattern number and name;
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+25
+
+Chapter 3
+
+U Disk Management
+
+The system provides the minimum available pattern number as the default value. User can
+use the keypad below to change the number.
+4.
+
+Press
+
+to confirm;
+
+5.
+
+The system will save the pattern data from the U disk to the memory.
+
+3.4 Directory Operation
+1.
+
+Enter directory:
+
+Double click the icon of the object directory to enter it, and the system will load the item
+list of the directory and refresh the display interface.
+2.
+
+Return to Upper Level:
+
+Press
+
+to return to the upper level of directory and refresh the display interface.
+
+3.5 Formatting U Disk
+1.
+
+Select the U disk for formatting;
+
+2.
+
+Press
+
+3.
+
+Press
+
+to start formatting;
+
+to confirm
+
+System will begin to format the disk and return automatically to U disk management
+interface after finishing formatting.
+Note: system will format the U disk according to DOS format.
+
+26
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 3
+
+U Disk Management
+
+3.6 Delete Objects from U Disk (including pattern file and directory)
+1.
+
+Select objects to be deleted;
+
+2.
+
+Press
+
+3.
+
+System will ask user to confirm the deletion.
+
+to delete;
+
+Note:
+If the user wants to delete a directory, the system will delete all the files and
+sub-directories within this directory. In case of “Read Only” or “U Disk Write Protection”, the
+file will be unable to delete.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+27
+
+Chapter 3
+
+U Disk Management
+
+3.7 Create a New Directory in the Current Directory
+1.
+
+Press
+
+2.
+
+Input the new directory name
+
+3.
+
+Press
+
+System will create the corresponding directory in the U disk and refresh the current object
+list.
+
+28
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+Chapter 4 Common Parameters and Color-Changing Order
+In this system each pattern has its own settings of the normal parameters (like scale and
+repetition) and color-changing order. When a new pattern is selected, the corresponding
+settings of normal parameters and color-changing order will become effective.
+In this chapter, we will discuss the setting of the most frequently used parameters and
+color-changing order, in parameter setting interface (
+color-changing order setting interface (
+
+) and needle bar
+
+).
+
+Since this system supports multi-task operation, user can set and modify the normal
+parameters and color-changing order of the patternss that are not embroidered at present. User
+can enter these operations via other operation interface under pattern management (see
+Chapter 6).
+
+4.1 Settings of Common Parameters
+These common parameters include: “Direction”, “Angle”, “Scale X/Y”, “Prior Mode”,
+“Rep. Mode”, “Rep. Order”, “Rep. Times”, and “Rep. Interval”. User can control the final
+embroidery results by adjusting these parameters.
+Press
+
+to enter parameter setting interface:
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+29
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+The way for setting the parameter is similar to each other. This chapter will explain how
+to set the “X/Y Scale” as an example and give the definitions of other parameters (refer to
+4.1.1 for setting method).
+
+4.1.1. Settings of X-Y Scale
+This parameter controls the scaling percentages on X (horizontal) and Y (vertical)
+direction, so as to scale up/down the patterns.
+
+X&Y Scales:
+X : 2 0 0 %
+Y : 5 0 %
+
+Design start bit
+
+Design start bit
+1.
+
+30
+
+Press the function item of “Scale X/Y”
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+System will display independently the modification windows for X Scale and Y Scale for
+users to set respectively.
+2.
+
+Adjusting X-Y Scales
+
+User can press number pad to modify the scaling rate at X direction, press
+cancel the last input digit and press
+
+3.
+
+Press
+
+to
+
+to clear the input number.
+
+to save the modification
+
+The modification method of Y Scale is the same with that of X Scale.
+
+4.1.2. Settings of Rotate Angle
+User can rotate patterns to a certain angle by this parameter.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+31
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+Rotate 30 degrees
+
+Design start bit
+
+4.1.3. Pattern Direction
+
+4.1.4. Prior Mode
+There are two modes: “rotation prior to scaling” and “scaling prior to rotation”. When
+user has set the parameters “Scale X/Y” and “Rotate Angle”, the patterns will rotate first and
+then scale up/down, if “rotation prior to scaling” mode is selected. Otherwise it will scale
+up/down first and then rotate.
+
+4.1.5. Rep. Mode
+There are two repetition modes: normal and partial.
+
+4.1.6. Rep. Order
+There are two modes: X first and Y first.
+
+32
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+4.1.7. X-Y Rep. Times
+X repetition times represent the number of columns, while Y repetition times the number
+of lines; as shown in the above picture, X repetition times are 3 and Y repetition times is 2.
+The largest set value is 99*99.
+
+4.1.8. X-Y Rep. Interval
+The above picture has explained the meaning.
+
+4.2 Settings of Color-changing Order
+4.2.1. Color-changing Interface
+
+No.
+
+Icon
+
+Name
+
+1
+
+Pattern Display Area
+
+2
+
+Basic Pattern Data
+
+3
+
+Current
+Position
+
+Description
+Display the pattern according to
+real-time setting of color-changing
+order, for the preview of the result of
+color-changing.
+Display the basic data of the pattern
+
+Operation User can set, insert or delete needle bar
+number in current position.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+33
+
+Chapter 4
+No.
+
+Icon
+
+3
+
+4
+
+5
+
+Common Parameters and Color-Changing Order
+Name
+Description
+Color Lump Number Display the number of the color lumps
+List
+of the pattern
+Display the needle bar number and
+Needle Bar Number
+thread color of each corresponding
+and Color
+color lump
+Move upward the color-changing list to
+Move Up
+select the color lump for setting
+Insert Needle Bar Click this key and a needle number to
+Number
+insert it in the current list of needle list.
+Delete Needle Bar Delete the needle number of the current
+Number
+operation position in the needle list.
+Move downward the color-changing
+Move Down
+list to select the color lump for setting
+Select the color for the needle bar
+Color Selection Area
+number to be set
+Return
+
+Return to
+interface
+
+Repetition
+
+Repeat color-changing order
+
+Patch Embroidery
+
+Set the patch embroidery of the pattern
+
+Set Needle Bar Color
+Pattern Preview
+Next
+
+the
+
+previous
+
+operation
+
+Select default colors to set the color of
+each needle bar
+Load the selected pattern, check the
+pattern data and create the pattern icon
+Enter the next operation iterface
+
+The pattern display area displays the pattern under color-changing setting. After
+changing the color-changing order, the display will be renewed at same time to show the
+modification effect.
+Color-changing order display area shows color lump numbers, needle bar numbers and
+needle bar colors.
+Pattern display can be in parallel with the setting, insertion and deletion of needle bar
+number, which means that users can set and change the color-changing order along with the
+display.
+
+34
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+4.2.2. Settings of Color-Changing Order
+1.
+
+Press
+
+to enter color-changing setting interface.
+
+2.
+Input the needle bar numbers in order in the needle bar number selection area.
+The pattern display and the color list will be refreshed after each input.
+3.
+
+Press
+
+to check whether the inputted color-changing order is
+
+correct.
+4.
+
+To change a certain needle bar number, press
+
+to move to the
+
+item to be modified and then press the new needle bar number.
+5.
+
+To insert a new needle bar number, press
+
+positon below the position to be inserted, and then
+
+to move to the
+to insert the needle bar
+
+number.
+6.
+
+Press
+
+to delete a needle bar number.
+
+4.2.3. Set Needle Bar Color
+To make the display effect close to the actual embroidery effect, this system allows
+settings of color for each needle bar and such settings can be saved together with the
+color-changing order of the pattern.
+1.
+
+Press
+
+2.
+
+Press
+
+to enter color-changing setting interface.
+to enter needle bar color setting interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+35
+
+Chapter 4
+
+Common Parameters and Color-Changing Order
+
+45 default colors for selection in the setting interface
+3.
+
+To set the needle bar color, select the needle bar first and then select the color
+
+from the 45 default color lumps. The corresponding color of the needle bar button will
+be refreshed.
+4.
+
+Press
+
+to save the settings and return to the color-changing order
+
+setting interface; or press
+
+to quit setting without saving and return to
+
+color-changing order setting interface.
+
+36
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 5
+
+Settings of Embroidery Parameters
+
+Chapter 5 Settings of Embroidery Parameters
+Parameters are grouped according to different functions (see Appendix 1 Parameter List)
+Press
+
+in the main interface and press
+
+(for user) or
+
+(for
+
+specialist) to enter parameter setting interface.
+
+1.
+
+After system enters parameter setting interface, user can select the parameter for
+
+setting.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+37
+
+Chapter 5
+
+Settings of Embroidery Parameters
+
+Note: the number, name and current value of each parameter are displayed in the
+parameter list window.
+
+5.1 Procedure for Setting General Parameters
+The setting procedure is similar for each general parameter. You can follow the guide of
+this section to set all parameters.
+1.
+
+Select Parameter Type
+
+User can use the keys at the bottom of the screen (parameter type key and page key) to
+look for the parameter.
+If you want to modify the number of needles whose parameter number is D01, press
+to find machine configuration parameter and the its parameter list will be displayed.
+
+2.
+
+38
+
+Press the parameter to be set and input the new value by the number keys.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 5
+
+3.
+
+Press
+
+Settings of Embroidery Parameters
+
+to finish the setting.
+
+5.2 Instruction on Some Functions within General Parameters
+There are brief descriptions of parameters in the appendix 1. Here, we will introduce
+some functions mainly used in embroidery.
+
+5.2.1. Cyclic Embroidery Function
+This function is to increase the embroidery productivity.
+When the parameter “To Do Cyclic Emb.” is set as “Yes”, the cyclic embroidery
+function is activated and the icon
+
+will appear in the main interface. If this function is
+
+activated, the machine will automatically embroider the patternsated patterns again without
+any operation when completing it.
+Usually, cyclic embroidery should accompany repetition embroidery and specially made
+patterns, and the parameter “Auto Origin” should be also set as “Yes”. Thus when the
+machine is embroidering the back fabric, the front one can be replaced. After embroidering
+the patternsated patterns, the frame will automatically return to the start point and the machine
+will automatically embroider the front fabric again and at this time it’s possible for user to
+replace the back one.
+
+5.2.2. Brake Adjustment (A Must for New Machine)
+This function is to adjust the control parameters for braking, so as to fit machines with
+different mechanical characters, which is also able to change with the machine running. Thus
+this function can help the machinery parts to work better with the computer. The function
+depends on the parameters “Set Brake Para”.
+“Set Brake Para” is to adjust the stop position of the main shaft. When the main shaft
+often stops at the position below 100 degree, the user can increase the parameter value. When
+the main shaft often stops at the position over 100 degree, the user can decrease the parameter
+value. Thus the user can adjust the value to let the main shaft stop close to 100 degree. The
+value can be set between 0 and 30.
+After adjusting this parameter, the user can click the task swift key on the panel to return
+to the main interface. Click
+
+and
+
+to make the adjustment and check the
+
+effects of the parameter adjustment. If the user is not satisfied with the effects, he can press
+the swift key on the panel to return to the parameter setting interface, where he can adjust the
+parameter setting again. Close the parameter setting interface in the end.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+39
+
+Chapter 6
+
+Memory Pattern Management
+
+Chapter 6 Memory Pattern Management
+Memory pattern management includes selection of embroidery patterns, settings of
+patterns, change of patterns and operations for creating patterns.
+
+6.1 Memory Pattern Management Interface and Other Memory
+Pattern Operation Interfaces
+Press
+
+to enter memory pattern management interface.
+
+The memory patterns management interface contains: patterns image display area,
+navigation and pagination area, information area and management operation area. The patterns
+image display area can show 8 patternss at most. If the total number of the patterns is beyond 8,
+more pages will be needed. Navigation and pagination area can help switch to the patternsated
+page. The management operation area is to preview patternss and set their order.
+
+No.
+1
+
+40
+
+Icon
+
+Name
+
+Description
+
+Pattern Display Area
+
+Display the pattern files in memory
+by icons. It’s mainly for selection.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+No.
+2
+3
+
+Icon
+,
+
+Memory Pattern Management
+
+Name
+Previous/Next Page
+Information Area
+
+Pattern Preview
+Letter Pattern
+
+4
+
+Used to shift to appointed page
+number
+Display the detailed information of
+the selected pattern and the memory
+information.
+Check the details of the pattern; scale
+up/down, move or simulate the
+pattern.
+Set letter embroidery and its
+parameters
+
+Delete Pattern
+
+Delete the selected pattern
+
+Pattern Output
+
+Save the memory pattern to U disk
+
+Home
+
+Single/Multiple
+Selection Shift
+
+Press it to enter U disk management
+interface to make related operations.
+Click to open the other operation
+interface, where user can perform
+copy, deletion, combination, edition
+and other operations.
+Shift between single selection and
+multiple selections.
+
+Next
+
+Enter the next operation interface
+
+U Disk Management
+
+Other Operations
+
+Press
+
+Description
+
+to enter the interface for other operations of memory pattern (to deal with
+
+any single pattern, user need select the pattern first).
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+41
+
+Chapter 6
+
+Memory Pattern Management
+
+In this interface, press each operation to enter the corresponding interface. Please read the
+following paragraphs for detailed explanation. Press
+
+or
+
+to turn page, and press
+
+to return to memory pattern management interface.
+
+6.2 Select Pattern for Embroidery
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select the pattern in the memory pattern image display area.
+
+6.3 Memory Pattern Preview
+The selected pattern can be previewed in the memory pattern preview interface to check
+more details.
+
+42
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+No.
+1
+
+Icon
+
+Memory Pattern Management
+
+Name
+Pattern
+Area
+
+Description
+
+Preview Display the pattern in the appointed method
+and speed
+
+Draw/Pause
+Switch
+
+Shift between drawing pattern
+and pausing display
+
+Move up
+Single
+Display
+
+2
+
+Move the pattern upwards
+Step
+
+Draw the pattern by drawing single steps
+
+Scale up
+
+Enlarge the pattern in the preview area
+
+Scale down
+
+Reduce the pattern in the preview area
+
+Actual Display
+
+Display the pattern in the actual size. So the
+size of the pattern on the screen is the actual
+size of the pattern after embroidery.
+
+Display to the
+Display the pattern accordint to the size of the
+Size
+of
+the
+pattern preview area.
+Window
+Move left
+
+Move the pattern leftward
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+43
+
+Chapter 6
+No.
+
+Icon
+
+Memory Pattern Management
+
+Name
+
+Description
+
+Move down
+
+Move the pattern downward
+
+Move right
+
+Move the pattern rightward
+
+Deceleration
+
+Lower the display speed of patterns
+
+Acceleration
+
+Fasten the display speed of patterns
+
+Redraw
+
+Redisplay the selected pattern
+
+Quit
+
+Quit the operation in pattern preview interface
+
+2
+
+1.
+
+Press
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press
+
+Press
+
+to enter memory pattern management interface.
+
+to open memory pattern preview interface.
+to control the size of the pattern display.
+to control the display position. Press
+
+to control display speed. Press
+
+to shift to the pause status, where the
+
+single step of pattern can be displayed. Press
+
+to redisplay the selected pattern.
+
+6.4 Pattern Output
+User can transfer the pattern data in memory to U disk.
+
+44
+
+1.
+
+Press
+
+to enter memory pattern management interface
+
+2.
+
+Select the memory patterns to be outputted
+
+3.
+
+Press
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+Memory Pattern Management
+
+4.
+System will display the window to “Select U disk” and press to make the
+selection.
+
+4.
+
+Input the pattern name saved in the U disk.
+
+The system provides the minimum available pattern number as the default value. User can
+use the keypad below to change the number.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+45
+
+Chapter 6
+
+Memory Pattern Management
+
+5.
+
+Press
+
+of the completion hint.
+
+6.
+
+Press
+
+to return to pattern management interface.
+
+6.5 Copy the Memory Pattern
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Click “Copy Pattern” to enter its operation interface. The system will
+
+to enter memory operation selection interface.
+
+automatically provide the smallest available pattern number and default pattern name. If
+the user doesn’t want to change them, please press
+5.
+
+.
+
+To input a new pattern number, click “New Pattern number” and input the new
+
+number in the pop-up window.
+
+46
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+6.
+
+Memory Pattern Management
+
+To change the new pattern name, click “New Pattern name” and input the new
+
+name in the pop-up window.
+
+7.
+
+Press
+
+to copy the pattern and return to pattern operation selection
+
+interface. Press
+
+to cancel the copy operation and return to pattern operation
+
+selection interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+47
+
+Chapter 6
+
+Memory Pattern Management
+
+6.6 Create Outline Pattern
+This operation can generate a new pattern based on the outline of the designated pattern.
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press “Create Outline Pattern” to enter the operation interface.
+
+5.
+
+User can press to input new pattern number and name instead of default ones.
+
+6.
+
+Press
+
+to enter memory operation selection interface.
+
+to create the outline pattern and return to pattern operation
+
+selection interface. Press
+
+to quit the creating operation and return to pattern
+
+operation selection interface.
+
+6.7 Create High-speed Pattern
+This function can be used to devide long stitch into short ones, so as to prevent speed
+reduction due to long stitches.
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press “Create High-speed Pattern” to enter the operation interface.
+
+5.
+
+User can press to input new pattern number and name instead of default ones.
+
+6.
+
+Press
+
+to enter memory operation selection interface.
+
+to create the high-speed pattern and return to pattern operation
+
+selection interface. Press
+
+to quit the creating operation and return to pattern
+
+operation selection interface.
+
+6.8 Divide Pattern
+This operation is to divide one pattern into two new patterns.
+
+48
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+Memory Pattern Management
+
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press “Divide Pattern” to enter the operation interface.
+
+5.
+
+User can press to input new pattern number and name instead of default ones.
+
+6.
+
+Press “Divide Stitch” to input the stitch number of the division position.
+
+7.
+
+Press
+
+to enter memory operation selection interface.
+
+to divide the pattern into two new patterns and return to pattern
+
+operation selection interface. Press
+
+to quit the dividing operation and return to
+
+pattern operation selection interface.
+
+6.9 Create Parameter Pattern
+This operation is to create a new pattern from the seleted pattern together with the settings
+of its common parameters and color-changing order.
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+49
+
+Chapter 6
+
+Memory Pattern Management
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press “Create Parameter Pattern” to enter the operation interface.
+
+5.
+
+User can press to input new pattern number and name instead of default ones.
+
+6.
+
+Press
+
+to enter memory operation selection interface.
+
+to create the parameter pattern and return to pattern operation
+
+selection interface. Press
+
+to quit the creating operation and return to pattern
+
+operation selection interface.
+
+6.10 Mosaic Pattern
+This operation is to combine two patterns into one new pattern. The interval of patterns
+refers to the distance between the end of the first pattern and the start of the second pattern.
+1. Press
+
+to enter memory pattern management interface.
+
+2. Select the two patterns to be combined and record their pattern numbers.
+3. Press
+
+to enter memory operation selection interface.
+
+4. Press “Mosaic Pattern” to enter the operation interface.
+
+50
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+Memory Pattern Management
+
+5. User can press to input new pattern number and name instead of default ones.
+6. Press “X Interval” to input the value. Press “Y Interval” to input the value.
+
+7. Press
+
+to combine patterns and return to pattern operation selection
+
+interface. Press
+
+to quit the combining operation and return to pattern operation
+
+selection interface.
+
+6.11 Create Combined Pattern
+The combined pattern means a pattern group combined from several certain (less than 99)
+memory patterns after setting their parameters. The combined pattern is set as automatic
+continuous embroidery. To embroider a combined pattern, user need return to the memory
+pattern management interface after creating or editing the combined pattern, where user can
+select the combined pattern, and then after embroidery confirmation, press start to embroider.
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+To edit existing combined patterns, select a combined pattern; to create a new
+
+combined pattern, just follow the instructions below.
+3.
+
+Press
+
+to enter memory operation selection interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+51
+
+Chapter 6
+4.
+
+Memory Pattern Management
+
+Press “Create Combined Pattern” to enter the operation interface.
+
+The combined ID shows the current pattern number and how many patterns the combined
+pattern is composed of. Display form is “pattern number (the total amount of patterns)”.
+
+5.
+
+Set the parameters of the first pattern, including pattern number, scaling ratio,
+
+rotating angle, pattern direction and priority mode. Please refer to Chapter 4 for details of
+the settings.
+6.
+
+Press
+
+to set several patterns for packing. And press
+
+to go back to
+
+change the parameters of combined patterns.
+If the current pattern is not the first of the combined pattern, user need set the interval
+between it and the first pattern. Please refer to Chapter 4 for details of inputting parameters.
+
+52
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 6
+
+7.
+
+Press
+
+Memory Pattern Management
+
+to enter the operation interface.
+
+The system will hint user to input the new pattern number and the new pattern name.
+8.
+
+Press
+
+to save the combined pattern and return to pattern operation
+
+selection interface. Press
+
+to quit saving and return to pattern operation selection
+
+interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+53
+
+Chapter 6
+
+Memory Pattern Management
+
+6.12 Satin Stitch Adjustment
+This operation is to adjust the satin width in the design according to the need.
+1.
+
+Press
+
+to enter memory pattern management interface.
+
+2.
+
+Select a pattern in the memory pattern image display area.
+
+3.
+
+Press
+
+4.
+
+Press “Satin Stitch Adjustment” to enter the operation interface.
+
+5.
+
+User can press to input new pattern number and name instead of default ones.
+
+6.
+
+Press “X Adjust Value” and “Y Adjust Value” to input the value respectively.
+
+7.
+
+Press
+
+to enter memory operation selection interface.
+
+to make the satin stitch adjustment and return to pattern operation
+
+selection interface. Press
+
+to quit the adjusting operation and return to pattern
+
+operation selection interface.
+
+54
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 7
+
+Letter Pattern Operation
+
+Chapter 7 Letter Pattern Operation
+System can generate letter pattern based on the built-in font libraries.
+
+7.1 Enter Main Interface for Letter Embroidery
+Press
+
+in the pattern management interface to enter the main interface for letter
+
+embroidery.
+
+→
+
+7.2 Input Letter String for Embroidery
+Press
+
+in the main interface for letter embroidery to enter letter string input
+
+interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+55
+
+Chapter 7
+
+Letter Pattern Operation
+
+The upside of the window is the display area and the downside is the operation area. After
+inputting the letter string, press
+
+to save.
+
+7.3 Adjust Letter Pattern
+1. Letter Pattern Adjustment Interface
+
+There are 4 rows of operation keys in the interface, the first two rows are the file and view
+
+56
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 7
+
+Letter Pattern Operation
+
+functions keys, the third row are keys for adjusting letter arrangement, and the forth row are
+keys for adjusting letter string. In the middle of the interface is the letter pattern display area.
+Generally, user should set the parameters, such as whole arrangement method, rotate angle
+and letter interval of the letter string; then select certain letter to adjust the its arrangement
+parameters.
+Letter patten display window: the crosses in the centre are the coordinates and the
+intersection represents the origin (0, 0). The letter will be arranged around the origin
+automatically.
+2. Keys for Adjusting Selected Letters
+“Letter String”: edit letter string.
+“Change Font”: change the font of selected letters. Press this key to display a
+dialog box, where user can select a desired font and confirm it.
+“Color-changing Shift”: set or cancel color-changing before the selected letter.
+“Selection Shift”: shift among selected letters. A letter must be selected before any
+edit. If a red “＋” appears on a letter, it means the letter is selected, such as
+
+. The system
+
+will select all letters as default. Press this key to select the first letter, and press it again to
+select the second one, and so on. After selecting the last letter, press this key again to select all
+letters.
+“Increase Width”: increase width of selected letter.
+“Reduce Width”: reduce width of selected letter.
+“Increase Height”: increase height of selected letter.
+
+“Reduce Height”: reduce height of selected letter.
+“Horizontal Overturn”: overturn the selected letter horizontally.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+57
+
+Chapter 7
+
+Letter Pattern Operation
+
+“Vertical Overturn”: overturn the selected letter vertically.
+“Clockwise Rotation”: use the letter as centre (“＋” in the centre of letter), and
+rotate the selected letter clockwise.
+3. View and File Operation
+“Letter Density”: adjust the density of the letter string. Press this key to display
+thedensity dialog box, where user can set stitch form, increase or decrease density.
+
+“Stitch Form”: show/hide the stitch form. Hiding the stitch form can improve
+operation speed.
+
+“Increase Density”: increase the satin stitch density of the created letter pattern.
+
+“Reduce Density”: reduce satin stitch density of the created letter pattern.
+
+“Left”, “Right”, “Up” and “Down”: move letter pattern toward
+each direction.
+“Reduce”: reduce to the display window of letter pattern.
+“Enlarge”: enlarge to show the detailed part of the letter pattern.
+
+58
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 7
+
+Letter Pattern Operation
+
+“Actual”: show the letter pattern in the actual size. At this time, the size of pattern
+in interface is equal to actual size.
+“Center”: scale up/down the view, so as to show the whole pattern for checking.
+“Save”: it is used for saving the edited letter pattern. After pressing this key, the
+system will display the window for user to input the pattern number and name. According to
+need, change the pattern name and number (the number is not recommended to be changed),
+then press confirmation key to start saving.
+“Exit”: quit from “Create Letter Pattern”.
+4. Keys for Adjusting Whole Arrangement
+If you adjust the parameters for whole rank after the edition of the individual letter, the
+edition of the individual letter will be probably replaced.
+“Horizontal”: rank the letters horizontally
+Press this key to shift among “horizontal”, “vertical”, “up arc”, and “down arc”. Only in
+case of “up arc” and “down arc” can “fix letter direction”, “increase radian” and “decrease
+radian” be adjusted.
+
+“Vertical”: rank letters vertically
+
+“Up Arc”: rank letters in arc bending upwards
+
+“Down Arc”: rank letters in arc bending downwards
+“Fix Letter Direction”: when user ranks the letters in arc, the letter angle will not
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+59
+
+Chapter 7
+
+Letter Pattern Operation
+
+change along with the position of arc, but fix at a certain angle
+“Increase Radian”: when user ranks the letters in arc, this key can enlarge the
+
+radian of the reference arc
+
+“Reduce Radian”: when user ranks the letters in arc, this key can reduce the radian
+of the reference arc
+“Whole Clockwise Rotate”: rotate the whole letter string clockwise
+
+“Enlarge
+
+Letter
+
+Interval”:
+
+increase
+
+the
+
+interval
+
+between
+
+letters
+
+“Reduce Letter Interval”: reduce the interval between letters
+
+7.4 Save Letter Pattern
+After finishing the letter pattern edit, user can press
+user to input pattern number and name, and then press
+
+60
+
+to display a window for
+again to save.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 7
+
+Letter Pattern Operation
+
+After saving, system will return to the main interface for letter embroidery.
+If there is no need to edit letter pattern, press
+
+to quit and the following hint will
+
+be displayed.
+
+Press
+
+to save or press
+
+to cancel saving, and return to the pattern
+
+management interface.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+61
+
+Chapter 8
+
+Assistant Operation
+
+Chapter 8 Assistant Operation
+User can perform some common assistant operations by pressing keys.
+
+8.1 Frame Selection
+User can press "
+
+No.
+1
+
+" key to enter the interface for frame selection and position.
+
+Icon
+
+Name
+Pattern Range Display
+Frame Type Selection
+Position Pattern to the
+Center of the Frame
+Frame Parameter Setting
+
+2
+
+Move Frame along Pattern
+Outside
+Move Frame along Pattern
+Outline
+Memory of Pattern Origin
+
+62
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 8
+No.
+
+Assistant Operation
+
+Icon
+
+Name
+Recovery of Pattern Origin
+
+2
+
+Manual Pattern Movement
+Exit
+
+8.2 Clear XY Displacement
+This function is to clear the X and Y displacements.
+1.
+
+In the main interface
+
+, press
+
+2.
+
+System will set current X/Y value to 0.
+
+User can check the current X/Y value on the main interface.
+
+8.3 Positioning Idling
+This operation can only be undertaken under embroidery confirmation status
+
+.
+
+This function can move the frame to certain position without embroidering according to
+user’s need. User can select color-changing code or stop code as reference to idle forward (or
+backward).
+
+8.3.1. Low Speed Idling Forward
+1. In the main interface
+
+, press
+
+2. Press
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+63
+
+Chapter 8
+
+(1) Press
+
+Assistant Operation
+
+once to idle forward by one stitch
+
+(2) Hold pressing
+
+for 2s to idle forward continuously
+
+8.3.2. Low Speed Idling Backward
+1. In the main interface
+
+, press
+
+2. Press
+(1) Press
+
+once to idle backward by one stitch
+
+(2) Hold pressing
+
+for 2s to idle backward continuously
+
+8.3.3. High Speed Idling Forward
+1. In the main interface
+2. Press
+
+, press
+
+to idle forward at high speed
+
+Note: the operation method of high speed idling backward is the same with here.
+
+8.3.4. Go to Next Color
+1. In the main interface
+2. Press
+
+, press
+
+to idle to the next color-changing code
+
+Note: the operation method of “go to previous color” is the same with here.
+
+64
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 9
+
+Other Functions
+
+Chapter 9 Other Functions
+These functions can be used during the usage, including machine maintenance,
+information inquiry and system settings.
+Press
+
+to enter the interface for other function, where a list of function keys will
+
+be displayed for user to operate by pressing.
+
+The words on the keys can help user understand the functions.
+
+9.1 Statistics
+1.
+
+Press
+
+2.
+
+Press
+
+to enter the interface for other functions.
+to enter the interface of statistics.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+65
+
+Chapter 9
+
+Other Functions
+
+In the above interface, the statistic information is displayed in a chart. If user need check
+details of each pattern, press
+
+Press
+
+to return to the interface of statistics. Press
+
+information and press
+
+66
+
+to enter the corresponding interface.
+
+to delete statistic
+
+to return.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 9
+
+Other Functions
+
+9.2 Set Frame Origin
+Setting the frame origin is the premise for saving the pattern’s start point and setting frame
+protection at sudden power-off. So after the installation or maintenance of machine, it’s
+necessary to set the frame origin.
+1.
+
+Press
+
+to enter the interface for other functions.
+
+2.
+
+Press
+
+3.
+
+Select “Auto Find Origin Point”
+
+to enter debugging interface.
+
+System will move the frame automatically and determine the origin according to the limit
+switch. So please ensure that the limit switch has been installed into the machine and
+activated.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+67
+
+Chapter 9
+
+Other Functions
+
+9.3 Language
+System supports Chinese, English, Turkish, Spanish, and so on.
+1.
+
+Press
+
+2.
+
+Press
+
+to enter the interface for other functions.
+to enter language interface.
+
+Select the language you want and system will enter the main interface in the selected
+language.
+
+9.4 Machine Information
+Operation Procedures:
+
+68
+
+1.
+
+Press
+
+2.
+
+Press
+
+to enter the interface for other functions.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 9
+
+Other Functions
+
+This function will help user check machine software information. Press
+
+to quit.
+
+9.5 Machine Debugging
+This operation is only for repairman, ordinary users are banned to undertake
+these operations. Because these operations involve some mechanical work, please pay
+attention to the personal safety and equipment security during the operation.
+Debugging function is to mainly used for testing, maintenance and fault inspection of the
+machine, which include the following function (debugging items will be differentfor the
+different models):
+Debugging Interface 1
+
+Debugging Interface 2
+Test optical encoder
+
+Main Shaft
+
+Test rotation speed of main shaft
+Turn main shaft to certain angle
+Test thread-trimming solenoid/motor
+
+Thread-trimming
+
+Test thread-holding solenoid
+Test thread-hooking solenoid/motor
+
+Thread-breakage Detection
+
+Change needle position, needle bar
+color and adjust main shaft manually
+
+Head Solenoid/Motor
+
+Up, down, combined test
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+69
+
+Chapter 9
+
+Debugging Interface 1
+
+Other Functions
+
+Debugging Interface 2
+X-axis parameter test
+Y-axis parameter test
+
+Driver Parameter Test
+
+Main shaft parameter test
+Save driver parameters
+Load driver parameters
+
+Sensor Status Test
+
+Test pull bar switch, frame limit, knife
+origin,
+knife
+maximum
+point,
+thread-hooking origin, and needle
+position display, etc.
+
+Peripheral board
+Management
+
+Peripheral board upgrade
+
+Boot Loader Upgrade
+Auto Find Origin
+External CAN communication test
+Others
+
+External communication test
+Touch screen correction
+
+Parameters Export/Import
+
+Import machine parameters
+Export machine parameters
+
+Parameter Initialization
+
+9.6 Date and Time
+In date and time interface, user can check and modify the date and time of the system.
+
+9.7 Touch Screen Correction
+After using for a period, the touch screen may probably have the problem of the inaccurate
+operation. This problem can be resolved by touch screen correction. During the correction,
+please touch the very center of the cross displayed on the screen, or it may affect the future
+operation. In order to avoid the trouble caused by the inaccurate correction, this operation is
+only for the person with authorization.
+
+70
+
+1.
+
+Press
+
+2.
+
+Press
+
+to enter the interface for other functions.
+to enter debugging interface, where user can select “Other” to enter
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 9
+
+Other Functions
+
+the corresponding interface.
+3.
+
+Press “touch screen correction” to enter the correction interface.
+
+4.
+
+Press the center of the crosses one by one.
+
+During the process of correction, a lot of crosses will appear on the screen. User should
+press the center of them. System receives the data of those points and saves them as standard
+data for correction.
+5.
+
+System will make correction according to the coordinates of points pressed by
+
+users.
+System will make the correction and then return to the interface for other functions
+automatically.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+71
+
+Chapter 10 Online Update of Main Software
+
+Chapter 10 Online Update of Main Software
+Update Procedure：
+1. Hold pressing
+
+and power on.
+
+2. The screen will display the following interface, where user should select “update
+program”
+
+3. Select the update method
+
+72
+
+(via U disk)
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 10
+
+Online Update of Main Software
+
+4. System will display the window to “Select U Disk”, and select the target U disk.
+
+5. After entering the interface of the U disk, select the program to be updated.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+73
+
+Chapter 10 Online Update of Main Software
+
+6. Press
+
+to update.
+
+7. When finishing update, system will automatically display a hint “update completed, if
+no others, please restart”, and then please restart.
+
+74
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 11
+
+Update of Software in Peripheral Board
+
+Chapter 11 Update of Software in Peripheral Board
+Update Procedure:
+1.
+
+Press
+
+2.
+
+Press
+
+to enter the interface for other functions.
+
+to enter the interface of statistics.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+75
+
+Chapter 11
+3.
+
+Update of Software in Peripheral Board
+
+Select “peripheral board management” to enter the management interface, where
+user should select “peripheral board update”.
+
+4.
+
+76
+
+Press
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Chapter 11
+
+Update of Software in Peripheral Board
+
+5.
+
+Select the U disk
+
+6.
+
+Select the program to be updated and press
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+77
+
+Chapter 11
+7.
+
+78
+
+Update of Software in Peripheral Board
+
+when system hint successful update, the update is completed.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+Default Value
+
+Range of Value
+
+Remarks
+
+Common Parameters
+A01
+A02
+A03
+
+Direction
+Rotate
+
+P
+
+0
+
+0~89
+
+X&Y Scales
+
+100/100
+
+50%~200%
+
+A04
+A05
+A06
+A07
+A08
+
+Prior Mode
+Rep. Mode
+Rep. Prior
+X&Y Reps
+X&Y Interval
+
+Rotate
+Normal
+X Prior
+1/1
+0.0/0.0
+
+Rotate, Scale
+Normal Part
+X prior, Y prior
+1~99
+-999.9~+999.9
+
+Rotating angle of the design
+Scale ratio of design in X /Y
+direction
+Not used
+
+Embroidery Assistant Parameters
+B01
+
+Auto Origin
+
+Yes
+
+No, Yes
+
+B02
+
+To Do Cyclic Emb.
+
+No
+
+No, Yes
+
+C02
+
+Sewing Empty Stitch No
+
+No, Yes
+
+B13
+
+Start
+for
+Colors
+
+Yes
+
+No, Yes
+
+C04
+
+Store Manual Color
+
+No
+
+No, Yes
+
+0
+
+0~3000
+
+850
+
+80~1000
+
+Show Yes
+
+No, Yes
+
+D15
+
+Slow
+
+STI.
+
+Same
+
+After
+
+Patch
+
+D16
+
+Speed After Patch
+
+B15
+
+Emb
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Whether to automatically
+repeat embroidering the
+design. It often accompanies
+repetition or the special design.
+If “Yes”, the machine will omit
+the empty stitches (needle
+moving without embroidering)
+so as to avoid the empty stitch.
+If “No”, the empty stitches
+won’t be omitted.
+Whether to start in
+color-changing way when the
+later needle position is same to
+the former one
+If “Yes”, manual color
+changing is stored in the
+color-changing order. After
+embroidery, the setting will
+automatically change into
+“No”.
+
+79
+
+Appendix 1 Parameter List
+No.
+B18
+
+Name of Parameter Default Value
+Range of Value
+Background
+Is Design TrueView
+No
+No, Yes
+Display
+
+Remarks
+
+No
+
+No, Yes
+
+Length of Filter
+Short Stitch
+
+0.2mm
+
+0.1mm~0.6mm
+
+It is fit for high-speed machine
+using dahao servo-motor
+driver. It only get effective
+after user confirm the
+embroidery again.
+The same as above
+
+C79
+
+Automatic Jump
+
+No
+
+No, Yes
+
+The same to above
+
+C80
+
+Auto
+Len
+
+8.0mm
+
+6.0mm~12.0mm
+
+U57
+
+Speed of High.S.Run 1
+
+C77
+
+Do Filter
+Stitch
+
+C78
+
+Jump
+
+Short
+
+Stitch
+
+The same to above
+
+1~10
+
+Thread-breakage Detection Parameters
+B05
+B11
+B06
+B08
+B09
+B10
+B14
+B12
+C27
+C28
+C67
+C68
+C69
+C70
+C90
+
+80
+
+T. B. Detect
+Sti. Not T.B. Detect
+Stop machine after
+T.B. detect
+B. Back Sti.
+Patch Count
+Speed Down After
+Patch
+To Set All Heads
+Patch
+T. B. Detect When
+Jump
+Detect T. B. Mode
+STI. For Filter T.B.
+Sensitivity of Upper
+Thread
+Sensitivity of Under
+Thread
+Filter Sti. For Upper
+Thread
+Filter Sti. For Under
+Thread
+T.B.D Device Type
+
+Yes
+8 stitch
+
+No, Yes
+0 stitch ~15 stitch
+
+Yes
+
+No, Yes
+
+0 stitch
+
+0 stitch ~7 stitch
+1 stitch ~9 stitch
+
+1 stitch
+Stop
+
+No Change, Down,
+Stop
+
+No
+
+No, Yes
+
+No
+
+No, Yes
+
+Coupler
+3 stitch
+
+Coupler, T.B.D Board
+1 stitch ~6 stitch
+
+6
+
+1~10
+
+6
+
+1~10
+
+6 Sti
+
+1~10 Sti.
+
+6 Sti
+
+1~10 Sti.
+
+Spring
+
+Spring,
+
+How many stitches to patch
+before the thread break point
+
+If “Yes”, all unclosed heads do
+patching when patching.
+
+Wheel,
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+Default Value
+
+Range of Value
+
+Remarks
+
+Spring+Wheel
+C91
+
+Starting motor Angle
+
+0
+
+0~10
+
+Frame Parameter
+C06
+B03
+C15
+C16
+D13
+
+Frame Curve &
+Angle
+Over frame by Step
+High
+Frame-Shift
+Speed
+Low
+Frame-Shift
+Speed
+Speed When Over
+frame
+
+F6
+
+F1~F6
+
+No
+
+No, Yes
+
+16
+
+1~30
+
+15
+
+1~30
+
+16
+
+0,1,2,…,30
+
+Flat
+
+Flat, Cloth, Cap
+
+C72
+
+Emb. Mode
+
+C74
+
+X direction Frame
+245
+Angle A
+
+C75
+C76
+C85
+
+X direction Frame
+Angle B
+Y direction Frame
+Angle A
+Y direction Frame
+Angle B
+
+230~280
+
+It is fit for high-speed machine
+using Dahao servo-motor
+driver.
+
+245
+
+230~280
+
+The same as above.
+
+245
+
+230~280
+
+The same as above.
+
+245
+
+230~280
+
+The same as above.
+
+G11
+
+Frame Select
+
+A
+
+G10
+
+Hat Frame J
+
+0
+
+G01
+
+Clothing Frame A
+
+-50
+
+G02
+
+Clothing Frame B
+
+0
+
+G03
+
+Clothing Frame C
+
+0
+
+G04
+
+Clothing Frame D
+
+0
+
+G05
+
+Clothing Frame E
+
+0
+
+G06
+
+Clothing Frame F
+
+0
+
+No, Hat Frame J,
+Clothing Frame A~I
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+81
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+Default Value
+
+G07
+
+Clothing Frame G
+
+0
+
+G08
+
+Clothing Frame H
+
+0
+
+G09
+
+Clothing Frame I
+
+40
+
+Range of Value
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+-1500~1500,0~1500,R
+ectangle,Circle
+
+Remarks
+
+Main Shaft Parameters
+C07
+C09
+
+C13
+
+250, 300, 350,…,1000
+250,300,350,…,600
+1.0~10.0(common
+3.0~6.0
+type machine), 3.0~
+Shift Stitch Length (All-servo
+6.0 (high-speed
+（mm）
+high
+speed
+machine using Dahao
+machine)
+servo-motor driver)
+400~750(common
+type machine), 400~
+Jump Stitch Speed
+500
+1100 (high-speed
+machine using Dahao
+servo-motor driver)
+Set Run Speed
+80
+80，90，…，150
+
+C12
+
+Startup Stitches
+
+1 stitch
+
+1 stitch~9 stitch
+
+D02
+
+Startup Acce.
+
+12
+
+1,2,3,…,30
+
+C25
+
+Set Break Para.
+
+0
+
+0~30
+
+C24
+
+Main Motor Para.
+
+1
+
+0~30
+
+C08
+
+C10
+
+D14
+D10
+
+82
+
+Max. Speed
+Minimum Speed
+
+700-850
+400
+
+Stop Ok bef. Pull
+Yes
+Bar
+Ratio
+of
+AC 0
+
+When the stitch length is
+longer than the set value, the
+machine will lower the speed.
+
+Set the rotation speed for jump
+stitch.
+
+Set the startup stitch number
+before acceleration.
+Increase the value to bring a
+quicker speedup after pressing
+the start key.
+Range: 0~30. When the main
+shaft motor is an
+electromagnetic motor, the
+value is usually set at 9. When
+it is a servomotor, the
+parameter is usually set at 5-7.
+The parameter is invalid when
+it’s a servomotor. When it’s an
+electromagnetic motor,
+increase this parameter value
+to avoid main shaft vibration
+during braking. Usually it’s set
+as 1.
+
+No, Yes
+-15% ~ +15%
+
+The parameter is used when
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+No.
+
+C05
+C26
+D53
+
+Name of Parameter
+Induction
+
+Value for Thick
+Cloth
+Para. Of Needle
+Down
+Lock Motor When
+Stop
+
+Default Value
+
+Range of Value
+
+0
+
+0~3
+
+0
+
+0~30
+
+Yes
+
+No, Yes
+
+Remarks
+the main shaft uses induction
+motor. If the value is incorrect,
+the set rotation speed will be
+different from the virtual
+speed.
+
+Thread-trimming Parameters
+C01
+C18
+D05
+C20
+D04
+C11
+C21
+
+Jump & Trim
+Length of Trim
+Speed When
+Trimming
+Lock Stitch. When
+Trim
+
+No Trim, 1 Jump~7
+Jump
+
+1
+
+1~8
+
+80
+
+80,90,100,…,250
+
+Yes
+
+No, Yes
+
+Common:60~
+150;Out:80;
+60,70,80…150
+No Cut:80
+
+Speed after Trim
+Slow Stitches After
+Trim
+Length of Lock Sti.
+(mm)
+After
+
+2 stitch
+
+1 stitch ~7 stitch
+
+0.6
+
+0.3~1.5
+
+C19
+
+Lock
+Trim
+
+D06
+
+Spin Rounds
+Brake
+
+C23
+
+Action after Trim
+
+Frame Y
+
+C22
+
+Frame after Trim
+
+No
+
+Frame X, Frame Y,
+Move Needle
+No, Yes
+
+D03
+
+Set Hold Startup
+Para.
+Check Trim is OK
+Hook Angle by
+
+0
+
+0~3
+
+No
+0
+
+No, Yes
+-100~+100
+
+D07
+D08
+
+Num.
+
+3 Jump
+
+for
+
+2
+
+0~3
+
+1
+
+1,2
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+1 is the minimum length and 8
+are the maximum length.
+
+The parameter sets the rotation
+speed for lock stitch.
+
+Set the lock stitch number at
+pulling the bar for embroidery
+after setting the trimming
+2 for most machines, 1 for
+mini type or machines with
+servo control main shaft motor.
+
+Set the hook angle by motor.
+
+83
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+Motor
+
+Default Value
+
+Range of Value
+
+E39
+
+Hook Distance By
+Motor
+
+70
+
+0~180
+
+C17
+
+Turn Off Trimming
+
+Yes
+
+No, Yes
+
+1.0
+
+0.3~2.0
+
+0
+
+0~2
+
+D48
+D49
+
+Lock Stitch Len Bef
+Trim
+Lock Stitch Num
+Bef Trim
+
+Remarks
+When user increases the value,
+the hook angle is moved
+backward.
+
+C81
+
+Cut action start angle 8
+
+C82
+
+Cut return angle adj
+
+12
+
+0~30
+
+It is fit for the machine using
+stepping-motor for trimming
+thread.
+The same as above.
+
+C83
+
+Cut keeper return
+angle
+
+0
+
+0~99
+
+The same as above.
+
+C84
+
+Hold voltage adj
+
+1
+
+1~3
+
+The same as above.
+
+C85
+
+Trim Machine Type
+
+180
+
+180, 360
+
+The same as above.
+
+C91
+
+hook distance adj
+
+0
+
+0~20
+
+The same as above.
+
+400
+
+60~600
+
+80
+
+60~500
+
+Open
+
+Open, 1 times, 2times
+
+Open
+
+Open, 1 times, 2times
+
+No
+
+No, Yes
+
+Stepping
+motor
+
+Stepping motor,
+
+C95
+C96
+C93
+C94
+E99
+H05
+
+Speed At 1st Sti.
+Bef. Trim
+Speed At 2st Sti.
+Bef. Trim
+When the shear line
+surface
+Emb surface clip
+action way
+Patch emb surface
+when fully
+Trimming device
+type
+
+0~20
+
+Solenoid
+
+Sequin Parameters（Applicable for JF Sequin）
+C31
+C32
+C33
+
+84
+
+Speed for Sequin R
+Speed for Sequin L
+Auto
+
+Start
+
+400
+400
+
+for No
+
+300,310,…,the
+maximum speed
+300,310,…,
+maximum speed
+
+the
+
+No, Yes
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+Sequin
+
+D27
+
+Time of
+Action
+
+Sequin
+
+C34
+
+Sequin Up after T.B.
+
+B17
+
+Default Value
+
+Range of Value
+
+3
+
+0~15
+
+No
+
+No, Yes
+
+Up Valve When
+Yes
+Jump & No cut
+
+No, Yes
+
+D54
+
+Motor Number of R
+Sequin
+
+D55
+
+Set 3MM
+Sequin
+
+of
+
+R
+
+D56
+
+Set 4MM
+Sequin
+
+of
+
+R
+
+D57
+
+Set 5MM
+Sequin
+
+of
+
+R
+
+D58
+
+Set 6.75MM of R
+Sequin
+
+D59
+
+Set 9MM
+Sequin
+
+C57
+
+A Size&Color of R
+5mm yellow
+Sequin
+
+C58
+
+B Size&Color of R
+5mm blue
+Sequin
+
+C59
+
+C Size&Color of R
+5mm silver
+Sequin
+
+of
+
+R
+
+No,1~4,1(2~4)
+
+Remarks
+Range: 0-15. For the machine
+using valve to move the
+presser, this parameter is
+generally set at 2~3. For the
+machine using stepping motor
+to move the presser, this value
+is set at 4~5.
+It is used to control the
+position of the sequin device
+after thread-breakage
+
+Set the parameter base on
+sequin device. 2~4 mean
+device number driven by one
+motor
+
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+3/4/5/6.75/9mm
+Yellow/Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+85
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+C60
+
+D Size&Color of R
+5mm golden
+Sequin
+
+D60
+C65
+
+Default Value
+
+Sequin Gap Num of
+No
+R Sequin
+Valve Time of Right
+0
+Sequin
+
+D61
+
+Motor Number of L
+Sequin
+
+D62
+
+Set 3MM
+Sequin
+
+of
+
+L
+
+D63
+
+Set 4MM
+Sequin
+
+of
+
+L
+
+D64
+
+Set 5MM
+Sequin
+
+of
+
+L
+
+D65
+
+Set 6.75MM of L
+Sequin
+
+D66
+
+Set 9MM
+Sequin
+
+C61
+
+A Size&Color of L
+5mm yellow
+Sequin
+
+C62
+
+B Size&Color of L
+5mm blue
+Sequin
+
+C63
+
+C Size&Color of L
+5mm silver
+Sequin
+
+86
+
+of
+
+L
+
+Range of Value
+/Green/Red/Golden/
+Silver/Black
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+No, 1,2
+
+Remarks
+
+0~5
+
+No,1~4,1(2~4)
+
+Set the parameter base on
+sequin device. 2~4 mean
+device number driven by one
+motor
+
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+One-way 6~40 steps;
+Double-ways 6~40
+steps
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+3/4/5/6.75/9mm
+Yellow/Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+C64
+
+D Size&Color of L
+5mm golden
+Sequin
+
+D67
+C66
+
+Default Value
+
+Sequin Gap Num of No
+L Sequin
+Valve Time of Left
+0
+Sequin
+
+Range of Value
+3/4/5/6.75/9mm
+Yellow /Purple/Blue
+/Green/Red/Golden/
+Silver/Black
+No, 1,2
+
+Remarks
+
+0~5
+
+D98
+
+L.Knife Start Angle
+Adj.
+
+15
+
+0~31
+
+D99
+
+R.Knife Start Angle
+Adj.
+
+15
+
+0~31
+
+Taping Parameter
+D86
+D87
+D88
+D90
+D91
+D92
+D93
+D94
+D95
+D96
+D97
+
+A-Zig Emb.Right
+On/Off
+A-Zig Emb.Left
+On/Off
+A-Zig Emb. On/Off
+Time
+A-Zig Swing Angle
+A-Zig Max Speed
+A-Zig Has
+Loosing-Motor
+A-Zig T.L Adj
+A-Zig 5 Swing
+Angle
+A-TAPING
+Emb.righe origin
+pos.
+A-TAPING Emb.left
+origin pos.
+A-TAPING
+Up&Down Detect.
+
+Yes
+
+Yes(First Stitch), No
+
+Yes
+
+Yes(Last Stitch), No
+
+2
+90
+
+0~90
+
+850
+
+300~1000
+
+Yes
+
+Yes, No
+
+5
+
+0~10
+
+0.2
+
+-10.0~10.0
+
+0
+
+0~100
+
+0
+
+0~100
+
+No
+
+No, Yes
+
+Generally, please set it above
+80
+
+Machine Parameters
+D01
+
+Needles
+
+6
+
+1,2,…,MAXNEEDLE
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Set the value according to the
+machine situation. E.g. the
+value should be 9 for 9-needle
+machine. If the value is
+
+87
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+Default Value
+
+D12
+
+Color-Change Speed
+
+12
+
+0~30
+
+0
+
+0,1
+
+0
+
+0,1
+
+No
+0mm
+15 mins
+No
+6
+
+No, 1~7
+0mm,12mm
+Never, 2mins, 5mins,
+10mins, 15mins
+No, Yes
+1~10
+
+200
+0
+0
+0
+No
+
+0~255
+0~255
+0~255
+0~255
+No, Yes
+
+Yes
+2000000
+
+No, Yes
+0~10,000,000
+Main Motor to 100
+Degree, Manual
+operation, Go to stop
+point, Go to start point
+No, Yes
+
+C49
+C50
+C29
+C30
+D43
+C40
+C71
+E1
+E2
+E3
+E4
+B02
+E05
+E06
+
+X compensation for
+mechanical gap
+Y compensation for
+mechanical gap
+Needle of Boring
+Boring Emb. Disp.
+CloseBack
+Light
+time
+No Output Design
+Thread hold voltage
+adj.
+DIP1
+DIP2
+DIP3
+DIP4
+Is use step frame
+driver param
+open laser light
+Oiling Interval(sti.)
+
+E07
+
+select fn button
+
+H06
+
+Drive
+monitoring
+
+Main Motor
+to 100
+Degree
+
+failure Yes
+
+Range of Value
+
+Remarks
+different from the machine
+needles, the color changing
+will be abnormal.
+
+Net Parameters
+C47
+
+Machine Number
+
+1
+
+1~245
+
+C41
+
+Server Port
+
+1600
+
+1~9999
+
+C42
+
+MAC Address
+
+00112233445
+5
+
+001111111111~00999
+9999999
+
+C43
+
+IP Address
+
+88
+
+It is used for setting sever port
+when it is connected to PC.
+It is used for setting the
+MAC address of embroidery
+machine network card. The
+address is different at different
+machine.
+It is used for setting machine
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 1 Parameter List
+No.
+
+Name of Parameter
+
+C44
+
+Server IP
+
+C45
+
+Subnet mask
+
+C46
+
+Gateway
+
+Default Value
+
+Range of Value
+
+Remarks
+address when connected to PC.
+It is not different among
+different machines.
+It is used for setting the IP
+address of sever when
+connected to PC.
+It is used for setting the subnet
+mask of IP address when
+connected to PC.
+It is used for setting the
+gateway of machine when
+connected to PC.
+
+GlassBead Parameters
+E80
+E81
+E82
+E83
+E84
+E85
+E86
+E87
+E88
+E89
+E90
+E91
+E92
+E93
+E94
+
+Send beads angle for
+motor L
+Recv beads angle for
+motor L
+Angle for L clip
+motor
+Adj speed of L soeed
+motor
+Adj speed of L
+conveyor motor
+Adj speed of L
+add-power motor
+Time para for L bead
+Time para for L
+sequin
+Count of L bead
+motor
+Send beads angle for
+motor R
+Recv beads angle for
+motor R
+Angle for R clip
+motor
+Adj speed of R
+soeed motor
+Adj speed of R
+conveyor motor
+Adj speed of R
+
+30
+50
+30
+8
+8
+8
+24
+15
+None
+61
+10
+18
+8
+8
+8
+
+1~100
+1~50
+1~50
+0~15
+0~15
+0~15
+1~50
+1~50
+None, Yes
+1~100
+1~50
+1~50
+0~15
+0~15
+0~15
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+89
+
+Appendix 1 Parameter List
+No.
+E95
+E96
+E97
+E98
+H03
+H04
+
+90
+
+Name of Parameter
+add-power motor
+Time para for R bead
+Time para for R
+sequin
+Count of R bead
+motor
+All head change
+bead cnt
+Angle of glass-bead
+arriving
+Bead more
+revolutions
+
+Default Value
+24
+15
+
+Range of Value
+
+Remarks
+
+1~50
+1~50
+
+None
+
+None, Yes
+
+0
+
+1~2500
+
+0
+
+0~359
+
+8
+
+0~15
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 2 Directions of U Disk Operation
+
+Appendix 2 Directions of U Disk Operation
+No
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+
+Operations
+
+Methods or Standards
+Same as floppy disk
+
+Remarks
+
+USB I/O
+Operation priority between USB
+USB Disk
+disk and floppy disk
+Format supported by USB disk
+FAT16 and FAT32
+Support long file name
+Support, but not displayed
+For instance: “清明
+DOS 8.3 mode （ 8 digit
+上河图.DST” will
+prefix is viewable,suffix is
+File name format
+be displayed as “清
+3 digits）
+明上~1.DST”
+Support file name in Chinese
+Support
+Sub-directory operation
+Support
+No. It could be countless
+Sub-directory limitation
+in theory
+File number in one sub-directory
+400
+Back to disk management
+Reading & writing error/ change or design management
+USB
+interface, insert the disk
+again.
+Multi-logical disks in one USB
+Support
+Formatting USB
+Support
+Installation of the letter base
+Not Support
+Software update
+Support
+Special character in file name
+Support, except “$”.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+91
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+Appendix 3 Automatic Position Limitation Function Instructions
+for Apparel Embroidery
+A、Working Principle
+The automatic position limitation function of single-head embroidery machine controller
+is to determine the embroidery range of the frame by setting the distance from the center of the
+frame to the origin (that is X-/Y position limitation optical coupler) and the actual frame size
+(unit: mm). If embroidery is to be done beyond such range, the controller will activate
+automatic protection to prevent damage to the mechanical parts of the embroidery machine.
+B、 Setting Method
+1、 Set Frame Origin
+Press
+key, then press
+
+key, to enter the following interface.
+
+Select "⑨ Automatic Origin Search", to enter the interface to search origin automatically;
+the frame will search and determine the origin automatically; press "
+
+92
+
+" key to quit.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+2、 Clear XY Displacement
+In the main interface, press "
+
+" key to clear the XY displacement displayed here.
+
+3、 Manual Frame-moving
+In the main interface, click the frame-moving key to move the frame to overlap its
+Owner’s Manual of BECS- A15 Computerized Control System
+
+93
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+center with the needle hole.
+
+4、 Set Frame Center and Size
+In the main interface, check the coordinates of XY, which is the position of frame center.
+
+Press "
+press "
+
+" key, to enter the interface for frame selection and position setting; then
+" key, to enter the interface for setting related parameters, where user can input
+
+the coordinates of XY in the main interface.
+
+94
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+There are four parameters: "X direction center" means the distance at X direction between
+the frame center and X- direction position limitation optical coupler; "Y direction center"
+means the distance at Y direction between the frame center and Y+ direction position limitation
+optical coupler. "X direction frame size" means the embroidery range of the frame at X
+direction; "Y direction frame size" means the embroidery range of the frame at Y direction.
+
+Y Frame Actual Size W
+X Frame Actual Size L
+
+"X direction frame size" and "Y direction frame size" should be set according to the actual
+size of different frames. Note: this parameter need be set according to the actual embroidery
+range of the frame, for the apparel frame is usually not square.
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+95
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+C、 Cancel Position Limitation
+Set "Frame Selection" as "No Frame", the position limitation function will be canceled
+and the software protection for the frame of flat embroidery will also become invalid.
+
+96
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 3 Automatic Position Limitation Function Instructions for Apparel Embroidery
+
+D、Common Frame Size (Unit: mm)
+Frame 1:
+Size: 550×375
+Embroidery Range: 430×260
+
+Frame 2:
+Size: 290×290
+Embroidery Range: 230×230
+
+Frame 3:
+Size: 200
+Embroidery Range: 150
+
+Frame 4:
+Size: 150
+Embroidery Range: 100
+
+Frame 5:
+Size: 120
+Embroidery Range: 90
+
+Frame 6:
+Size: 90
+Embroidery Range: 40
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+97
+
+Appendix 4
+
+A15 Controller Operation Quick Guide
+
+Appendix 4 A15 Controller Operation Quick Guide
+Part I. Embroidery
+": memory pattern preview, letter pattern operation, delete pattern, pattern input/output, pattern function setting, etc.
+
+Pattern Management "
+A. Input Pattern
+
+B. Select Pattern for Embroidery
+
+→Use page keys to select patterns →
+Common Parameter Setting "
+
+→
+
+,
+
+: use page keys to select pattern
+
+": direction, angle, X/Y scaling, priority Color-changing Sequence Setting "
+
+":
+
+setting, etc.
+
+repeat, appliqué, needle bar color setting, etc.
+
+C. Modify Embroidery Parameters: A01-A08: click to set.
+
+D. Under this Interface: set color-changing sequence.
+
+": thread trimming, main shaft jog, frame setting, color-changing and start mode setting, manual frame-moving, speed
+
+Main Interface "
+adjustment, empty feed, etc.
+E. Frame Selection and Position
+① Frame Selection:
+
+→
+
+→
+
+② Frame Position:
+
+→ Use direction keys
+
+,
+
+F.
+
+Embroidery Confirmation
+Confirm
+→
+
+,
+
+,
+
+to adjust frame position →
+
+G. Start Embroidery
+→ Start
+
+H. Release Embroidery Confirmation
+Release Confirmation
+
+→
+
+If user, after releasing embroidery confirmation, wants to embroidery the pattern again, user need operate from step B "Select Pattern for Embroidery" again.
+98
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+Appendix 4
+
+A15 Controller Operation Quick Guide
+Part II. Manual Operation
+
+A. Manual Trimming
+
+B. Manual Color-changing
+
+→
+
+→
+
+C. Main Shaft Jog
+
+D. Manual Frame-moving
+Direction Keys:
+
+→
+
+,
+
+,
+
+,
+
+;
+
+Speed Shift Key:
+
+E. Empty Feed
+1、 Empty Feed and Return at Low Speed
+→
+
+: (1) click once to return by 1 stitch; (2) hold pressing for 2s to return continually;
+
+2、 Empty Feed and Advance at low Speed
+→
+
+: (1) click once to advance by 1 stitch; (2) hold pressing for 2s to advance continually;
+
+3、 Locate the Last Color-changing Code
+→
+
+4、 Locate the Next Color-changing Code
+→
+
+Owner’s Manual of BECS- A15 Computerized Control System
+
+5. Empty Feed and Return at High Speed
+→
+
+6. Empty Feed and Advance at High Speed
+→
+
+7. Return to Embroidery Start Point
+→
+
+8. Return to Embroidery Stop Point
+→
+
+99
+
+

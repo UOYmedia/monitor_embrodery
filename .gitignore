@@ -31,3 +31,12 @@ bridge.config.json
 bridge.config.*.json
 !bridge.config.example.json
 bridge-data/
+# Cấu hình node cảm biến: chứa mật khẩu WiFi xưởng. Chỉ bản .example.h được commit.
+firmware/*/config.h
+
+# bản ghi byte thô bắt từ máy thêu — dữ liệu hiện trường, không đưa vào repo
+bat-goi-*.bin
+bat-goi-*.jsonl
+
+# Báo cáo độ phủ: sinh lại bằng `npm run coverage`
+coverage

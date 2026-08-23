@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "observedAt": "2026-08-17T09:12:30Z",
+  "status": "running",
+  "rpm": 712,
+  "rpmHistory": [680, 700, 712],
+  "odometer": 48210,
+  "threadBreakWindow": { "breaks": 1, "stitches": 5000 }
+}

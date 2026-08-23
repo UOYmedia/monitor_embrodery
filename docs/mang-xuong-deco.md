@@ -11,6 +11,13 @@ Quy trình cho đúng hiện trạng xưởng này, không phải hướng dẫn
 | `C44 Server IP` | `0.0.0.0` | Máy biết tự gọi ra một server, chưa trỏ về đâu |
 | `C41 Server Port` | `1` (hợp lệ `<1,3865>`) | **Cổng phải ≤ 3865** — đây là ràng buộc của firmware, không phải của bridge |
 
+> **Cập nhật 18/08/2026 tại xưởng.** Hai dòng cuối bảng trên là giá trị *xuất xưởng*, không còn là
+> giá trị đang nằm trên máy: đã đặt `C44 = 192.168.7.102`, `C41 = 1600`, `C46 = 192.168.7.254`,
+> `Z03 = no`, tắt bật nguồn nhiều lần — và bridge đếm **0 kết nối** sau hơn 50 phút. Ghi lại vì giá
+> trị cũ đứng dưới nhãn "hiện tại" sẽ khiến lần sau có người đặt lại đúng cái đã thử và tưởng là mới.
+> Kết luận đầy đủ ở `PRD_NGUON_DU_LIEU_MAY_THEU.md` §2: **đặt đúng tham số là không đủ**, A15 không có
+> chức năng tự đẩy sản lượng ra — nó chỉ gọi ra khi được lệnh tải mẫu qua mạng.
+
 Một dữ kiện chi phối toàn bộ tài liệu này: **IP máy thêu và IP bridge đều nằm trong đầu người,
 gõ tay trên từng bảng điều khiển.** Đổi dải mạng = đi bộ tới từng máy, leo lên gõ lại 4 con số,
 nhân với số máy. Vì vậy nguyên tắc số một:
@@ -40,6 +47,10 @@ Kết quả rẽ thành hai nhánh:
 | Có gateway `192.168.7.1` (hoặc `.254`), Mac nhận IP `192.168.7.x` | **A** | **Access Point** |
 | Không có gì, hoặc gateway thuộc dải khác (`192.168.1.1`, `192.168.68.1`…) | **B** | **Router**, đổi LAN sang `192.168.7.1` |
 
+**Xưởng này đã đo rồi — 18/08/2026: nhánh A, cổng ra thật là `192.168.7.254`** (Deco BE25). Bảng trên
+giữ nguyên cả hai giá trị vì nó là bảng tự chẩn đoán, dùng được ở một xưởng bất kỳ. Nhưng mọi chỗ
+trong tài liệu này bảo *gõ* gateway thì ở xưởng này gõ `.254`.
+
 Nhánh A an toàn hơn hẳn: không đụng đến bất kỳ máy thêu nào. Chỉ chọn nhánh B khi xưởng thật sự
 chưa có router, hoặc router cũ hỏng và bạn muốn Deco thay hẳn.
 
@@ -51,9 +62,15 @@ chưa có router, hoặc router cũ hỏng và bạn muốn Deco thay hẳn.
 
 ## 0.5. Cấu hình sẵn tại nhà — tới xưởng chỉ việc cắm điện
 
-Deco **chỉ cấu hình được bằng app Deco trên điện thoại**, gắn với TP-Link ID. Phần lớn model
-không có web admin, không SSH, không telnet, không API cục bộ; lần cài đầu tiên còn phải ghép
-Bluetooth giữa điện thoại và cục Deco. Không có cách nào cấu hình nó từ máy tính hay từ dòng lệnh.
+Deco **chỉ cấu hình được bằng app Deco trên điện thoại**, gắn với TP-Link ID: không SSH, không
+telnet, không API cục bộ; lần cài đầu tiên còn phải ghép Bluetooth giữa điện thoại và cục Deco.
+
+**Sửa lại chỗ này — 18/08/2026.** Câu cũ ở đây viết "phần lớn model không có web admin", và câu đó
+sai với cục đang lắp: Deco **BE25 có** trang web admin, mở bằng trình duyệt tại địa chỉ gateway (ở
+xưởng này là `http://192.168.7.254`). Nhưng nó **què**: chỉ có **Status** và **System** — không có
+LAN IP, không có DHCP Server, không có reservation. Nên kết luận thực hành không đổi, **cấu hình vẫn
+phải làm bằng app**; cái sai thì vẫn phải sửa, vì viết "không có web admin" làm người đọc không thử
+mở trang đó, mà đó là đường duy nhất xem được trạng thái Deco **không cần điện thoại của chủ máy**.
 
 Vì vậy làm hết ở nhà, nơi có Internet ổn định. Đây không chỉ là cho tiện: **mang một cục Deco
 mới tinh tới xưởng chưa có Internet thì không cài xong được**, app sẽ kẹt ở bước khởi tạo.
@@ -138,7 +155,8 @@ sau sáu tháng.
 
 | Dải | Dùng cho | Cách cấp |
 | --- | --- | --- |
-| `192.168.7.1` | Router (Deco ở nhánh B, hoặc router cũ ở nhánh A) | Cố định |
+| `192.168.7.254` | **Router thật của xưởng này** (Deco BE25, đo 18/08/2026) | Cố định |
+| `192.168.7.1` | Router — chỉ khi đi nhánh B và tự đặt LAN IP như mục 2 | Cố định |
 | `.2` – `.9` | Hạ tầng: các Deco unit, switch | Cố định / reservation |
 | **`.10`** | **Máy chạy bridge** | **Tĩnh, không bao giờ đổi** |
 | `.11` – `.49` | Màn andon treo tường, máy in tem, dự phòng | Reservation |
@@ -221,7 +239,9 @@ lần mỗi ngày thì thành mất tin cậy có hệ thống.
 System Settings → Network → Ethernet → Details → TCP/IP → Configure IPv4: **Manually**
 - IP address `192.168.7.10`
 - Subnet mask `255.255.255.0`
-- Router `192.168.7.1`
+- Router `192.168.7.254` — **cổng ra thật của xưởng, đo 18/08/2026**. Gõ `.1` vào ô này thì Mac
+  vẫn thấy máy thêu (cùng dải, không cần gateway) nhưng **mất hẳn đường ra Internet**, và triệu
+  chứng đó trông y như "Deco hỏng". Ở nhánh B tự đặt LAN IP thì mới gõ `.1`.
 
 Nhờ vậy khi mini-PC về, bạn chỉ chuyển `.10` sang máy mới và **không phải đụng vào `C44` của
 bất kỳ máy thêu nào**. Nhớ mở tường lửa macOS cho `node`, hoặc tắt tường lửa trong thời gian

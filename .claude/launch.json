@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173,
+      "_autoPort": "Giữ đúng 5173, đừng cho đổi cổng ngẫu nhiên: allowedOrigins mặc định của bridge (bridge/lib/config.mjs:60) chỉ có http://localhost:5173 và http://127.0.0.1:5173, còn bridge/index.mjs:401 trả 403 cho mọi Origin khác. Lưu ý bridge.config.json hiện đang ghi đè danh sách đó thành cổng 8787 — nên muốn dev server gọi thẳng bridge thì phải thêm 5173 vào allowedOrigins, hoặc thêm server.proxy cho /api trong vite.config.ts (khi đó cùng origin, không còn CORS).",
+      "autoPort": false
+    }
+  ]
+}
