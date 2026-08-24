@@ -19,8 +19,13 @@ if [ -z "$ID" ]; then
   ID=$(cloudflared tunnel list --output json | python3 -c "
 import json,sys; print([x for x in json.load(sys.stdin) if x['name']=='$TEN'][0]['id'])")
 fi
+# Tunnel tạo trên dashboard không để lại credentials trên máy này — kéo về.
+[ -f "$HOME/.cloudflared/$ID.json" ] || {
+  echo "==> Kéo credentials của $TEN về máy"
+  cloudflared tunnel token --cred-file "$HOME/.cloudflared/$ID.json" "$TEN" >/dev/null
+}
 echo "==> Tunnel id: $ID"
-cloudflared tunnel route dns "$TEN" "$HOST" || echo "   (bản ghi DNS đã có — bỏ qua)"
+cloudflared tunnel route dns --overwrite-dns "$TEN" "$HOST"
 
 sed -e "s|<TUNNEL-ID>|$ID|g" -e "s|http://127.0.0.1:8790|http://$DIA|" "$HERE/config.yml" > "$APP/cloudflare-config.yml"
 cp "$HERE/com.dahao.tunnel.plist" "$LA/com.dahao.tunnel.plist"
@@ -31,5 +36,6 @@ echo "==> Chờ tunnel lên"
 for i in $(seq 1 60); do
   MA=$(curl -s -o /dev/null -w "%{http_code}" "https://$HOST/api/health" || echo 000)
   [ "$MA" = "200" ] && { echo "==> XONG: https://$HOST/api/health -> 200"; exit 0; }
+  sleep 2   # thiếu dòng này thì 60 vòng chạy hết trong 2 giây và không chờ gì cả
 done
 echo "!! Chưa lên (mã cuối: ${MA:-?}). Xem $APP/logs/tunnel.err"; exit 1
