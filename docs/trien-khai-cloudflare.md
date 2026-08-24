@@ -92,3 +92,36 @@ Nó có **điều kiện dừng cứng**: `auth.mode` chưa phải `token` thì 
 - **Không** commit `bridge-tokens.env` hay `~/.cloudflared/*.json` vào git.
 - **Không** mở `ingest` (cổng máy tự gọi vào) ra ngoài loopback — máy thêu nói chuyện với broker
   ngay trên Mini, không có lý do gì để cổng đó ra khỏi máy.
+
+## 6. Bốn cái bẫy đã sập thật (24/08)
+
+Ghi lại vì cả bốn đều **hỏng câm** — không cái nào tự báo cho biết nguyên nhân.
+
+### launchd không có `node` trong PATH
+`chay-bridge.sh` từng viết `exec "$(command -v node)"`. launchd cho đúng
+`PATH=/usr/bin:/bin:/usr/sbin:/sbin`; node ở `~/node/bin/node`. `command -v` trả **rỗng**,
+`exec ""` chết bằng `exec: : not found`. Hệ quả: `siet-quyen.sh` tự kiểm nhận `000/000` rồi
+tự lùi — đúng như thiết kế, nhưng thông điệp "không đạt" không hề nói vì sao.
+Nay wrapper dò node theo đường dẫn tuyệt đối. `scripts/launchd-scripts.test.mjs` canh việc này
+bằng cách chạy script thật dưới `env -i` với đúng PATH của launchd.
+
+### Tunnel quản lý từ xa đè cấu hình cục bộ
+Tunnel tạo trên **dashboard** Cloudflare là loại *remotely-managed*: ingress lấy từ dashboard,
+`config.yml` cục bộ bị **bỏ qua hoàn toàn**. Triệu chứng: log tunnel ghi
+`originService=http://localhost:3000` trong khi file cục bộ ghi `100.107.219.95:8790`, và
+biên trả 502. Cách nhận ra: so `originService` trong `logs/tunnel.err` với file đã render.
+Nay dùng tunnel **tạo bằng CLI** (`dahao-gateway`) để cấu hình nằm trong repo.
+
+### `route dns` không tự ghi đè
+Nếu hostname đang trỏ vào tunnel khác, `cloudflared tunnel route dns` chỉ in
+`already configured to route to your tunnel` và **thoát 0**. Ta tưởng xong, thật ra vẫn phục vụ
+bằng tunnel cũ. Phải có `--overwrite-dns`.
+
+### Vòng chờ thiếu `sleep`
+`for i in $(seq 1 60); do curl ...; done` không có `sleep` chạy hết 60 vòng trong ~2 giây.
+"Chờ 60 lần" thành không chờ gì cả, và tunnel bị kết luận là hỏng khi nó mới đang bắt tay.
+
+### Nhắc thêm: cập nhật bridge, đừng chỉ cập nhật broker
+`install.sh` **sinh lại** `bridge.config.dahao-mqtt.json` với `single-admin` — chạy nó sau khi
+siết quyền là lặng lẽ mở toang. Muốn cập nhật mã mà giữ config token thì chép có mục tiêu:
+`rsync -a --delete bridge/ ~/dahao-gateway/bridge/` rồi nạp lại launchd.
