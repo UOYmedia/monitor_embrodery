@@ -43,3 +43,6 @@ coverage
 
 # Số đo T_chuẩn bị do broker tự nối thêm mỗi lần nạp mẫu — là kết quả đo, không phải mã.
 deploy-mini/patterns-nap.csv
+
+# Số đo nhịp `state` (S‑11 min/max, K‑20c tỉ lệ dòng lặp) — broker tự nối thêm 5 phút một dòng.
+deploy-mini/nhip-state.csv

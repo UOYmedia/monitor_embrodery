@@ -32,9 +32,12 @@ Tài liệu này đứng **trên** ba PRD đã có và không chép lại chúng
 - **Con số uptime cũ (83,31 %) không dùng được để đánh giá.** 4 trong 5 lần đứt là do chính
   việc sửa chữa gây ra; lần thứ 5 (464 phút) là Mac Mini **ngủ** — đã bịt. Cửa sổ đo sạch bắt
   đầu **2026-08-25T10:39:00Z**, trước mốc đó không tính.
-- **Điểm sáng có thật:** trong 4 ngày máy chỉ phải quay số vào broker **7 lần**, nhịp `state`
-  đều **1,54 giây/bản** (110.072 bản tin). Một khi nối được thì tuyến bám rất chắc — cái yếu
-  nằm ở *hạ tầng quanh nó*, không nằm ở giao thức.
+- **Điểm sáng có thật:** trong 4 ngày máy chỉ phải quay số vào broker **7 lần**. Một khi nối
+  được thì tuyến bám rất chắc — cái yếu nằm ở *hạ tầng quanh nó*, không nằm ở giao thức.
+  Nhịp `state` đo **trực tiếp từng bản tin** ngày 25/08: **min 1,990 s · trung vị 2,001 s ·
+  max 2,011 s** — một đồng hồ 2,0 giây cứng, dao động chưa tới 1 %. Con số **1,54 giây/bản**
+  ở các bản PRD trước **là sai và đã bỏ**: nó là tổng bản tin ÷ dải thời gian, mà dải đó gộp
+  cả những đoạn máy không hề nối — chia cho một mẫu số sai thì ra một nhịp không có thật.
 - **Nhóm P (đẩy mẫu) vẫn chưa từng chạy một lần nào với máy thật.** Máy bị chặn ở mức
   `registration` trên HMI. Câu "toàn bộ phía server đã kiểm hết và đúng" ở bản trước là **nói
   quá** — hôm 25/08 nhóm P mới có bài test đầu tiên, và nó tìm ra ngay **hai lỗi thật**: cửa nạp
@@ -219,7 +222,8 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | K‑19 | L0 | **UPTIME ≥ 99 % trong 7 ngày liền** trên cửa sổ sạch | Con số thật, kèm danh sách mọi lần đứt | `do_on_dinh.py --tu 2026-08-25T11:59:00Z` | 🟡 |
 | K‑20 | L0 | `logs/broker.out` **không** xoay vòng (đo thật 1,6 MB/ngày) | Job `com.dahao.xoaylog` chép-rồi-cắt mỗi ngày, ngưỡng 8 MiB, giữ 60 bản | `test_xoay_log_he_thong.py` [1]…[8] | 🟩 |
 | K‑20b | L0 | launchd giữ fd log kiểu `O_APPEND`? (nếu không thì cắt tại chỗ sẽ đẻ lỗ NUL) | Sau khi cắt, file đầy lại từ offset 0, 0 byte NUL | Job thử riêng 25/08 + chính `broker.out` | 🟩 |
-| K‑20c | L0 | 79,8 % dòng log là `STATE` lặp lúc máy rảnh | Cân nhắc chỉ ghi `STATE` khi đổi + nhịp tim — **cần duyệt vì sửa `broker.py`** | — | 🟡 |
+| K‑20c | L0 | Bao nhiêu % dòng log là `STATE` lặp lúc máy rảnh | ✅ 25/08 — **đếm xong: 99,0 %, không phải 79,8 %.** Cột `so_lap` đếm bản tin trùng y nguyên bản trước trên chữ ký `(state, curStitch, patternStitch, patternName)`: cửa sổ 1 = 149/151, cửa sổ 2 = 150/151. Ước cũ 79,8 % lấy từ một lát cắt log, **hụt 19 điểm**. **Quyết định của chủ máy: KHÔNG gộp dòng**, chỉ thêm dấu giờ — nên phần "cân nhắc" của ca này đóng lại ở đây. Đếm trước rồi mới bàn gộp; gộp khi chưa đếm là bỏ dữ liệu theo linh cảm. Hệ quả về dung lượng: xem K‑20d | `test_nhip_state.py` N‑4 + `nhip-state.csv` | 🟩 |
+| K‑20d | L0 | `broker.log` phình bao nhiêu, và có ai xoay nó khi broker chạy dài ngày không | ✅ 25/08 — **đo thật: 3.754 KiB/ngày** (dòng `*** STATE` từ 54 B lên 85 B sau khi thêm dấu giờ, +57 %). Và đây là chỗ hở: job `com.dahao.xoaylog` chỉ canh `logs/*.out|*.err`, **không canh `broker.log`**; `broker.log` chỉ xoay **lúc broker khởi động** (đổi tên kèm mốc, giữ 10 bản). Nghĩa là broker càng chạy lâu, log càng to — mà chạy lâu chính là **mục tiêu K‑19 (7 ngày liền)**. 7 ngày ≈ **26 MB** một file không ai cắt. Chưa nguy hiểm, nhưng phải vá trước khi bàn giao, và vá `broker.py` thì **cần duyệt** | `xoay_log_he_thong.py` (phạm vi) + đo trực tiếp 25/08 | ✅ |
 | K‑21 | L0 | Rút dây LAN của máy giữa lúc đang nối | Broker phát hiện trong ≤60 s, dọn entry, máy nối lại được | `broker.log` + `pgrep` | 🔴 |
 | K‑22 | L0 | Đứt TCP giữa lúc gửi `pattern/data` | Broker không treo, không kẹt luồng | `broker.log` + `pgrep` | 🔴 |
 
@@ -240,7 +244,7 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | S‑08 | L1 | Độ tươi: `state` cũ hơn ngưỡng → **không** hiện như số sống | ✅ 25/08 đo đầu-cuối qua bridge THẬT, đủ ba mức: 0s→`online`; 60s→`stale` (>30s); 300s→hết `online`, `ageSeconds=301` kèm lý do bằng chữ. Số cũ **vẫn đọc được**, chỉ đổi nhãn | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
 | S‑09 | L3 | API trạng thái cần `fleet:read`; không token → 401 | ✅ 25/08: không token/token bịa → 401; máy **không tồn tại** + không token cũng 401 (không rò id máy); viewer → 200. **Nhánh 403 không chạm được trên đường này** — bảng quyền cấp `fleet:read` cho cả ba vai; 403 thật được kiểm trên `/api/v2/ingest` (`scan:run`) | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
 | S‑10 | L4 | Bất biến K1: thiếu dữ liệu controller → **không** hiện `0` | ✅ 25/08: frame thiếu `curStitch` → `null` suốt từ `broker.py` tới API, **không** hoá 0; các trường máy CÓ nói vẫn giữ nguyên | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
-| S‑11 | L0 | Nhịp `state` trung bình trên cửa sổ sạch | Trung bình đã có (1,54 s/bản). **Min/max chưa lấy được từ bất kỳ dữ liệu nào đang có**: `broker.log` không đóng dấu thời gian từng dòng, `enum-growth.csv` không có cột đếm bản tin ⇒ chỉ tính ra được trung bình = tổng/dải. Muốn có min/max phải **sửa `broker.py`** (thêm cột đếm bản tin vào CSV, hoặc đóng dấu giờ vào dòng `*** STATE`) → **cần duyệt**, xếp cùng nhóm với K‑20c | `do_on_dinh.py` | 🟡 |
+| S‑11 | L0 | Nhịp `state`: trung bình **và min/max** trên cửa sổ sạch | ✅ 25/08 — **đo được rồi, và số cũ là sai.** Mỗi dòng `*** STATE` nay mang thêm `@<ISO‑Z> Δ<giây>` (đã được duyệt), broker chốt 5 phút một dòng vào `nhip-state.csv`. Hai cửa sổ đầu (302 bản tin): **min 1,990 · trung vị 2,001 · max 2,011 giây** — đồng hồ 2,0 s cứng, dao động <1 %. Số cũ *1,54 s/bản* (tổng ÷ dải) chênh **23 %** vì mẫu số gộp cả lúc máy không nối. Bản ĐẦU của mỗi máy ghi `Δ-` chứ không phải `0`: một số 0 bịa sẽ ghim `giay_min` xuống 0 vĩnh viễn. ⚠ **Chỉ mới đo lúc máy NGHỈ** — nhịp lúc máy chạy thật vẫn chưa ai thấy (xem S‑13/S‑14) | `test_nhip_state.py` (8 ca) + `nhip-state.csv` | 🟩 |
 | S‑12 | L0 | Bản tin `state` méo / giải mã hỏng | ✅ 25/08: 11/11. Bốn kiểu hỏng vỡ ở bốn tầng khác nhau của `dec_json` → mỗi gói 1 dòng log + vẫn PUBACK; gói ĐÚNG ngay sau đó vẫn chạy (hồi phục thật). **Đối chứng âm**: bẻ chốt `try/except` → 4/11, đúng như mong đợi | `deploy-mini/tests/test_goi_hong.py` | 🟩 |
 | S‑13 | **L5** | **Ca sản xuất thật**: `curStitch` chạy từ 0 tới `patternStitch` | Telemetry tăng đơn điệu, khớp mẫu đang thêu | `state.log` + dashboard | 🔴 |
 | S‑14 | **L5** | Độ phủ trạng thái sau ≥3 ca thật | Liệt kê **mọi** giá trị `state` đã gặp, ghi rõ "chưa gặp sau X ca" | `catalog.json` | 🔴 |
@@ -321,11 +325,11 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 
 | Nhóm | Tổng | 🟩 đã xanh | ✅ làm được ngay | 🟡 cần máy nối | 🔴 cần xưởng |
 | --- | --- | --- | --- | --- | --- |
-| K — Kết nối | 26 | **21** | **0** | 3 | 2 |
-| S — Trạng thái | 14 | **11** | **0** | 1 | 2 |
+| K — Kết nối | 27 | **22** | **1** | 2 | 2 |
+| S — Trạng thái | 14 | **12** | **0** | 0 | 2 |
 | L — Báo lỗi | 33 | **26** | **3** | 0 | 4 |
 | P — Đẩy mẫu | 23 | **9** | **0** | 6 | 8 |
-| **Cộng** | **96** | **67** | **3** | **10** | **16** |
+| **Cộng** | **97** | **69** | **4** | **8** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
 
@@ -399,12 +403,33 @@ trần 40 ký tự của `code`, từ chối cả gói thay vì bỏ riêng sự
 L‑27/L‑28/L‑29 là ca giao diện (happy-dom) và **thuộc repo trên máy chính**, không làm được ở
 Mini (bản Mini không có thư mục `src/`). Xem mục "hai repo đã lệch nhau".
 
-**Nhóm S đã đóng phần làm được mà không cần xưởng** (S‑07…S‑10, S‑12 xanh ngày 25/08). S‑11 chờ duyệt sửa `broker.py`; S‑13/S‑14 chờ ca chạy thật.
+**Nhóm S đã đóng sạch phần làm được mà không cần xưởng** (S‑07…S‑12 xanh ngày 25/08).
+Không còn ca 🟡 nào: S‑11 đóng bằng số đo thật sau khi dấu giờ được duyệt và lên production
+lúc 25/08 14:08 Z. S‑13/S‑14 chờ ca chạy thật.
 
-**Nhóm K đã đóng.** Không còn ca ✅ nào — mọi thứ làm được mà không cần máy chạy hay
-người ra xưởng đều đã xanh. Bốn ca 🟡 còn lại chờ *thời gian* chứ không chờ việc:
-K‑19 cần 7 ngày liền, K‑14d cần bắt được lúc cloudflared chưa kịp dựng lại, K‑20c cần
-duyệt vì phải sửa `broker.py`. Hai ca 🔴 cần người rút dây ở xưởng.
+Đáng ghi lại: **dựng được dụng cụ đo thì con số cũ liền lộ ra là sai.** Nhịp `state` báo cáo
+suốt mấy bản PRD trước là 1,54 s/bản — suy ra từ tổng bản tin ÷ dải thời gian. Đo thẳng từng
+bản tin thì nó là **2,00 s**, lệch 23 %, vì mẫu số cũ gộp cả những đoạn máy không hề nối.
+Cùng một lần đo cũng lật con số 79,8 % dòng log lặp thành **99,0 %**. Cả hai con số cũ đều
+không hề vô lý khi đọc — đó mới là vấn đề: **một con số suy diễn không tự khai rằng nó là suy
+diễn.** Chỗ nào còn báo cáo số suy ra từ tổng/dải mà chưa đo trực tiếp thì nên coi là chưa đo.
+
+**Nhóm K gần đóng.** Còn đúng **một** ca ✅: K‑20d — chính việc đo cho S‑11/K‑20c làm lộ ra
+rằng `broker.log` không nằm trong tầm của job xoay log, nên broker chạy càng lâu file càng to.
+Vá được ngay, nhưng phải sửa `broker.py` nên **cần duyệt**. Bốn ca 🟡 còn lại chờ *thời gian* chứ không chờ việc:
+K‑19 cần 7 ngày liền, K‑14d cần bắt được lúc cloudflared chưa kịp dựng lại, K‑20c đã
+được duyệt và đã có dụng cụ đếm chạy thật — chờ số chứ không chờ việc. Hai ca 🔴 cần
+người rút dây ở xưởng.
+
+**Một bẫy đã cắn thật khi làm hai ca này, ghi lại để đội sau khỏi mất buổi.** Các self-test
+Python ở đây nạp broker bằng `spec_from_file_location('broker', '../broker.py')`, mà bộ kiểm
+tra `.pyc` của Python chỉ so đúng hai thứ: **mtime tính theo GIÂY** và **kích thước file**.
+Kịch bản đối chứng âm bẻ cùng một file nhiều lần trong vài trăm mili-giây; hai lần bẻ tình cờ
+ra file **cùng kích thước trong cùng một giây** thì lần sau chạy lại bytecode của lần TRƯỚC.
+Nó không báo lỗi — nó in ra một ca đỏ trông hoàn toàn hợp lý, chỉ là của mutation khác. Đã
+xảy ra đúng như vậy ở đây (bẻ "trung vị → trung bình" lại làm đỏ ca N‑6). Quy tắc: harness
+đối chứng phải xoá `__pycache__` và chạy với `PYTHONDONTWRITEBYTECODE=1`; và khi ca đỏ
+**không phải ca mình nhắm tới**, chạy lại riêng lẻ trước khi ghi nhận bất cứ điều gì.
 
 ---
 

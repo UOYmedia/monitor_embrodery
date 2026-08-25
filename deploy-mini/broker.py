@@ -13,6 +13,58 @@ STATE=os.path.join(os.path.dirname(__file__),'state.log')
 lock=threading.Lock()
 clients=[]  # danh sách (sock, subs set)
 
+# ---- S‑11 / K‑20c: đo nhịp `state` --------------------------------------------------------
+# Vì sao có: nhịp TRUNG BÌNH (1,54 s/bản) tính được từ tổng/dải, nhưng MIN/MAX thì không —
+# `broker.log` không đóng dấu giờ từng dòng và `enum-growth.csv` không đếm bản tin. Mà trung bình
+# lại đúng là con số vô hại nhất: một tuyến đứng im 40 giây rồi phun 30 bản trong một giây vẫn ra
+# đúng 1,54 s/bản. Muốn biết tuyến có THẬT SỰ đều hay không thì phải nhìn hai đầu, không nhìn giữa.
+NHIP_CSV=os.path.join(os.path.dirname(__file__),'nhip-state.csv')
+NHIP_CUA_SO=300.0          # gộp 5 phút một dòng: 288 dòng/ngày. Ghi từng bản tin thì 4 ngày đã
+                           # hơn 100.000 dòng — đo mà làm phình đúng cái đang đo thì đo làm gì.
+_nhip_lock=threading.Lock()
+_nhip={}                   # dev -> {mo, truoc, ds:[Δ...], van: chữ ký bản trước, lap: số bản trùng}
+
+def _nhip_ghi(hang):
+    try:
+        moi=not os.path.exists(NHIP_CSV)
+        with open(NHIP_CSV,'a') as f:
+            if moi: f.write('luc,dev,so_ban,giay_min,giay_giua,giay_max,so_lap\n')
+            f.write(hang+'\n')
+    except Exception as e:
+        log('  [NHIP] không ghi được %s: %s'%(NHIP_CSV,e))
+
+def nhip_state(dev, van):
+    """Ghi nhận một bản tin `state`; trả `(mốc ISO, chuỗi Δ)` để đóng dấu lên dòng log.
+
+    `van` = chữ ký nội dung (state, cur, tot, pat). Hai bản liên tiếp cùng chữ ký nghĩa là máy
+    nhắc lại y nguyên điều nó vừa nói — đó chính là 79,8 % dòng log mà K‑20c nói tới. Đếm được
+    thì mới biết gộp dòng lãi đúng bao nhiêu; chưa đếm mà đã gộp là bỏ dữ liệu theo linh cảm.
+    """
+    now=time.time()
+    xong=None
+    with _nhip_lock:
+        m=_nhip.get(dev)
+        if m is None:
+            m={'mo':now,'truoc':None,'ds':[],'van':None,'lap':0}; _nhip[dev]=m
+        # Bản ĐẦU TIÊN không có Δ. Ghi 0 cho đẹp cột là bịa ra một nhịp chưa hề đo được, và nó
+        # kéo `giay_min` xuống 0 vĩnh viễn — đúng con số mà S‑11 cần chính xác.
+        d=None if m['truoc'] is None else now-m['truoc']
+        if d is not None: m['ds'].append(d)
+        if m['van'] is not None and van==m['van']: m['lap']+=1
+        m['truoc']=now; m['van']=van
+        if now-m['mo']>=NHIP_CUA_SO and m['ds']:
+            ds=sorted(m['ds'])
+            xong='%s,%s,%d,%.3f,%.3f,%.3f,%d'%(
+                time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime(now)),dev,len(ds)+1,
+                ds[0],ds[len(ds)//2],ds[-1],m['lap'])
+            # Cửa sổ mới bắt đầu NGAY tại bản này (`truoc`=now), không để rơi mất khoảng nối.
+            _nhip[dev]={'mo':now,'truoc':now,'ds':[],'van':van,'lap':0}
+    # Ghi ra NGOÀI vùng khoá: `_nhip_ghi` có thể gọi `log()`, mà `log()` giữ `lock`. Ôm hai khoá
+    # lồng nhau là cách tự dựng một thế kẹt chỉ hiện ra lúc hai máy nói cùng lúc.
+    if xong: _nhip_ghi(xong)
+    return (time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime(now))+'Z',
+            '-' if d is None else '%.3fs'%d)
+
 def log(*a):
     line=' '.join(str(x) for x in a)
     with lock:
@@ -623,7 +675,8 @@ def client_thread(sock, addr):
                     with open(STATE,'a') as f: f.write('%s %s\n'%(t,prettytxt(payload)))  # lưu base64 (script phân tích cũ vẫn giải mã được)
                     try:
                         b=dec_json(payload).get('body',{})
-                        log('*** STATE dev=%s cur=%s tot=%s state=%s pat=%s'%(dev2,b.get('curStitch'),b.get('patternStitch'),b.get('state'),b.get('patternName')))
+                        moc,delta=nhip_state(dev2,(b.get('state'),b.get('curStitch'),b.get('patternStitch'),b.get('patternName')))
+                        log('*** STATE dev=%s cur=%s tot=%s state=%s pat=%s @%s Δ%s'%(dev2,b.get('curStitch'),b.get('patternStitch'),b.get('state'),b.get('patternName'),moc,delta))
                         forward_to_bridge(dev2,b)
                     except Exception as e:
                         log('*** STATE parse lỗi: %s'%e)
