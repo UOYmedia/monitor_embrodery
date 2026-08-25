@@ -2,6 +2,7 @@ import { pollMachine } from './adapters.mjs'
 import { deriveAlerts, maintenanceForMachine } from './alerts.mjs'
 import { derivedAlerts } from './derived-alerts.mjs'
 import { AuditLog } from './audit.mjs'
+import { durationSeconds, formatSpokenDuration, latestSignificantEvent } from './downtime.mjs'
 import { SCHEMA_VERSION, adapterHasProtocol, adapterIsPolled, normalizeTelemetry } from './contract.mjs'
 import { DialInListener, normalizeRemoteAddress } from './dial-in.mjs'
 import { connectionState } from './freshness.mjs'
@@ -68,6 +69,8 @@ export class BridgeService {
     this.telemetry = new Map()
     this.telemetryErrors = new Map()
     this.statusSince = new Map()
+    // Máy nào đang có episode ngừng mở, chờ đóng; mốc lấy thẳng từ statusSince.
+    this.downtimeRecorded = new Set()
     this.reachability = new Map()
     this.revision = 0
     this.polling = null
@@ -100,6 +103,7 @@ export class BridgeService {
     if (this.productionFlush) return
     const intervalMs = this.config.production?.flushIntervalMs ?? 60_000
     this.productionFlush = setInterval(() => {
+      this.sweepDowntime()
       this.production.prune()
       void this.production.flush()
       // Bridge ở xưởng chạy hàng tháng không nghỉ, nên hạn giữ nhật ký phải tự đến hạn mà
@@ -571,7 +575,77 @@ export class BridgeService {
     const status = snapshot.status.value
     const previous = this.statusSince.get(machineId)
     if (previous?.status === status) return
+
+    // Rời một trạng thái đang mở episode ngừng (lỗi hoặc dừng-lâu đã ghi): đóng nó lại kèm thời
+    // lượng, tính từ mốc controller vào trạng thái đó tới mốc nó thoát ra.
+    if (this.downtimeRecorded.has(machineId) && previous) {
+      this.recordDowntimeClose(machineId, previous, status, snapshot.observedAt)
+      this.downtimeRecorded.delete(machineId)
+    }
+    // `fault` ghi ngay. Dừng thường để `sweepDowntime` nâng lên khi vượt ngưỡng, nếu không thì
+    // mỗi lần thay chỉ vài chục giây lại đẻ một dòng ngừng máy vô nghĩa.
+    if (status === 'fault') {
+      this.recordDowntimeOpen(machineId, {
+        status, since: snapshot.observedAt, approximate: previous === undefined, reason: 'fault', events: snapshot.events,
+      })
+      this.downtimeRecorded.add(machineId)
+    }
+
     this.statusSince.set(machineId, { status, at: snapshot.observedAt, approximate: previous === undefined })
+  }
+
+  /**
+   * Nâng một lần dừng thường thành dòng "dừng lâu" khi nó vượt ngưỡng xưởng, dù trong lúc đó không
+   * có ảnh chụp mới nào (thời gian trôi, trạng thái không đổi, `trackStatusChange` không nổ). Gọi
+   * định kỳ từ vòng flush. `fault` không đi qua đây — nó đã được ghi ngay lúc chuyển trạng thái.
+   */
+  sweepDowntime(now = this.now()) {
+    for (const machine of this.store.machines) {
+      if (machine.archived || !machine.enabled) continue
+      if (this.downtimeRecorded.has(machine.id)) continue
+      const since = this.statusSince.get(machine.id)
+      if (!since || (since.status !== 'stopped' && since.status !== 'paused')) continue
+      const startMs = Date.parse(since.at)
+      if (!Number.isFinite(startMs)) continue
+      const thresholdMinutes = this.site(machine.siteId).stopEscalationMinutes ?? 5
+      if ((now - startMs) / 60_000 < thresholdMinutes) continue
+      this.recordDowntimeOpen(machine.id, {
+        status: since.status, since: since.at, approximate: since.approximate, reason: 'long-stop', thresholdMinutes,
+      })
+      this.downtimeRecorded.add(machine.id)
+    }
+  }
+
+  /** Dòng "máy vào ngừng" trong sổ audit. `fault` kèm mã lỗi controller gửi (nếu có). */
+  recordDowntimeOpen(machineId, { status, since, approximate, reason, events = [], thresholdMinutes = null }) {
+    const event = reason === 'fault' ? latestSignificantEvent(events) : null
+    const message = reason === 'fault'
+      ? `Controller báo máy lỗi${event ? ` · mã ${event.code}${event.message ? `: ${event.message}` : ''}` : ''}${approximate ? ' (máy đã ở trạng thái lỗi khi bridge bắt đầu quan sát)' : ''}.`
+      : `Máy dừng liên tục quá ngưỡng ${thresholdMinutes} phút của xưởng — controller chưa gửi mã lý do.`
+    this.audit.record({
+      actor: 'bridge', role: 'system', action: 'machine.downtime.open',
+      targetType: 'machine', targetId: machineId, message,
+      after: { status, reason, since, approximate: approximate ?? false, code: event?.code ?? null, eventMessage: event?.message ?? null, thresholdMinutes },
+    })
+  }
+
+  /** Dòng "máy ra khỏi ngừng" kèm thời lượng. `approximate` = không chắc mốc bắt đầu (in "ít nhất"). */
+  recordDowntimeClose(machineId, previous, newStatus, clearedAt) {
+    const seconds = durationSeconds(previous.at, clearedAt)
+    const wasFault = previous.status === 'fault'
+    const spoken = seconds === null ? null : formatSpokenDuration(seconds)
+    const verb = wasFault ? 'rời trạng thái lỗi' : 'chạy lại'
+    this.audit.record({
+      actor: 'bridge', role: 'system', action: 'machine.downtime.close',
+      targetType: 'machine', targetId: machineId,
+      message: spoken === null
+        ? `Máy ${verb}, chuyển sang: ${newStatus}.`
+        : `Máy ${verb} sau ${spoken}${previous.approximate ? ' (ít nhất)' : ''}, chuyển sang: ${newStatus}.`,
+      after: {
+        previousStatus: previous.status, reason: wasFault ? 'fault' : 'long-stop', status: newStatus,
+        since: previous.at, clearedAt, durationSeconds: seconds, approximate: previous.approximate ?? false,
+      },
+    })
   }
 
   // ---------------------------------------------------------------- dial-in ingest

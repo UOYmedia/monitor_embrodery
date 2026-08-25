@@ -594,3 +594,90 @@ describe('nhập số bằng tay', () => {
     expect(report.totals).toMatchObject({ stitches: 0, manualStitches: 10_000, stitchesBilled: 10_000, rowsWithManualEntry: 1 })
   })
 })
+
+describe('sổ thời gian ngừng máy', () => {
+  async function pairOne(overrides) {
+    const [view] = await service.pairMany([input(overrides)], technician)
+    return service.machines.find((entry) => entry.id === view.identity.id)
+  }
+  function snap(id, status, observedAt, events) {
+    const payload = events ? { status, events } : { status }
+    return telemetryFor(id, payload, observedAt)
+  }
+  async function downtimeRows(machineId) {
+    await service.audit.flush()
+    const { entries } = await service.audit.read({ targetId: machineId, limit: 50 })
+    return entries.filter((entry) => entry.action && entry.action.startsWith('machine.downtime'))
+  }
+
+  it('ghi mở rồi đóng episode lỗi kèm thời lượng đọc được', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'fault', '2026-08-24T00:00:00.000Z',
+      [{ id: 'e1', code: 'E12', severity: 'critical', occurredAt: '2026-08-24T00:00:00.000Z', message: 'Đứt chỉ' }]))
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:12:30.000Z'))
+    const rows = await downtimeRows(id)
+    const open = rows.find((entry) => entry.action === 'machine.downtime.open')
+    const close = rows.find((entry) => entry.action === 'machine.downtime.close')
+    expect(open.after).toMatchObject({ reason: 'fault', status: 'fault', code: 'E12' })
+    expect(close.after).toMatchObject({ reason: 'fault', status: 'running', durationSeconds: 750 })
+    expect(close.message).toContain('12 phút 30 giây')
+  })
+
+  it('máy đã lỗi ngay từ ảnh chụp đầu → đánh dấu approximate, không bịa mốc', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'fault', '2026-08-24T00:00:00.000Z'))
+    const [open] = (await downtimeRows(id)).filter((entry) => entry.action === 'machine.downtime.open')
+    expect(open.after.approximate).toBe(true)
+    expect(open.message).toContain('máy đã ở trạng thái lỗi khi bridge bắt đầu quan sát')
+  })
+
+  it('lỗi không kèm event → mã null, không bịa mã lỗi', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'fault', '2026-08-24T00:01:00.000Z'))
+    const [open] = (await downtimeRows(id)).filter((entry) => entry.action === 'machine.downtime.open')
+    expect(open.after.code).toBeNull()
+    expect(open.message).toBe('Controller báo máy lỗi.')
+  })
+
+  it('dừng ngắn dưới ngưỡng xưởng → không ghi dòng ngừng nào', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T00:00:30.000Z'))
+    service.now = () => Date.parse('2026-08-24T00:02:00.000Z')
+    service.sweepDowntime()
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:02:00.000Z'))
+    expect(await downtimeRows(id)).toHaveLength(0)
+  })
+
+  it('dừng lâu quá ngưỡng → sweep mở long-stop rồi đóng kèm thời lượng', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T00:00:00.000Z'))
+    service.now = () => Date.parse('2026-08-24T00:06:00.000Z')
+    service.sweepDowntime()
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:10:00.000Z'))
+    const rows = await downtimeRows(id)
+    const open = rows.find((entry) => entry.action === 'machine.downtime.open')
+    const close = rows.find((entry) => entry.action === 'machine.downtime.close')
+    expect(open.after).toMatchObject({ reason: 'long-stop', status: 'stopped' })
+    expect(close.after).toMatchObject({ reason: 'long-stop', status: 'running', durationSeconds: 600 })
+  })
+
+  it('sweep chạy nhiều nhịp chỉ ghi đúng một dòng mở cho một episode', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T00:00:00.000Z'))
+    for (const t of ['00:06:00', '00:07:00', '00:08:00']) {
+      service.now = () => Date.parse(`2026-08-24T${t}.000Z`)
+      service.sweepDowntime()
+    }
+    const opens = (await downtimeRows(id)).filter((entry) => entry.action === 'machine.downtime.open')
+    expect(opens).toHaveLength(1)
+  })
+})

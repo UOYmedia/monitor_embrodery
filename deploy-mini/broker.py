@@ -19,6 +19,24 @@ def log(*a):
         with open(LOG,'a') as f: f.write(line+'\n')
     print(line, flush=True)
 
+def _xoay_log():
+    """[V1] Doi ten broker.log cu thay vi cat trang, de con lich su ma soi.
+    Giu toi da 10 ban gan nhat."""
+    try:
+        if os.path.exists(LOG) and os.path.getsize(LOG) > 0:
+            os.rename(LOG, LOG + '.' + time.strftime('%Y%m%d-%H%M%S'))
+    except OSError:
+        pass
+    try:
+        d = os.path.dirname(LOG) or '.'
+        cu = sorted(f for f in os.listdir(d)
+                    if f.startswith(os.path.basename(LOG) + '.'))
+        for f in cu[:-10]:
+            try: os.remove(os.path.join(d, f))
+            except OSError: pass
+    except OSError:
+        pass
+
 def xxtea_encrypt(v, key):
     v=list(v); n=len(v); DELTA=0x9E3779B9; m=0xFFFFFFFF
     q=6+52//n; s=0; z=v[n-1]
@@ -328,7 +346,7 @@ def _dev_of(entry, topic):
     return last
 
 def _item(p):
-    return {'barCodeID':p['barCodeID'],'patternName':p['patternName'],'type':p['type'],
+    return {'barCodeID':p['barCodeID'],'patternNetID':p['barCodeID'],'patternName':p['patternName'],'type':p['type'],
             'patternSize':p['patternSize'],'drawingNeedleCn':p['drawingNeedleCn'],
             'drawingColorCn':p['drawingColorCn'],'drawingWidth':p['drawingWidth'],
             'drawingHeight':p['drawingHeight'],'drawingFileLen':p['drawingFileLen']}
@@ -339,18 +357,29 @@ def _reply(dev, base_topic, req_hdr, body):
     topic=base_topic+'/'+dev
     return deliver(topic,ct.encode()), topic
 
-def _send_browse(dev, hdr):
+def _send_browse(dev, hdr, req_body=None):
+    rq=req_body if isinstance(req_body,dict) else {}
     items=[_item(p) for p in PATTERNS.values()]
-    rb={'items':items,'totalNum':len(items),'iCount':len(items),'iPage':1,'nPage':1}
+    ipage=int(rq.get('iPage',0) or 0)
+    per=int(rq.get('iCount',0) or 0) or (len(items) or 1)
+    npage=max(1,(len(items)+per-1)//per)
+    rb={'items':items,'totalNum':len(items),'iCount':len(items),
+        'iPage':ipage,'nPage':npage,
+        'userId':rq.get('userId',0),'companyId':rq.get('companyId',0)}
     tot=0
     for base in ('emCAD/toA15/v1/pattern/browse/reply','emCAD/server/v1/pattern/browse/reply'):
         n,rt=_reply(dev,base,hdr,rb); tot+=n
-    log('  [browse REPLY] items=%d giao %d sub (dev=%s)'%(len(items),tot,dev))
+    log('  [browse REPLY] items=%d iPage=%d nPage=%d uid=%s cid=%s giao %d sub (dev=%s)'%(len(items),ipage,npage,rb['userId'],rb['companyId'],tot,dev))
     return tot
 
 def _find(body):
     code=str(body.get('barCodeID','')) if body.get('barCodeID') is not None else ''
     p=PATTERNS.get(code)
+    if not p:
+        nid=body.get('patternNetID')
+        if nid not in (None,''):
+            p=PATTERNS.get(str(nid))
+            if p: code=p['barCodeID']
     if not p:
         pn=body.get('patternName')
         p=next((x for x in PATTERNS.values() if x['patternName']==pn),None)
@@ -363,7 +392,7 @@ def handle_pattern_browse(entry, topic, payload):
     except Exception as e: log('  [browse] parse lỗi',e); js={}
     body=js.get('body',{})
     log('  [browse REQ] dev=%s body=%s'%(dev,json.dumps(body,ensure_ascii=False)[:220]))
-    _send_browse(dev,js.get('header',{}))
+    _send_browse(dev,js.get('header',{}),body)
 
 def handle_pattern_query(entry, topic, payload):
     dev=_dev_of(entry,topic)
@@ -460,6 +489,13 @@ def client_thread(sock, addr):
     subs=set(); entry=[sock,subs,{'dev':None}]
     with lock: clients.append(entry)
     log('== KẾT NỐI TCP từ', addr)
+    # [V2] Han doc ban dau: ai noi CONNECT khong xong trong 60s thi cat.
+    # Sau khi doc duoc keepalive cua may se siet lai theo dung con so may khai.
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        sock.settimeout(60)
+    except OSError:
+        pass
     try:
         while True:
             hdr=read_exact(sock,1)
@@ -475,12 +511,32 @@ def client_thread(sock, addr):
                 cid,i=rd_str(body,i)
                 log('CONNECT proto=%s lvl=%d cid=%s keepalive=%d cleanSession=%d cflags=0x%02x'%(pn.decode(errors='replace'),level,cid.decode(errors='replace'),ka,(cflags>>1)&1,cflags))
                 _m=_re.match(r'([0-9A-Fa-f]{12})',cid.decode(errors='replace'))
-                if _m: entry[2]['dev']=_m.group(1); log('  [dev] = %s (từ clientId)'%_m.group(1))
+                if _m:
+                    entry[2]['dev']=_m.group(1); log('  [dev] = %s (từ clientId)'%_m.group(1))
+                    # [V3] Chuan MQTT: cung clientId thi phien CU phai bi da ra.
+                    # Neu khong, xac chet nam lai trong clients va deliver() dem nham.
+                    _cu=[]
+                    with lock:
+                        for _c in list(clients):
+                            if _c is not entry and _c[2].get('dev')==_m.group(1):
+                                _cu.append(_c); clients.remove(_c)
+                    for _c in _cu:
+                        log('  [V3] đá phiên cũ cùng dev %s'%_m.group(1))
+                        try: _c[0].shutdown(socket.SHUT_RDWR)
+                        except OSError: pass
+                        try: _c[0].close()
+                        except OSError: pass
                 if ENUM_ON:  # ghi danh tính máy (CONNECT metadata) vào catalog
                     with _enum_lock:
                         _enum['connect']={'clientId':cid.decode(errors='replace'),
                                           'proto':pn.decode(errors='replace'),
                                           'level':level,'keepalive':ka,'at':_iso()}
+                # [V2] May khai keepalive=ka giay. Chuan MQTT: qua 1.5*ka ma im
+                # thi coi nhu chet. Lay 2*ka cho rong tay, toi thieu 45s.
+                try:
+                    sock.settimeout(max(45, ka * 2) if ka else 90)
+                except OSError:
+                    pass
                 sock.sendall(bytes([0x20,0x02,0x00,0x00]))  # CONNACK ok
             elif typ==3:  # PUBLISH
                 qos=(flags>>1)&3
@@ -541,6 +597,9 @@ def client_thread(sock, addr):
                 log('DISCONNECT', addr); break
             else:
                 log('pkt type',typ,'rl',rl)
+    except socket.timeout:
+        # [V2] Day chinh la truong hop truoc kia treo vinh vien.
+        log('== IM QUÁ LÂU, cắt kết nối', addr, 'dev=%s' % entry[2].get('dev'))
     except Exception as e:
         log('thread err',addr,e)
     finally:
@@ -723,7 +782,7 @@ def catalog_writer():
         time.sleep(30)
 
 def main():
-    open(LOG,'w').close()
+    _xoay_log()
     load_patterns()
     threading.Thread(target=ctrl_watcher,daemon=True).start()
     if ENUM_ON:
