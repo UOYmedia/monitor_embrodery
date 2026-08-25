@@ -44,6 +44,14 @@ Tài liệu này đứng **trên** ba PRD đã có và không chép lại chúng
 - **Nhóm L (báo lỗi) chỉ có nửa dưới.** Từ 21/08 tới nay máy **chỉ** phát `state=15` (nghỉ),
   `curStitch` luôn `0`, và **không hề có trường `stateID`/`wstrStatusDesc`** trong dữ liệu thật.
   Nhánh "lỗi + mã lỗi" chưa được một byte dữ liệu thật nào chống lưng.
+- **Bốn hàm tính ra con số cuối cùng người ta đọc cũng vừa mới có test đầu tiên** (L‑07…L‑10,
+  ngày 25/08) — và tìm ra **bốn lỗi thật** nữa. Ba lỗi ở `latestSignificantEvent` đều dẫn tới
+  cùng một kết cục: hoặc bịa ra `mã undefined` rồi đóng dấu `actor: bridge` như thể máy đã khai
+  ra nó, hoặc ném lỗi làm mất luôn dòng ghi nhận lần lỗi. Lỗi thứ tư ở `durationSeconds`: một mốc
+  thời gian thiếu múi giờ được đọc theo giờ **máy chủ**, nên cùng một lần ngừng 12 phút 30 giây
+  cho ra **"0 giây"** nếu bridge chạy ở Los Angeles và **"7 giờ 12 phút"** nếu chạy ở Việt Nam.
+  Cả bốn đã vá. Điều đáng ghi không phải là các bản vá, mà là: những hàm này nằm ở cuối đường —
+  cái sai của chúng đi thẳng vào sổ audit dưới danh nghĩa **sự thật đo được**.
 - **Trước khi giao mã cho đội khác, có một việc bắt buộc**: xem mục 6.
 
 ---
@@ -246,11 +254,11 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | L‑03 | L0 | Không có `stateID` thì ngã về `state` | Không bịa mã lỗi | `test_frame.py` [5] | 🟩 |
 | L‑04 | L0 | Cắt đúng trần `code`/`message`/`id` của hợp đồng | Không tràn trần | `test_frame.py` [6] | 🟩 |
 | L‑05 | L0 | `id` ổn định theo trạng thái, đổi khi trạng thái đổi | Không nhân bản sự kiện | `test_frame.py` [7] | 🟩 |
-| L‑06 | L2 | `events[].code` >40 ký tự / `message` >400 | Bridge **từ chối cả gói**, lỗi rõ ràng | vitest hợp đồng | ✅ |
-| L‑07 | L1 | `isDowntime` / `isImmediateDowntime` cho cả 5 trạng thái | `fault`/`stopped`/`paused` = downtime; `running`/`unknown` = không | `downtime.test.mjs` | ✅ |
-| L‑08 | L1 | `durationSeconds` khi `to < from`, ISO sai, lệch múi giờ | Không số âm; ISO sai → lỗi, không NaN lặng lẽ | `downtime.test.mjs` | ✅ |
-| L‑09 | L1 | `formatSpokenDuration` 0s · 59s · 61s · 3599s · 24h+ | Chuỗi tiếng Việt đọc được, không "0 phút 0 giây" | `downtime.test.mjs` | ✅ |
-| L‑10 | L1 | `latestSignificantEvent` khi rỗng / toàn `info` / lẫn `critical` | Chọn đúng, rỗng → `null`, không ném | `downtime.test.mjs` | ✅ |
+| L‑06 | L2 | `events[].code` >40 ký tự / `message` >400 | ✅ 25/08: 40/400 ký tự lọt **nguyên văn**; 41/401 ném `ContractError` nêu đúng `events[1].code`, `status 400`. Hai sự kiện lành trong cùng gói **không** lọt — nhận nửa lời khai là tự bịa ra một khoảnh khắc chưa từng có. Đếm theo **ký tự**, không theo byte (400 ký tự tiếng Việt = >400 B vẫn qua) | `contract.test.mjs` | 🟩 |
+| L‑07 | L1 | `isDowntime` / `isImmediateDowntime` cho cả 5 trạng thái | ✅ 25/08: kiểm bằng **bảng đủ 5 trạng thái** cho cả hai hàm (thêm trạng thái mới mà quên xếp loại thì đỏ ngay, không lặng lẽ rơi vào "không"). `unknown` = **không** ngừng — mất tín hiệu không phải máy đứng, xếp nhầm thì tổng giờ ngừng của xưởng thành thước đo chất lượng đường mạng. `'Fault'`/`' fault '`/rỗng/`null` không lọt | `downtime.test.mjs` | 🟩 |
+| L‑08 | L1 | `durationSeconds` khi `to < from`, ISO sai, lệch múi giờ | ✅ 25/08 — **tìm ra lỗi thật**: mốc thiếu múi giờ (`2026-08-24T00:00:00`) không hề báo lỗi, `Date.parse` đọc nó theo giờ **máy chủ**. Cùng một lần ngừng 12′30″, bridge chạy ở Los Angeles ghi **"0 giây"** còn chạy ở Việt Nam ghi **"7 giờ 12 phút"** — hai con số bịa khác nhau, im lặng. Nay bắt buộc `isIsoTimestamp` (có `Z` hoặc `±HH:MM`), thiếu thì `null` = "không rõ". Kèm: `to<from`→`0` (không âm), `+07:00` ≡ `Z`, làm tròn phần lẻ dưới giây, `'14/08/2026'`/epoch ms → `null` | `downtime.test.mjs` | 🟩 |
+| L‑09 | L1 | `formatSpokenDuration` 0s · 59s · 61s · 3599s · 24h+ | ✅ 25/08: bảng 0 · 59 · 60 · 61 · 3.599 · 3.600 · 86.400 · 90.061 giây, không chuỗi nào có bậc rỗng ("1 giờ 0 phút") hay `NaN`/`undefined`. Quá 1 giờ thì **bỏ phần giây** — có chủ ý, đã ghi vào test để lần sau không ai "sửa" lại. Mọi đầu vào không phải số giây hữu hạn không âm → `null` | `downtime.test.mjs` | 🟩 |
+| L‑10 | L1 | `latestSignificantEvent` khi rỗng / toàn `info` / lẫn `critical` | ✅ 25/08 — **tìm ra ba lỗi thật**, đều dẫn tới bịa mã lỗi hoặc mất dòng ghi nhận: (1) truyền `null` thì **ném `TypeError`** ngay trên đường ghi sổ lúc máy vào lỗi — hỏng đúng lúc cần nhất; (2) truyền một **chuỗi** thì `for…of` duyệt theo **ký tự** và trả về ký tự đầu như một sự kiện, dòng audit in ra `mã undefined` đóng dấu `actor: bridge`; (3) một sự kiện có **mốc thời gian hỏng chặn đứng** mọi sự kiện thật đến sau nó (`Date.parse` → `NaN`, mọi so sánh đều false) ⇒ mã lỗi báo cho xưởng đổi theo thứ tự adapter xếp mảng. Đã vá cả ba; thêm: sự kiện **không có mã** thì không nêu tên (thà thiếu còn hơn `mã undefined`) | `downtime.test.mjs` | 🟩 |
 | L‑11 | L1 | Mở lần lỗi: `fault` đầu tiên sau trạng thái khác | ✅ 25/08: mốc lấy từ `observedAt` của controller; đồng hồ bridge chỉ vào `ghiLuc` | `fault-episodes.test.mjs` | 🟩 |
 | L‑12 | L1 | Đóng lần lỗi: `fault` → `running` | ✅ 25/08: 2.550 s khớp đúng mốc controller (đơn vị) + đo lại đầu-cuối qua HTTP thật | `fault-episodes.test.mjs` · `loi-may-e2e.test.mjs` | 🟩 |
 | L‑13 | L1 | `fault` → `unknown` (trôi tín hiệu) | ✅ 25/08: `chuaBietVi='mat-tin-hieu'`, `thoiLuongGiay=null` (KHÔNG phải 0), kèm câu chữ cho màn hình. Đo cả ở tầng sổ lẫn đầu-cuối | `fault-episodes.test.mjs` · `loi-may-e2e.test.mjs` | 🟩 |
@@ -315,9 +323,9 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | --- | --- | --- | --- | --- | --- |
 | K — Kết nối | 26 | **21** | **0** | 3 | 2 |
 | S — Trạng thái | 14 | **11** | **0** | 1 | 2 |
-| L — Báo lỗi | 33 | **21** | **8** | 0 | 4 |
+| L — Báo lỗi | 33 | **26** | **3** | 0 | 4 |
 | P — Đẩy mẫu | 23 | **9** | **0** | 6 | 8 |
-| **Cộng** | **96** | **62** | **8** | **10** | **16** |
+| **Cộng** | **96** | **67** | **3** | **10** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
 
@@ -369,6 +377,24 @@ chưa ai biết con A15 đánh số trạng thái lỗi là bao nhiêu (máy m�
 đường còn lại chạy đúng. Mắt xích còn thiếu là mắt xích đầu tiên — và đó đúng là **L‑30/L‑31**,
 cổng của cả nhóm, cần một ca máy hỏng thật ở xưởng. Không được báo bất kỳ con số "máy hỏng bao
 nhiêu lâu" nào từ máy thật trước khi L‑30 xanh.
+
+**L‑06…L‑10 xanh ngày 25/08 — và đây là lần đầu bốn hàm này được kiểm.** Chúng nhỏ, thuần
+tính toán, không chạm mạng — đúng loại code người ta hay tin là "chắc đúng rồi". Bốn lỗi thật
+tìm được đều có chung một hình dạng: **hàm không hề báo sai, nó trả về một con số/một mã trông
+hoàn toàn bình thường**. `durationSeconds('2026-08-24T00:00:00', …)` không ném, không log, chỉ
+lặng lẽ trả `0` ở múi giờ này và `25.950` ở múi giờ kia. `latestSignificantEvent('critical')`
+không ném, nó trả về ký tự `'c'` và dòng audit thành `Controller báo máy lỗi · mã undefined`.
+Không lớp nào phía sau bắt lại được, vì phía sau chúng chỉ còn cái sổ.
+
+Hai chỗ **cố ý giữ nguyên**, đã chốt bằng test để lần sau không ai "sửa" nhầm: (a) `to < from`
+vẫn kẹp về `0` chứ không thành `null` — PRD đòi "không số âm", và sau bản vá múi giờ thì nguồn
+sinh ra `to < from` gần như chỉ còn đồng hồ nhảy lùi; (b) quá 1 giờ thì bỏ phần giây lẻ
+(3.601 s → "1 giờ") — ở thang giờ, một giây lẻ chỉ làm dòng báo dài ra.
+
+Đối chứng âm: bẻ gãy lần lượt tám chốt (chặn đầu vào không phải mảng, bỏ sự kiện không mã, mốc
+hỏng không che sự kiện thật, bắt buộc múi giờ, `unknown` không phải ngừng, không nối bậc rỗng,
+trần 40 ký tự của `code`, từ chối cả gói thay vì bỏ riêng sự kiện hỏng) → mỗi lần đúng ca tương
+ứng đỏ, không ca nào ngoài phạm vi.
 
 L‑27/L‑28/L‑29 là ca giao diện (happy-dom) và **thuộc repo trên máy chính**, không làm được ở
 Mini (bản Mini không có thư mục `src/`). Xem mục "hai repo đã lệch nhau".

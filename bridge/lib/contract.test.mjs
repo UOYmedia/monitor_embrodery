@@ -173,3 +173,62 @@ describe('id dự phòng của sự kiện', () => {
     expect(idCua(xuoi, 'E12')).not.toBe(idCua(xuoi, 'E07'))
   })
 })
+
+describe('L‑06 · giới hạn độ dài của events[]', () => {
+  const su = (extra) => ({ code: 'E12', severity: 'warning', occurredAt: '2026-08-23T02:00:00Z', ...extra })
+  const goi = (events) => ({ observedAt: '2026-08-23T03:00:00Z', status: 'fault', events })
+  const bat = (payload) => {
+    try { normalize(payload); return null } catch (error) { return error }
+  }
+
+  it('nhận đúng mức trần: code 40 ký tự, message 400 ký tự', () => {
+    const snapshot = normalize(goi([su({ code: 'C'.repeat(40), message: 'M'.repeat(400) })]))
+    // Giữ NGUYÊN VĂN tới ký tự cuối. Cắt bớt cho vừa còn tệ hơn từ chối: mã lỗi bị cắt vẫn trông
+    // như một mã lỗi thật, và người thợ tra cứu nó trong sổ tay Dahao sẽ không tìm thấy gì.
+    expect(snapshot.events[0].code).toHaveLength(40)
+    expect(snapshot.events[0].message).toHaveLength(400)
+  })
+
+  it('code quá 40 ký tự → từ chối CẢ GÓI, không phải bỏ riêng sự kiện đó', () => {
+    const loi = bat(goi([su({ code: 'A' }), su({ code: 'B'.repeat(41) }), su({ code: 'C' })]))
+    expect(loi).toBeInstanceOf(ContractError)
+    // Chỉ tên trường sai mới đủ để người sửa adapter biết sửa ở đâu; "payload không hợp lệ" thì không.
+    expect(loi.field).toBe('events[1].code')
+    expect(loi.message).toMatch(/events\[1\]\.code vượt quá 40 ký tự/)
+    expect(loi.status).toBe(400)
+    // Hai sự kiện lành KHÔNG được lọt vào snapshot. Một gói telemetry là một lời khai tại một
+    // khoảnh khắc; nhận nửa lời khai rồi ghi vào sổ nghĩa là ta tự bịa ra một khoảnh khắc chưa
+    // từng có, và không dòng nào trong sổ nói rằng nó thiếu.
+    expect(bat(goi([su({ code: 'A' }), su({ code: 'B'.repeat(41) })]))).toBeInstanceOf(ContractError)
+  })
+
+  it('message quá 400 ký tự → từ chối cả gói, nêu đúng trường', () => {
+    const loi = bat(goi([su({ message: 'M'.repeat(401) })]))
+    expect(loi).toBeInstanceOf(ContractError)
+    expect(loi.field).toBe('events[0].message')
+    expect(loi.message).toMatch(/vượt quá 400 ký tự/)
+  })
+
+  it('đo sau khi cắt khoảng trắng, nên 40 ký tự kèm khoảng trắng vẫn qua', () => {
+    const snapshot = normalize(goi([su({ code: `  ${'C'.repeat(40)}  ` })]))
+    expect(snapshot.events[0].code).toBe('C'.repeat(40))
+    // Nhưng 41 ký tự thật thì khoảng trắng không cứu được.
+    expect(bat(goi([su({ code: `  ${'C'.repeat(41)}  ` })]))).toBeInstanceOf(ContractError)
+  })
+
+  it('đếm theo KÝ TỰ chứ không theo byte — lời máy bằng tiếng Việt không bị từ chối oan', () => {
+    // Thông báo controller gửi có thể là tiếng Việt có dấu: 400 ký tự như dưới đây chiếm hơn 400
+    // byte UTF‑8. Nếu chỗ nào đó đếm byte thì cả gói telemetry biến mất chỉ vì câu mô tả có dấu.
+    const cau = 'Đứt chỉ kim số năm—'
+    const vua = cau.repeat(50).slice(0, 400)
+    const qua = cau.repeat(50).slice(0, 401)
+    // Điều kiện của chính ca này: hai chuỗi phải đúng 400/401 ký tự và không có khoảng trắng ở
+    // hai đầu (nếu có, phép `trim()` của hợp đồng sẽ ăn mất và ca này đo nhầm thứ khác).
+    expect([vua.length, vua.trim().length]).toEqual([400, 400])
+    expect([qua.length, qua.trim().length]).toEqual([401, 401])
+    expect(Buffer.byteLength(vua, 'utf8')).toBeGreaterThan(400)
+
+    expect(normalize(goi([su({ message: vua })])).events[0].message).toBe(vua)
+    expect(bat(goi([su({ message: qua })]))).toBeInstanceOf(ContractError)
+  })
+})
