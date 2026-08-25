@@ -40,3 +40,6 @@ bat-goi-*.jsonl
 
 # Báo cáo độ phủ: sinh lại bằng `npm run coverage`
 coverage
+
+# Số đo T_chuẩn bị do broker tự nối thêm mỗi lần nạp mẫu — là kết quả đo, không phải mã.
+deploy-mini/patterns-nap.csv

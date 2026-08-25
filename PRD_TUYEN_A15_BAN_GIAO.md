@@ -35,8 +35,12 @@ Tài liệu này đứng **trên** ba PRD đã có và không chép lại chúng
 - **Điểm sáng có thật:** trong 4 ngày máy chỉ phải quay số vào broker **7 lần**, nhịp `state`
   đều **1,54 giây/bản** (110.072 bản tin). Một khi nối được thì tuyến bám rất chắc — cái yếu
   nằm ở *hạ tầng quanh nó*, không nằm ở giao thức.
-- **Nhóm P (đẩy mẫu) vẫn chưa từng chạy một lần nào với máy thật**, và không phải vì mã sai.
-  Máy bị chặn ở mức `registration` trên HMI. Toàn bộ phía server đã kiểm hết và đúng.
+- **Nhóm P (đẩy mẫu) vẫn chưa từng chạy một lần nào với máy thật.** Máy bị chặn ở mức
+  `registration` trên HMI. Câu "toàn bộ phía server đã kiểm hết và đúng" ở bản trước là **nói
+  quá** — hôm 25/08 nhóm P mới có bài test đầu tiên, và nó tìm ra ngay **hai lỗi thật**: cửa nạp
+  mẫu không kiểm gì cả (file rỗng, ảnh PNG đổi đuôi, file .DST cụt đều được nạp và sẵn sàng đẩy
+  xuống máy thêu), và khi hai file trùng mã thì bản nào thắng phụ thuộc thứ tự `os.walk` — tức là
+  khác nhau giữa các máy. Cả hai đã vá, xem mục nhóm P.
 - **Nhóm L (báo lỗi) chỉ có nửa dưới.** Từ 21/08 tới nay máy **chỉ** phát `state=15` (nghỉ),
   `curStitch` luôn `0`, và **không hề có trường `stateID`/`wstrStatusDesc`** trong dữ liệu thật.
   Nhánh "lỗi + mã lỗi" chưa được một byte dữ liệu thật nào chống lưng.
@@ -278,16 +282,16 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 
 | ID | Tầng | Ca test | Kỳ vọng | Bằng chứng | Chạy được? |
 | --- | --- | --- | --- | --- | --- |
-| P‑01 | L1 | Đọc header `.DST` (`ST`/`CO`/`+X`/`-X`/`+Y`/`-Y`) | Số mũi, số màu, khổ khớp 2 file thật (4.341 mũi/13.536 B · 10.605 mũi/32.328 B) | vitest với file thật | ✅ |
-| P‑02 | L1 | `.DST` hỏng / cụt / không phải DST | Lỗi rõ ràng, **không** nạp vào `PATTERNS` | vitest | ✅ |
-| P‑03 | L1 | Sinh `barCodeID`: cùng đầu vào → cùng mã; khác → khác | Ổn định, chỉ chữ số, ≤ trần của `_item` | vitest | ✅ |
-| P‑04 | L0 | Thả file vào `patterns/<code>/x.dst` → `load_patterns()` | Log `[PATTERNS] nạp N mẫu`, `PATTERNS[code]` đủ 10 khoá của `_item` | `broker.log` | ✅ |
-| P‑05 | L0 | Trùng `barCodeID` ở hai thư mục | Không sập, ghi log cảnh báo, chốt rõ bản nào thắng | `broker.log` | ✅ |
-| P‑06 | L0 | **Đo `T_chuẩn bị`** (`t1 → t2`) | Con số mili-giây, tách chặng | Log có mốc, xuất CSV | ✅ |
-| P‑07 | L0 | `push-cmd.txt` ← `browse` khi chưa có máy nối | Log `[CTRL] chưa có máy nối`, không sập | `broker.log` | ✅ |
-| P‑08 | L0 | Payload `browse reply` giải mã ngược được bằng đúng AES giao thức | Round-trip khớp byte, **không in khoá ra bất kỳ đâu** | Self-test python offline | ✅ |
-| P‑09 | L0 | `type` của `_item` đang là chuỗi `'DST'` — máy chờ chuỗi hay số? | Chốt bằng bằng chứng, không đoán | Đối chiếu grep `DesignServer.exe` | ✅ |
-| P‑10 | L0 | `_send_browse` lặp đúng `iPage`/`userId`/`companyId` máy hỏi | Reply có `iPage` bằng máy hỏi, `nPage` tính theo `iCount` | `hmi-watch.log` | 🟡 |
+| P‑01 | L1 | Đọc header `.DST` (`ST`/`CO`/`+X`/`-X`/`+Y`/`-Y`) | ✅ 25/08 trên **2 file .DST thật**: 4.341 mũi/13.536 B/khổ 1408×233 và 10.605 mũi/32.328 B/khổ 1210×513, khớp từng con số. Thêm một file tự dựng để bài chạy được ở máy không có sẵn mẫu | `test_mau_dst.py` | 🟩 |
+| P‑02 | L1 | `.DST` hỏng / cụt / không phải DST | ✅ 25/08 — **tìm ra lỗi thật**: trước bản vá, cả 6 kiểu file xấu (rỗng 0 B, PNG đổi đuôi, văn bản, header cụt, thân cụt, khai 0 mũi) đều được nạp và sẵn sàng đẩy xuống máy. Nay có `_dst_hop_le()`: mỗi file bị loại có một dòng nói rõ vì sao, file tốt vẫn vào | `test_mau_dst.py` | 🟩 |
+| P‑03 | L1 | `barCodeID` **suy từ đường dẫn** (không có hàm sinh): thư mục số → lấy thư mục, không thì lấy đầu tên file | ✅ 25/08: hai lần nạp cùng thư mục ra cùng mã; mã là chuỗi chữ số, `barCodeID` = `patternNetID`. Mã **không** phải chữ số (vd `AO-01`) thì vẫn nạp nhưng có cảnh báo — chưa có bằng chứng nào nói A15 nhận hay từ chối mã chữ, nên không chặn bừa | `test_mau_dst.py` | 🟩 |
+| P‑04 | L0 | Thả file vào `patterns/<code>/x.dst` → `load_patterns()` | ✅ 25/08: đúng dòng `[PATTERNS] nạp 3 mẫu`, `_item()` đúng 10 khoá không thừa không thiếu, và cả 10 khoá đều xuống được JSON (không lọt `bytes`/`None` vào dây) | `test_mau_dst.py` | 🟩 |
+| P‑05 | L0 | Trùng `barCodeID` ở hai thư mục | ✅ 25/08 — **tìm ra lỗi thật**: bản thắng do thứ tự `os.walk` quyết định, mà thứ tự đó không được hứa hẹn ⇒ cùng một thư mục `patterns/` cho ra hai kết quả khác nhau trên hai máy, không dòng log nào. Nay sắp đường dẫn trước khi nạp (**đường dẫn nhỏ hơn theo thứ tự chữ thì thắng**) và nêu tên bản bị bỏ | `test_mau_dst.py` | 🟩 |
+| P‑06 | L0 | **Đo `T_chuẩn bị`** (`t1 → t2`) | ✅ 25/08: **0,1–0,5 ms** cho 2 mẫu thật / 45.864 B (lần đầu 0,5 ms lúc đĩa còn nguội, các lần sau 0,1 ms). Tách 3 chặng (liệt kê · đọc · kiểm) trong log và nối một dòng vào `patterns-nap.csv` mỗi lần nạp | `test_mau_dst.py` · `patterns-nap.csv` | 🟩 |
+| P‑07 | L0 | `push-cmd.txt` ← `browse` khi chưa có máy nối | ✅ 25/08: cả 4 lệnh (`browse`, `query`, `data`, lệnh bịa) đều ra đúng dòng `[CTRL] chưa có máy nối` và không ném ra ngoài | `test_mau_dst.py` | 🟩 |
+| P‑08 | L0 | Payload giải mã ngược được bằng đúng AES giao thức | ✅ 25/08: `pattern/data` mang trọn file 32 KB đi qua `aes_enc_json` → `dec_json` về **khớp từng byte**, `mesgNo` giữ nguyên; cắt mảnh rồi ghép lại cũng khớp byte (nền của P‑14). Bài test chỉ đi qua hàm, không chạm giá trị khoá | `test_mau_dst.py` | 🟩 |
+| P‑09 | L0 | `type` của `_item` đang là chuỗi `'DST'` — máy chờ chuỗi hay số? | ✅ 25/08: chốt được **phía ta** — `type` là chuỗi `'DST'` ở cả ba chỗ phát ra (`_item`, `query/ack` tìm thấy, `query/ack` không tìm thấy), và đuôi `.DST` viết hoa vẫn nạp. Máy chờ chuỗi hay số thì **vẫn chưa biết** và chỉ P‑16/P‑17 mới trả lời được; ca này khoá hiện trạng lại để nếu ai đổi thì đỏ ngay | `test_mau_dst.py` | 🟩 |
+| P‑10 | L0 | `_send_browse` lặp đúng `iPage`/`userId`/`companyId` máy hỏi | ⚠ 25/08 đọc mã thấy: `_send_browse` **lặp lại `iPage` máy hỏi và tính `nPage` theo `iCount`, nhưng KHÔNG cắt trang** — nó luôn gửi toàn bộ danh sách. Hôm nay vô hại (chỉ có 2 mẫu) và **cố tình chưa sửa**: chưa có một lần `browse` thật nào để biết máy chờ gì, sửa mò lúc này là đoán giao thức. Chốt lại ở đây để P‑10 đo đúng cái cần đo | `hmi-watch.log` | 🟡 |
 | P‑11 | L0 | `handle_pattern_query` với mã có thật | `query/ack` `isFind=1`, `patternSize` = cỡ file thật | `broker.log` | 🟡 |
 | P‑12 | L0 | `handle_pattern_query` với mã không có | `isFind=0`, không sập, không trả mẫu khác | `broker.log` | 🟡 |
 | P‑13 | L0 | `handle_pattern_download` `fileStart=0`, `byteLen=0` | Trả **trọn** file, b64 đúng độ dài | `broker.log` | 🟡 |
@@ -312,10 +316,46 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | K — Kết nối | 26 | **21** | **0** | 3 | 2 |
 | S — Trạng thái | 14 | **11** | **0** | 1 | 2 |
 | L — Báo lỗi | 33 | **21** | **8** | 0 | 4 |
-| P — Đẩy mẫu | 23 | 0 | 9 | 6 | 8 |
-| **Cộng** | **96** | **53** | **17** | **10** | **16** |
+| P — Đẩy mẫu | 23 | **9** | **0** | 6 | 8 |
+| **Cộng** | **96** | **62** | **8** | **10** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
+
+**Nhóm P: chín ca không cần máy đã xanh ngày 25/08 — và chúng tìm ra hai lỗi thật.**
+Trước hôm nay nhóm P không có một dòng test nào; `deploy-mini/tests/test_mau_dst.py` là bài đầu
+tiên. Hai lỗi:
+
+1. **Cửa nạp mẫu không kiểm gì cả.** Bất kỳ file nào có đuôi `.dst` đều vào `PATTERNS`: file
+   rỗng 0 byte, một ảnh PNG đổi tên, một file `.DST` sao chép dở dang khai 5.000 mũi nhưng thân
+   chỉ có 665 byte. Máy thêu **không kiểm hộ ta** — nó nhận gì thì thêu nấy — nên chỗ đầu tiên
+   lộ ra một file rác sẽ là một mẻ hàng hỏng trên khung. Nay có `_dst_hop_le()`: đủ dài, có
+   `LA:`, có `ST:` > 0, và thân file phải đủ `3 × số mũi` byte.
+2. **Trùng mã thì bản thắng không cố định.** `os.walk` không hứa thứ tự thư mục, nên cùng một
+   thư mục `patterns/` có thể cho hai kết quả khác nhau trên hai máy — và không có một dòng log
+   nào. Nay sắp đường dẫn trước khi nạp, chốt "đường dẫn nhỏ hơn theo thứ tự chữ thì thắng", và
+   nêu tên bản bị bỏ.
+
+Đối chứng âm đã chạy: bẻ gãy lần lượt bảy chốt (cửa kiểm `.DST`, cảnh báo mã chữ, chốt bản thắng,
+phép sắp đường dẫn, xuất CSV, tách chặng đo, đếm file bị bỏ) → mỗi lần đúng ca tương ứng đỏ.
+
+**Con số duy nhất của nhóm P đo được hôm nay: `T_chuẩn bị` = 0,1–0,5 ms.** Nói cách khác, chặng
+nằm trong tay ta gần như bằng không. Toàn bộ thời gian thật của việc "đẩy mẫu" nằm ở hai chặng
+còn lại: `T_chờ máy hỏi` (máy quyết định, ta không gọi được máy) và `T_truyền` (cần máy hỏi thật).
+Vậy nên khi ai hỏi "đẩy mẫu mất bao lâu", câu trả lời trung thực hôm nay là: **chưa biết, và cái
+chưa biết đó không nằm ở phía ta.**
+
+Hai điều đọc được từ header 2 file `.DST` thật, cần **mắt người ở xưởng** xác nhận, không đoán ở đây:
+
+- Trường `LA:` trong file chỉ chứa **8 ký tự** (`41440742`), tức mã đơn 10 chữ số `4144074237`
+  đã bị chính phần mềm xuất file cắt cụt. Trong khi đó `patternName` ta gửi lên là tên file
+  (`4144074237_1_Front`). HMI hiện cái nào thì **P‑19** phải nhìn tận mắt.
+- `CO:` của hai file là `0` và `1`. Theo chuẩn Tajima đó là **số lần đổi màu**, nên số màu thật
+  là 1 và 2. Ta đang gửi thẳng `CO` vào `drawingColorCn`. Nếu máy hiểu trường đó là *số màu* thì
+  file thứ nhất sẽ hiện "0 màu". Cũng là việc của **P‑19**; sửa bây giờ là đoán.
+
+⚠ Ranh giới của cả chín ca: chúng chứng minh **phía server** đọc mẫu, dựng danh sách, cắt mảnh và
+mã hoá đúng. Chúng KHÔNG chứng minh máy nhận được mẫu. Máy chưa từng gửi `pattern/query` lần nào
+— đó là P‑16/P‑17, và cổng vẫn là mức `registration` trên HMI.
 
 **Nhóm L: đã xanh L‑11…L‑26 ngày 25/08, và phải đọc kèm một giới hạn.** Sổ lần lỗi
 (`bridge/lib/fault-episodes.mjs`) là code MỚI viết cho nhóm này — trước đó hệ thống không hề có

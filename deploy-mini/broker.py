@@ -319,25 +319,89 @@ def _dst_meta(raw):
         return int(m.group(1)) if m else 0
     return {'needle':g('ST'),'color':g('CO'),'width':g('+X')+g('-X'),'height':g('+Y')+g('-Y')}
 
+NAP_CSV=os.path.join(os.path.dirname(__file__),'patterns-nap.csv')
+
+def _ghi_nap_csv(hang):
+    """Một dòng cho mỗi lần nạp. Cần CSV chứ không chỉ log vì câu hỏi "đẩy mẫu mất bao lâu"
+    phải trả lời bằng phân bố qua nhiều lần, không phải bằng một con số nhớ mang máng."""
+    try:
+        moi=not os.path.exists(NAP_CSV)
+        with open(NAP_CSV,'a') as f:
+            if moi: f.write('luc,so_mau,so_bo,so_byte,ms_liet_ke,ms_doc,ms_kiem,ms_tong\n')
+            f.write(hang+'\n')
+    except Exception as e:
+        log('  [PATTERNS] không ghi được %s: %s'%(NAP_CSV,e))
+
+def _dst_hop_le(raw):
+    """(được_nạp, vì_sao). Cửa duy nhất giữa "một file nào đó có đuôi .dst" và "một mẫu ta dám
+    đẩy xuống máy thêu". Máy KHÔNG kiểm hộ ta: nó nhận gì thì thêu nấy, nên nếu ta không chặn ở
+    đây thì chỗ đầu tiên phát hiện ra file rác sẽ là một mẻ hàng hỏng trên khung."""
+    if len(raw) < 512+3:
+        return False, 'chỉ %d B — ngắn hơn cả cái header 512 B của .DST'%len(raw)
+    dau=raw[:512].decode('latin-1','ignore')
+    if 'LA:' not in dau:
+        return False, 'header không có trường LA: — đây không phải file .DST'
+    if not _re.search(r'ST:\s*(\d+)', dau):
+        return False, 'header không có số mũi (ST:)'
+    st=_dst_meta(raw)['needle']
+    if st<=0:
+        return False, 'header khai 0 mũi'
+    # Thân .DST là các bản ghi 3 byte. Khai N mũi mà thân không đủ 3*N byte nghĩa là file cụt —
+    # thường do sao chép dở dang. Đẩy một file cụt xuống máy còn tệ hơn không đẩy gì.
+    thieu=3*st-(len(raw)-512)
+    if thieu>0:
+        return False, 'cụt: khai %d mũi (cần %d B thân) nhưng thiếu %d B'%(st,3*st,thieu)
+    return True, ''
+
 def load_patterns():
     PATTERNS.clear()
     if not os.path.isdir(PATTERN_DIR):
         log('  [PATTERNS] chưa có thư mục %s'%PATTERN_DIR); return
-    for root,_,files in os.walk(PATTERN_DIR):
-        for fn in sorted(files):
-            if not fn.lower().endswith('.dst'): continue
-            path=os.path.join(root,fn)
-            try: raw=open(path,'rb').read()
-            except Exception as e: log('  [PATTERNS] đọc lỗi',path,e); continue
-            base=os.path.splitext(fn)[0]; ext=(os.path.splitext(fn)[1].lstrip('.').upper() or 'DST')
-            folder=os.path.basename(root)
-            code=folder if folder.isdigit() else base.split('_')[0]
-            m=_dst_meta(raw)
-            PATTERNS[code]={'barCodeID':code,'patternName':base,'type':ext,'patternSize':len(raw),
-                'data':raw,'drawingNeedleCn':m['needle'],'drawingColorCn':m['color'],
-                'drawingWidth':m['width'],'drawingHeight':m['height'],'drawingFileLen':len(raw)}
+    # Gom rồi sắp trước khi nạp. `os.walk` KHÔNG hứa thứ tự thư mục, nên nếu hai file cùng mã thì
+    # bản nào thắng sẽ khác nhau giữa các máy — cùng một thư mục `patterns/` cho ra hai kết quả.
+    t0=time.perf_counter(); ms_doc=0.0; ms_kiem=0.0; so_bo=0; so_byte=0
+    duong=[]
+    for root,dirs,files in os.walk(PATTERN_DIR):
+        dirs.sort()
+        for fn in files:
+            if fn.lower().endswith('.dst'): duong.append(os.path.join(root,fn))
+    duong.sort()
+    t_liet_ke=time.perf_counter()
+    for path in duong:
+        fn=os.path.basename(path); root=os.path.dirname(path)
+        ta=time.perf_counter()
+        try: raw=open(path,'rb').read()
+        except Exception as e: log('  [PATTERNS] đọc lỗi',path,e); continue
+        tb=time.perf_counter(); ms_doc+=(tb-ta)*1000; so_byte+=len(raw)
+        ok,vi_sao=_dst_hop_le(raw)
+        ms_kiem+=(time.perf_counter()-tb)*1000
+        if not ok:
+            so_bo+=1; log('  [PATTERNS] BỎ %s: %s'%(fn,vi_sao)); continue
+        base=os.path.splitext(fn)[0]; ext=(os.path.splitext(fn)[1].lstrip('.').upper() or 'DST')
+        folder=os.path.basename(root)
+        code=folder if folder.isdigit() else base.split('_')[0]
+        if not code.isdigit():
+            # Không chặn: chưa có bằng chứng nào nói máy A15 từ chối mã chữ, mà chặn nhầm thì
+            # mất mẫu. Nhưng phải kêu lên — một mã chữ lẳng lặng vào danh sách chỉ lộ ra ở xưởng.
+            log('  [PATTERNS] ⚠ mã mẫu %r (suy từ %s) KHÔNG phải chữ số; vẫn nạp nhưng để mắt'%(code,fn))
+        if code in PATTERNS:
+            log('  [PATTERNS] ⚠ TRÙNG MÃ %s: giữ %s, BỎ %s (chốt: đường dẫn nhỏ hơn theo thứ tự '
+                'chữ thì thắng — cố định giữa các máy)'%(code,PATTERNS[code]['patternName'],fn))
+            continue
+        m=_dst_meta(raw)
+        PATTERNS[code]={'barCodeID':code,'patternName':base,'type':ext,'patternSize':len(raw),
+            'data':raw,'drawingNeedleCn':m['needle'],'drawingColorCn':m['color'],
+            'drawingWidth':m['width'],'drawingHeight':m['height'],'drawingFileLen':len(raw)}
+    ms_tong=(time.perf_counter()-t0)*1000; ms_liet_ke=(t_liet_ke-t0)*1000
     log('  [PATTERNS] nạp %d mẫu: %s'%(len(PATTERNS),
         ' | '.join('%s->%s(%dB,%dmũi)'%(c,p['patternName'],p['patternSize'],p['drawingNeedleCn']) for c,p in PATTERNS.items())))
+    # `T_chuẩn bị` = chặng DUY NHẤT của việc đẩy mẫu nằm trong tay ta. Chặng kế (`T_chờ máy hỏi`)
+    # do máy quyết định — emCAD không có topic nào để server gọi máy — nên đừng gộp hai cái vào
+    # một con số rồi bảo "đẩy mẫu mất chừng đó".
+    log('  [PATTERNS] T_chuẩn bị = %.1f ms cho %d mẫu / %d B (liệt kê %.1f · đọc %.1f · kiểm %.1f), bỏ %d file'
+        %(ms_tong,len(PATTERNS),so_byte,ms_liet_ke,ms_doc,ms_kiem,so_bo))
+    _ghi_nap_csv('%s,%d,%d,%d,%.3f,%.3f,%.3f,%.3f'%(
+        time.strftime('%Y-%m-%dT%H:%M:%S'),len(PATTERNS),so_bo,so_byte,ms_liet_ke,ms_doc,ms_kiem,ms_tong))
 
 def _dev_of(entry, topic):
     d=entry[2].get('dev') if len(entry)>2 else None
