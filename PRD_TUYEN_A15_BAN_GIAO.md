@@ -223,7 +223,7 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | K‑20 | L0 | `logs/broker.out` **không** xoay vòng (đo thật 1,6 MB/ngày) | Job `com.dahao.xoaylog` chép-rồi-cắt mỗi ngày, ngưỡng 8 MiB, giữ 60 bản | `test_xoay_log_he_thong.py` [1]…[8] | 🟩 |
 | K‑20b | L0 | launchd giữ fd log kiểu `O_APPEND`? (nếu không thì cắt tại chỗ sẽ đẻ lỗ NUL) | Sau khi cắt, file đầy lại từ offset 0, 0 byte NUL | Job thử riêng 25/08 + chính `broker.out` | 🟩 |
 | K‑20c | L0 | Bao nhiêu % dòng log là `STATE` lặp lúc máy rảnh | ✅ 25/08 — **đếm xong: 99,0 %, không phải 79,8 %.** Cột `so_lap` đếm bản tin trùng y nguyên bản trước trên chữ ký `(state, curStitch, patternStitch, patternName)`: cửa sổ 1 = 149/151, cửa sổ 2 = 150/151. Ước cũ 79,8 % lấy từ một lát cắt log, **hụt 19 điểm**. **Quyết định của chủ máy: KHÔNG gộp dòng**, chỉ thêm dấu giờ — nên phần "cân nhắc" của ca này đóng lại ở đây. Đếm trước rồi mới bàn gộp; gộp khi chưa đếm là bỏ dữ liệu theo linh cảm. Hệ quả về dung lượng: xem K‑20d | `test_nhip_state.py` N‑4 + `nhip-state.csv` | 🟩 |
-| K‑20d | L0 | `broker.log` phình bao nhiêu, và có ai xoay nó khi broker chạy dài ngày không | ✅ 25/08 — **đo thật: 3.754 KiB/ngày** (dòng `*** STATE` từ 54 B lên 85 B sau khi thêm dấu giờ, +57 %). Và đây là chỗ hở: job `com.dahao.xoaylog` chỉ canh `logs/*.out|*.err`, **không canh `broker.log`**; `broker.log` chỉ xoay **lúc broker khởi động** (đổi tên kèm mốc, giữ 10 bản). Nghĩa là broker càng chạy lâu, log càng to — mà chạy lâu chính là **mục tiêu K‑19 (7 ngày liền)**. 7 ngày ≈ **26 MB** một file không ai cắt. **Vá được mà KHÔNG cần đụng `broker.py`**: `log()` mở‑ghi‑đóng từng dòng nên chép‑rồi‑cắt an toàn với `broker.log` y như với `logs/*.out`. Nhưng có một chỗ đâm nhau phải quyết trước: `broker.py` cũng tự xoay `broker.log` lúc khởi động (đổi tên thành `broker.log.<mốc>`, **giữ 10 bản khớp tiền tố `broker.log.`**) — nếu job hệ thống đẻ thêm `broker.log.<mốc>.gz` cùng tiền tố thì hai bộ xoay sẽ xoá lẫn của nhau và số bản giữ lại thành ra không đoán được. Phải tách tiền tố hoặc bỏ bớt một bộ, **chưa làm** | `xoay_log_he_thong.py` (phạm vi) + đo trực tiếp 25/08 | ✅ |
+| K‑20d | L0 | `broker.log` phình bao nhiêu, và có ai xoay nó khi broker chạy dài ngày không | 🟩 25/08 — **đo thật: 3.754 KiB/ngày** (dòng `*** STATE` từ 54 B lên 85 B sau khi thêm dấu giờ, +57 %). Chỗ hở: job `com.dahao.xoaylog` chỉ canh `logs/*.out|*.err`, còn `broker.log` chỉ xoay **lúc broker khởi động** — nghĩa là càng đạt mục tiêu **K‑19 (chạy liền 7 ngày ≈ 26 MB)** thì càng không ai cắt nó. **ĐÃ VÁ, và không đụng `broker.py`, không khởi động lại, máy không phải quay số lại**: `log()` mở‑ghi‑đóng từng dòng (`with open(LOG,'a')`) nên chép‑rồi‑cắt an toàn với `broker.log` y như với `logs/*.out`. Chỗ đâm nhau đã tách hẳn: bản lưu đi vào **`logs/broker-log.<mốc>.gz`** — khác thư mục *và* khác tiền tố với vùng `broker.log.` mà `broker.py::_xoay_log` xoá‑chừa‑10 (bộ dọn ấy **không lọc đuôi `.gz`**, đặt bản nén cạnh file gốc là nộp lịch sử cho nó xoá). Bộ dọn của job nay đòi đúng hình dạng `\d{8}-\d{6}.gz` chứ không so tiền tố suông, để không dựng lại đúng cái bẫy vừa gỡ. Có hiệu lực từ lần chạy **04:17 kế tiếp**; launchd gọi thẳng file trong repo nên sửa repo là xong, **không có bước triển khai** | `test_xoay_log_he_thong.py` ca 9‑12 (ca 10 gọi **thẳng `broker._xoay_log()` thật**) + đối chứng âm 8/8 | 🟩 |
 | K‑21 | L0 | Rút dây LAN của máy giữa lúc đang nối | Broker phát hiện trong ≤60 s, dọn entry, máy nối lại được | `broker.log` + `pgrep` | 🔴 |
 | K‑22 | L0 | Đứt TCP giữa lúc gửi `pattern/data` | Broker không treo, không kẹt luồng | `broker.log` + `pgrep` | 🔴 |
 
@@ -325,11 +325,11 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 
 | Nhóm | Tổng | 🟩 đã xanh | ✅ làm được ngay | 🟡 cần máy nối | 🔴 cần xưởng |
 | --- | --- | --- | --- | --- | --- |
-| K — Kết nối | 27 | **22** | **1** | 2 | 2 |
+| K — Kết nối | 27 | **23** | **0** | 2 | 2 |
 | S — Trạng thái | 14 | **12** | **0** | 0 | 2 |
 | L — Báo lỗi | 33 | **26** | **3** | 0 | 4 |
 | P — Đẩy mẫu | 23 | **9** | **0** | 6 | 8 |
-| **Cộng** | **97** | **69** | **4** | **8** | **16** |
+| **Cộng** | **97** | **70** | **3** | **8** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
 
@@ -414,12 +414,23 @@ Cùng một lần đo cũng lật con số 79,8 % dòng log lặp thành **99,0 
 không hề vô lý khi đọc — đó mới là vấn đề: **một con số suy diễn không tự khai rằng nó là suy
 diễn.** Chỗ nào còn báo cáo số suy ra từ tổng/dải mà chưa đo trực tiếp thì nên coi là chưa đo.
 
-**Nhóm K gần đóng.** Còn đúng **một** ca ✅: K‑20d — chính việc đo cho S‑11/K‑20c làm lộ ra
-rằng `broker.log` không nằm trong tầm của job xoay log, nên broker chạy càng lâu file càng to.
-Vá được ngay, nhưng phải sửa `broker.py` nên **cần duyệt**. Bốn ca 🟡 còn lại chờ *thời gian* chứ không chờ việc:
-K‑19 cần 7 ngày liền, K‑14d cần bắt được lúc cloudflared chưa kịp dựng lại, K‑20c đã
-được duyệt và đã có dụng cụ đếm chạy thật — chờ số chứ không chờ việc. Hai ca 🔴 cần
-người rút dây ở xưởng.
+**Nhóm K đã đóng — không còn ca ✅ nào.** Ca cuối cùng, K‑20d, nảy ra ngay trong lúc đo cho
+S‑11/K‑20c: `broker.log` không nằm trong tầm của job xoay log, nên broker chạy càng lâu file
+càng to — mà chạy lâu chính là mục tiêu K‑19.
+
+Đáng ghi lại không phải cái lỗi mà là cái bẫy nằm cạnh nó. `broker.py` cũng tự xoay
+`broker.log` lúc khởi động, giữ 10 bản khớp tiền tố `broker.log.` — và **bộ dọn ấy không lọc
+đuôi `.gz`**. Nếu job hệ thống hồn nhiên đặt bản nén cạnh file gốc thì hai bộ xoay cùng ngó
+một vùng tên: bộ này xoá bản lưu của bộ kia, cả hai đều chạy **đúng như thiết kế**, không có
+lỗi nào để mà đọc, và lịch sử cứ thế bốc hơi cho tới ngày cần soi lại thì không còn gì. Nên
+bản lưu tách sang `logs/broker-log.<mốc>.gz` (khác thư mục *và* khác tiền tố), và bộ dọn đòi
+đúng hình dạng mốc giờ thay vì so tiền tố suông — vì so tiền tố suông chính là dựng lại đúng
+cái bẫy vừa gỡ, chỉ đổi tên file.
+
+Bài test cho ca này gọi **thẳng `broker._xoay_log()` thật** chứ không chép lại logic của nó:
+chép lại thì bài test chỉ chứng minh được bản chép, còn cái đang chạy trên production thì
+không ai canh. Hai ca 🟡 còn lại chờ *thời gian* chứ không chờ việc: K‑19 cần 7 ngày liền,
+K‑14d cần bắt được lúc cloudflared chưa kịp dựng lại. Hai ca 🔴 cần người rút dây ở xưởng.
 
 **Một bẫy đã cắn thật khi làm hai ca này, ghi lại để đội sau khỏi mất buổi.** Các self-test
 Python ở đây nạp broker bằng `spec_from_file_location('broker', '../broker.py')`, mà bộ kiểm

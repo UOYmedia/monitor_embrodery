@@ -6,7 +6,15 @@
 # vì đó chính xác là cách launchd giữ broker.out. Nếu sai, log mới sẽ có một lỗ
 # rỗng đầy byte NUL bằng đúng kích thước file cũ, và không ai đọc được nữa.
 # Bài 7 dựng hẳn một tiến trình con ghi thật để thử, không mock.
+#
+# Điểm mấu chốt thứ hai (ca K‑20d): từ 25/08 job này canh luôn `broker.log`, mà
+# `broker.py` cũng có bộ dọn log riêng của nó. HAI BỘ DỌN CÙNG NGÓ MỘT VÙNG TÊN là
+# cách kinh điển để mất lịch sử mà không ai thấy: bộ này xoá bản lưu của bộ kia, và
+# vì cả hai đều "chạy đúng như thiết kế" nên không có lỗi nào để mà đọc. Bài 10 gọi
+# THẲNG `broker._xoay_log()` thật chứ không chép lại logic — chép lại thì bài test
+# chỉ chứng minh bản chép, không chứng minh cái đang chạy trên production.
 import os, sys, gzip, time, json, shutil, tempfile, subprocess, signal
+import importlib.util
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONG_CU = os.path.join(HERE, '..', 'xoay_log_he_thong.py')
@@ -153,6 +161,100 @@ try:
         os.chmod(kho, 0o700)
     print('  [8] nén thất bại -> giữ nguyên file gốc, báo lỗi, mã thoát 1 OK')
 
-    print('TẤT CẢ ĐẠT — xoay_log_he_thong.py (ca K‑20)')
+    # ================= ca K‑20d: broker.log =================================
+    # Dựng một thư mục gateway giả: gw/broker.log + gw/logs/
+    gw9 = os.path.join(tmp, 'gw9'); l9 = os.path.join(gw9, 'logs'); os.makedirs(l9)
+    blog = os.path.join(gw9, 'broker.log')
+
+    # ---------- 9) broker.log ở NGOÀI logs/ vẫn được xoay, bản lưu vào TRONG logs/ ----
+    noi_dung = ('*** STATE dev=602602704E7B cur=0 tot=0 state=15 pat=None '
+                '@2026-08-25T14:13:54Z Δ2.001s\n').encode() * 400      # ~34 KB
+    with open(blog, 'wb') as f: f.write(noi_dung)
+    ma, ra = chay('--logs', l9, '--nguong', '5000')
+    assert ma == 0, (ma, ra)
+    assert os.path.getsize(blog) == 0, 'broker.log không được cắt về 0'
+    gz9 = cac_gz(l9, 'broker-log')
+    assert len(gz9) == 1, 'bản lưu broker.log trong logs/: %s' % gz9
+    with gzip.open(os.path.join(l9, gz9[0]), 'rb') as f:
+        assert f.read() == noi_dung, 'bản nén broker.log KHÔNG khớp từng byte'
+    # Và tuyệt đối không được đẻ ra thứ gì tên `broker.log.*` CẠNH file gốc — đó đúng
+    # là vùng tên mà broker.py xoá sạch chỉ chừa 10 cái.
+    canh = [t for t in os.listdir(gw9) if t.startswith('broker.log.')]
+    assert canh == [], 'sinh bản lưu ngay trong tầm dọn của broker.py: %s' % canh
+    assert not [t for t in os.listdir(l9) if t.endswith('.dang-ghi')], 'sót file tạm'
+    print('  [9] broker.log (ngoài logs/) được xoay, bản nén khớp byte và nằm trong '
+          'logs/broker-log.<mốc>.gz OK')
+
+    # ---------- 10) HAI BỘ DỌN KHÔNG ĂN CỦA NHAU ------------------------------
+    # Nạp broker.py THẬT rồi trỏ LOG của nó vào gw giả, gọi đúng `_xoay_log()`.
+    spec = importlib.util.spec_from_file_location(
+        'broker_k20d', os.path.join(HERE, '..', 'broker.py'))
+    broker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(broker)
+    assert hasattr(broker, '_xoay_log'), 'broker.py không còn hàm _xoay_log'
+    broker.LOG = blog
+
+    # 12 bản rename cũ do chính broker.py sinh ra (không nén, không đuôi .gz).
+    for i in range(12):
+        with open(blog + '.202607%02d-000000' % (i + 1), 'wb') as f:
+            f.write(b'ban cu %d' % i)
+    with open(blog, 'wb') as f: f.write(b'co noi dung de _xoay_log doi ten')
+    truoc = set(os.listdir(l9))
+    broker._xoay_log()                       # ← bộ dọn THẬT của broker.py
+    con_gw = sorted(t for t in os.listdir(gw9) if t.startswith('broker.log.'))
+    assert len(con_gw) == 10, 'broker.py giữ %d bản, đáng lẽ 10 — logic đã đổi' % len(con_gw)
+    assert set(os.listdir(l9)) == truoc, \
+        'broker._xoay_log() ĐÃ ĐỤNG vào logs/: %s' % (set(os.listdir(l9)) ^ truoc)
+    assert gz9[0] in os.listdir(l9), 'bản lưu của job hệ thống bị broker.py xoá mất'
+
+    # Chiều ngược lại: job hệ thống dọn thật gắt (--giu 1) cũng không đụng bản của broker.py.
+    with open(blog, 'wb') as f: f.write(noi_dung)
+    ma, ra = chay('--logs', l9, '--nguong', '5000', '--giu', '1')
+    assert ma == 0, (ma, ra)
+    assert sorted(t for t in os.listdir(gw9) if t.startswith('broker.log.')) == con_gw, \
+        'job hệ thống xoá mất bản rename của broker.py'
+    assert len(cac_gz(l9, 'broker-log')) == 1, cac_gz(l9, 'broker-log')
+    print('  [10] broker._xoay_log() THẬT không xoá bản lưu của job, và job không xoá '
+          'bản rename của broker.py — hai vùng tên tách hẳn OK')
+
+    # ---------- 11) tắt/chỉ định broker.log ------------------------------------
+    with open(blog, 'wb') as f: f.write(noi_dung)
+    ma, ra = chay('--logs', l9, '--nguong', '5000', '--khong-broker-log')
+    assert ma == 0 and 'broker.log' not in ra, ra
+    assert os.path.getsize(blog) == len(noi_dung), '--khong-broker-log vẫn cắt broker.log'
+    khac = os.path.join(gw9, 'log-o-cho-khac.log')
+    with open(khac, 'wb') as f: f.write(noi_dung)
+    ma, ra = chay('--logs', l9, '--nguong', '5000', '--broker-log', khac)
+    assert ma == 0, (ma, ra)
+    assert os.path.getsize(khac) == 0, '--broker-log không trỏ được sang file chỉ định'
+    assert os.path.getsize(blog) == len(noi_dung), '--broker-log vẫn đụng file mặc định'
+    print('  [11] --khong-broker-log bỏ qua, --broker-log trỏ đúng file chỉ định OK')
+
+    # ---------- 12) bộ dọn chỉ ăn đúng HÌNH DẠNG MỐC GIỜ ----------------------
+    # Kịch bản thật có thể xảy ra: ngày nào đó có thêm log launchd tên `broker-log.out`.
+    # Bản lưu của nó là `broker-log.out.<mốc>.gz` — trùng TIỀN TỐ với `broker-log.` nhưng
+    # không được phép lọt vào tầm dọn của broker.log.
+    for t in cac_gz(l9, 'broker-log'):
+        os.remove(os.path.join(l9, t))
+    do_day(os.path.join(l9, 'broker-log.out'), 100)                  # dưới ngưỡng
+    la1 = os.path.join(l9, 'broker-log.out.20260101-000000.gz')
+    la2 = os.path.join(l9, 'broker-log.ghi-chu.gz')
+    do_day(la1, 50); do_day(la2, 50)
+    for i in range(12):
+        with gzip.open(os.path.join(l9, 'broker-log.202607%02d-000000.gz' % (i + 1)), 'wb') as f:
+            f.write(b'ban %d' % i)
+    with open(blog, 'wb') as f: f.write(noi_dung)
+    ma, ra = chay('--logs', l9, '--nguong', '5000', '--giu', '2')
+    assert ma == 0, (ma, ra)
+    con12 = cac_gz(l9, 'broker-log')
+    dung_dang = [t for t in con12 if t not in (os.path.basename(la1), os.path.basename(la2))]
+    assert len(dung_dang) == 2, 'giữ %d bản đúng dạng, đáng lẽ 2: %s' % (len(dung_dang), con12)
+    assert os.path.exists(la1), 'XOÁ NHẦM bản lưu của broker-log.out (chỉ trùng tiền tố)'
+    assert os.path.exists(la2), 'XOÁ NHẦM file .gz không mang mốc giờ'
+    assert os.path.getsize(os.path.join(l9, 'broker-log.out')) == 100, 'đụng log dưới ngưỡng'
+    print('  [12] bộ dọn chỉ ăn đúng `<gốc>.\\d{8}-\\d{6}.gz`; không xoá nhầm file chỉ '
+          'trùng tiền tố OK')
+
+    print('TẤT CẢ ĐẠT — xoay_log_he_thong.py (ca K‑20 + K‑20d)')
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
