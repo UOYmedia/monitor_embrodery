@@ -60,6 +60,9 @@ export const defaultConfig = {
   allowedOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173'],
   dataPath: './bridge-data/fleet-store.json',
   auditPath: './bridge-data/audit-log.jsonl',
+  // `<site>` được thay bằng id xưởng lúc chạy: mỗi xưởng một quyển sổ lần lỗi riêng. Gộp
+  // chung một file thì bàn giao cho một xưởng là bàn giao luôn lịch sử hỏng của xưởng khác.
+  faultPath: './bridge-data/loi-<site>.jsonl',
   productionPath: './bridge-data/production.json',
   capturePath: './bridge-data/dial-in-capture.jsonl',
   uiPath: './dist',
@@ -300,6 +303,7 @@ export async function loadConfig(configPath) {
     allowedOrigins,
     dataPath: resolve(base, raw.dataPath ?? defaultConfig.dataPath),
     auditPath: resolve(base, raw.auditPath ?? defaultConfig.auditPath),
+    faultPath: resolve(base, raw.faultPath ?? defaultConfig.faultPath),
     audit: normalizeAudit(raw.audit),
     // `uiPath: null` = KHÔNG phục vụ giao diện. Bridge chạy như một dịch vụ thuần API, để bên
     // khác dựng màn hình riêng hoặc cắm agent vào web của họ. Khác hẳn "trỏ vào thư mục không

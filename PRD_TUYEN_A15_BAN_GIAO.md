@@ -247,22 +247,22 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | L‑08 | L1 | `durationSeconds` khi `to < from`, ISO sai, lệch múi giờ | Không số âm; ISO sai → lỗi, không NaN lặng lẽ | `downtime.test.mjs` | ✅ |
 | L‑09 | L1 | `formatSpokenDuration` 0s · 59s · 61s · 3599s · 24h+ | Chuỗi tiếng Việt đọc được, không "0 phút 0 giây" | `downtime.test.mjs` | ✅ |
 | L‑10 | L1 | `latestSignificantEvent` khi rỗng / toàn `info` / lẫn `critical` | Chọn đúng, rỗng → `null`, không ném | `downtime.test.mjs` | ✅ |
-| L‑11 | L1 | Mở lần lỗi: `fault` đầu tiên sau trạng thái khác | Mốc = `observedAt` của **controller**, không phải giờ bridge | vitest | ✅ |
-| L‑12 | L1 | Đóng lần lỗi: `fault` → `running` | `endedAt` = `observedAt`, `durationSeconds` khớp | vitest | ✅ |
-| L‑13 | L1 | `fault` → `unknown` (trôi tín hiệu) | Ghi **`chua-biet`**, tuyệt đối không ghi "đã sửa" | vitest | ✅ |
-| L‑14 | L1 | `fault` → có người gõ tay | Ghi **`chua-biet`**; `trackStatusChange` **không** được gọi | vitest | ✅ |
-| L‑15 | L1 | Bridge restart lúc lần lỗi đang mở | Ghi `dong-bang-khoi-dong-lai`, **không** tính thời lượng như thật | vitest | ✅ |
-| L‑16 | L1 | Nhịp `fault` liên tiếp 1 giây/lần trong 10 phút | Đúng **một** lần lỗi, không phải 600 | vitest | ✅ |
-| L‑17 | L1 | **R1** `fault` → `running` → `fault` trong 30 giây | **Hai** lần lỗi riêng; lần 2 có `previousEpisodeId` trỏ lần 1 | vitest | ✅ |
-| L‑18 | L1 | R1 lặp 20 lần liên tiếp | 20 lần lỗi, chuỗi `previousEpisodeId` nối đúng thứ tự | vitest | ✅ |
-| L‑19 | L1 | R1 nhưng `observedAt` **lùi về quá khứ** (đồng hồ máy nhảy) | Không sinh thời lượng âm; đánh dấu mốc đáng ngờ | vitest | ✅ |
-| L‑20 | L3 | Ghi `bridge-data/loi-<site>.jsonl` chỉ-ghi-thêm, xoay vòng theo cỡ | Dòng cũ không bị sửa; mỗi lần xoá cũng được ghi lại | Test HTTP + đọc file | ✅ |
-| L‑21 | L3 | API đọc lịch sử lỗi cần `fleet:read` | Thiếu quyền → **403**; không token → **401** | Test HTTP cổng 0 | ✅ |
-| L‑22 | L3 | Lọc lịch sử theo máy + khoảng thời gian; khoảng rỗng | Trả mảng rỗng, **không** 500 | Test HTTP | ✅ |
-| L‑23 | L3 | **R3** ghi dòng `reopen` trỏ `episodeId` đã đóng | Dòng cũ **còn nguyên byte**; file thêm đúng 1 dòng | Đọc `.jsonl` trước/sau | ✅ |
-| L‑24 | L3 | R3 `reopen` trỏ `episodeId` không tồn tại | Từ chối có lỗi rõ, **không** ghi dòng mồ côi | Test HTTP | ✅ |
-| L‑25 | L3 | R3 `reopen` hai lần cùng `episodeId` | Cho phép, bản hợp nhất vẫn xác định (dòng sau thắng) | Test HTTP + đọc lại | ✅ |
-| L‑26 | L3 | R3 cần quyền **ghi**, không phải `fleet:read` | Thiếu → 403 | Test HTTP | ✅ |
+| L‑11 | L1 | Mở lần lỗi: `fault` đầu tiên sau trạng thái khác | ✅ 25/08: mốc lấy từ `observedAt` của controller; đồng hồ bridge chỉ vào `ghiLuc` | `fault-episodes.test.mjs` | 🟩 |
+| L‑12 | L1 | Đóng lần lỗi: `fault` → `running` | ✅ 25/08: 2.550 s khớp đúng mốc controller (đơn vị) + đo lại đầu-cuối qua HTTP thật | `fault-episodes.test.mjs` · `loi-may-e2e.test.mjs` | 🟩 |
+| L‑13 | L1 | `fault` → `unknown` (trôi tín hiệu) | ✅ 25/08: `chuaBietVi='mat-tin-hieu'`, `thoiLuongGiay=null` (KHÔNG phải 0), kèm câu chữ cho màn hình. Đo cả ở tầng sổ lẫn đầu-cuối | `fault-episodes.test.mjs` · `loi-may-e2e.test.mjs` | 🟩 |
+| L‑14 | L1 | `fault` → có người gõ tay | ✅ 25/08: `chuaBietVi='nhap-tay'`, không thời lượng; `trackStatusChange` vẫn KHÔNG được gọi (đồng hồ "đang ở trạng thái này từ…" không bị một mẫu đơn lẻ đè); số gõ tay vẫn vào sổ bình thường | `loi-may-e2e.test.mjs` | 🟩 |
+| L‑15 | L1 | Bridge restart lúc lần lỗi đang mở | ✅ 25/08: dựng bridge THẬT, mở lần lỗi, giết tiến trình, dựng bridge thứ hai trên cùng quyển sổ → `dong-bang-khoi-dong-lai`, `thoiLuongGiay=null`, mã lỗi còn nguyên | `loi-may-e2e.test.mjs` | 🟩 |
+| L‑16 | L1 | Nhịp `fault` liên tiếp 1 giây/lần trong 10 phút | ✅ 25/08: 600 lần gọi mở → đúng 1 lần lỗi và **đúng 1 dòng** trên đĩa | `fault-episodes.test.mjs` | 🟩 |
+| L‑17 | L1 | **R1** `fault` → `running` → `fault` trong 30 giây | ✅ 25/08: hai lần lỗi riêng, `previousEpisodeId` nối đúng — đo cả ở đơn vị lẫn đầu-cuối qua HTTP | `fault-episodes.test.mjs` · `loi-may-e2e.test.mjs` | 🟩 |
+| L‑18 | L1 | R1 lặp 20 lần liên tiếp | ✅ 25/08: đủ 20, chuỗi nối đúng thứ tự, lần đầu tiên `previousEpisodeId=null` | `fault-episodes.test.mjs` | 🟩 |
+| L‑19 | L1 | R1 nhưng `observedAt` **lùi về quá khứ** (đồng hồ máy nhảy) | ✅ 25/08: `thoiLuongGiay=null` (không âm, không 0) + cờ `mocDangNgo` | `fault-episodes.test.mjs` | 🟩 |
+| L‑20 | L3 | Ghi `bridge-data/loi-<site>.jsonl` chỉ-ghi-thêm, xoay vòng theo cỡ | ✅ 25/08: sổ nằm đúng chỗ, JSONL đọc được từng dòng, mở+đóng = 2 dòng; xoay vòng qua nhiều mảnh vẫn đọc nối được. **Vá 1 lỗi thật lúc viết test**: hai lần xoay trong cùng mili-giây ra cùng tên file, `rename` **đè im lặng** mất trắng một mảnh | `loi-may-e2e.test.mjs` · `fault-episodes.test.mjs` | 🟩 |
+| L‑21 | L3 | API đọc lịch sử lỗi cần `fleet:read`; không token → **401** | ✅ 25/08: không token/token bịa → 401; viewer → 200. **Nhánh 403 không chạm được trên đường đọc** (cả ba vai đều có `fleet:read`) — 403 thật nằm ở L‑26, trên đúng tuyến lỗi | `loi-may-e2e.test.mjs` | 🟩 |
+| L‑22 | L3 | Lọc lịch sử theo máy + khoảng thời gian; khoảng rỗng | ✅ 25/08: khoảng rỗng → `[]`; `from`/`to` là rác cũng không 500; máy **không có thật** → 404 chứ không phải `[]` (mảng rỗng cho id gõ nhầm sẽ đọc ra "máy vẫn tốt") | `loi-may-e2e.test.mjs` | 🟩 |
+| L‑23 | L3 | **R3** ghi dòng `reopen` trỏ `episodeId` đã đóng | ✅ 25/08: so **byte** file trước/sau — phần cũ khớp nguyên vẹn, thêm đúng 1 dòng; bản hợp nhất hiện `daMoLai` kèm lý do và người bấm, thời lượng cũ vẫn còn | `loi-may-e2e.test.mjs` · `fault-episodes.test.mjs` | 🟩 |
+| L‑24 | L3 | R3 `reopen` trỏ `episodeId` không tồn tại | ✅ 25/08: 404 và file **không đổi một byte**; mở lại mà không ghi lý do → 400, cũng không ghi gì | `loi-may-e2e.test.mjs` | 🟩 |
+| L‑25 | L3 | R3 `reopen` hai lần cùng `episodeId` | ✅ 25/08: cho phép; bản hợp nhất lấy dòng sau, `soLanMoLai=2`; **cả hai dòng vẫn nằm trên đĩa**, lần đầu không bị đè | `loi-may-e2e.test.mjs` · `fault-episodes.test.mjs` | 🟩 |
+| L‑26 | L3 | R3 cần quyền **ghi**, không phải `fleet:read` | ✅ 25/08: `machine:update`; viewer → **403**, và 403 bắn **trước** khi tra mã lần lỗi nên không dò được mã qua chênh lệch 403/404 | `loi-may-e2e.test.mjs` | 🟩 |
 | L‑27 | L4 | Bảng lần lỗi: *lỗi gì · từ · đến · kéo dài* | Ba trường hợp "chưa biết" hiện thành **chữ**, không `0 phút` | happy-dom | ✅ |
 | L‑28 | L4 | Mã lỗi in **nguyên văn**, không dịch, không bảng tra | Chuỗi hiển thị khớp byte với `events[].code` | happy-dom | ✅ |
 | L‑29 | L4 | Lần lỗi đã `reopen` hiện là **đã mở lại**, kèm lý do | Không xoá dấu vết bản cũ | happy-dom | ✅ |
@@ -310,12 +310,28 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | Nhóm | Tổng | 🟩 đã xanh | ✅ làm được ngay | 🟡 cần máy nối | 🔴 cần xưởng |
 | --- | --- | --- | --- | --- | --- |
 | K — Kết nối | 26 | **21** | **0** | 3 | 2 |
-| S — Trạng thái | 14 | **10** | **1** | 1 | 2 |
-| L — Báo lỗi | 33 | 5 | 24 | 0 | 4 |
+| S — Trạng thái | 14 | **11** | **0** | 1 | 2 |
+| L — Báo lỗi | 33 | **21** | **8** | 0 | 4 |
 | P — Đẩy mẫu | 23 | 0 | 9 | 6 | 8 |
-| **Cộng** | **96** | **36** | **34** | **10** | **16** |
+| **Cộng** | **96** | **53** | **17** | **10** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
+
+**Nhóm L: đã xanh L‑11…L‑26 ngày 25/08, và phải đọc kèm một giới hạn.** Sổ lần lỗi
+(`bridge/lib/fault-episodes.mjs`) là code MỚI viết cho nhóm này — trước đó hệ thống không hề có
+`episodeId`, không có `previousEpisodeId`, và `fault → unknown` đang ghi ra một thời lượng **như
+thể máy đã hết lỗi thật**. Nay đã có, đã nối vào bridge, và đã đo đầu-cuối qua HTTP thật.
+
+⚠ Giới hạn: mọi ca trên đều bắt đầu từ một frame `status: 'fault'`. Tới hôm nay `broker.py`
+**chưa bao giờ sinh được** chữ đó — `state_to_status()` chỉ trả `running`/`stopped`/`unknown`, vì
+chưa ai biết con A15 đánh số trạng thái lỗi là bao nhiêu (máy mới chỉ từng phát `state` = -1 và
+15, cả hai đều lúc rảnh). Nên nhóm L chứng minh: **kể từ lúc có một frame `fault`**, cả quãng
+đường còn lại chạy đúng. Mắt xích còn thiếu là mắt xích đầu tiên — và đó đúng là **L‑30/L‑31**,
+cổng của cả nhóm, cần một ca máy hỏng thật ở xưởng. Không được báo bất kỳ con số "máy hỏng bao
+nhiêu lâu" nào từ máy thật trước khi L‑30 xanh.
+
+L‑27/L‑28/L‑29 là ca giao diện (happy-dom) và **thuộc repo trên máy chính**, không làm được ở
+Mini (bản Mini không có thư mục `src/`). Xem mục "hai repo đã lệch nhau".
 
 **Nhóm S đã đóng phần làm được mà không cần xưởng** (S‑07…S‑10, S‑12 xanh ngày 25/08). S‑11 chờ duyệt sửa `broker.py`; S‑13/S‑14 chờ ca chạy thật.
 

@@ -2,6 +2,7 @@ import { pollMachine } from './adapters.mjs'
 import { deriveAlerts, maintenanceForMachine } from './alerts.mjs'
 import { derivedAlerts } from './derived-alerts.mjs'
 import { AuditLog } from './audit.mjs'
+import { FaultEpisodeLog, CHUA_BIET_VI } from './fault-episodes.mjs'
 import { durationSeconds, formatSpokenDuration, latestSignificantEvent } from './downtime.mjs'
 import { SCHEMA_VERSION, adapterHasProtocol, adapterIsPolled, normalizeTelemetry } from './contract.mjs'
 import { DialInListener, normalizeRemoteAddress } from './dial-in.mjs'
@@ -59,6 +60,9 @@ export class BridgeService {
       logger,
     })
     this.productionFlush = null
+    // Một quyển sổ lần lỗi cho mỗi xưởng, dựng khi cần chứ không dựng sẵn: xưởng chưa bao giờ
+    // có máy lỗi thì cũng không nên có một file rỗng nằm đó trông như đã mất dữ liệu.
+    this.faultLogs = new Map()
     this.dialIn = new DialInListener(config.ingest, {
       identify: (remote) => this.identifyDialIn(remote),
       accept: (machine, payload, meta) => this.acceptDialIn(machine, payload, meta),
@@ -80,6 +84,21 @@ export class BridgeService {
     this.lastAuditPruneAt = null
   }
 
+  /**
+   * Quyển sổ lần lỗi của một xưởng. `<site>` trong `faultPath` được thay bằng id xưởng đã lọc
+   * sạch: id đi thẳng vào tên file, mà id thì do người khai trong cấu hình, nên một dấu `/`
+   * lọt vào sẽ ghi sổ ra ngoài `bridge-data`.
+   */
+  soLanLoi(siteId) {
+    const khoa = String(siteId ?? 'khong-ro').replace(/[^a-zA-Z0-9._-]/g, '-') || 'khong-ro'
+    let so = this.faultLogs.get(khoa)
+    if (!so) {
+      so = new FaultEpisodeLog(this.config.faultPath.replace('<site>', khoa), { logger: this.logger, now: this.now })
+      this.faultLogs.set(khoa, so)
+    }
+    return so
+  }
+
   async load() {
     await this.store.load({ sites: this.config.sites })
     await this.production.load()
@@ -88,6 +107,10 @@ export class BridgeService {
     await this.audit.prune()
     this.lastAuditPruneAt = this.now()
     for (const machine of this.store.machines) this.scheduler.seed(machine.id)
+    // Lần lỗi còn mở lúc bridge tắt phải được đóng lại bằng lý do `dong-bang-khoi-dong-lai`.
+    // Bỏ qua bước này thì lần khởi động sau sẽ thấy một lần lỗi mở treo vô hạn, và bất kỳ ai
+    // đọc bảng cũng sẽ đọc ra "máy đang lỗi" trong khi sự thật chỉ là ta đã ngừng nhìn.
+    for (const site of this.config.sites) await this.soLanLoi(site.id).donDep({ moc: new Date(this.now()).toISOString() })
     return this.store.machines
   }
 
@@ -139,6 +162,47 @@ export class BridgeService {
       throw error
     }
     return machine
+  }
+
+  /**
+   * Lịch sử lần lỗi của một máy, đã hợp nhất mở + đóng + mở-lại.
+   *
+   * Khoảng thời gian không có lần lỗi nào trả về mảng RỖNG, không phải lỗi. "Máy không
+   * hỏng lần nào trong tuần rồi" là một câu trả lời hoàn toàn bình thường, và nếu nó nổ
+   * thành 500 thì màn hình sẽ hiện "lỗi hệ thống" đúng vào lúc mọi thứ đang tốt nhất.
+   */
+  async docLichSuLoi(id, { from = null, to = null, limit = 100 } = {}) {
+    const machine = this.findMachine(id)
+    const ket = await this.soLanLoi(machine.siteId).docHopNhat({
+      machineId: machine.id, from, to, limit,
+    })
+    return { machineId: machine.id, ...ket }
+  }
+
+  /**
+   * R3: mở lại một lần lỗi đã đóng — "tưởng sửa xong rồi, hoá ra chưa".
+   *
+   * Ghi THÊM một dòng chứ không sửa dòng cũ. Bản ghi sai vẫn nằm nguyên đó, và đó là chủ ý:
+   * người ta cần thấy được rằng đã có lúc hệ thống tưởng máy đã chạy lại. Xoá nó đi thì
+   * cái sổ trông sạch hơn sự thật.
+   */
+  async moLaiLanLoi(id, episodeId, input, session) {
+    const machine = this.findMachine(id)
+    const lyDo = String(input?.reason ?? '').trim()
+    if (!lyDo) throw badRequest('Phải ghi lý do mở lại — một dòng không lý do thì không ai kiểm được.', 'reason')
+    if (lyDo.length > 400) throw badRequest('Lý do mở lại tối đa 400 ký tự.', 'reason')
+    try {
+      return await this.soLanLoi(machine.siteId).moLai(episodeId, {
+        actor: session.actor, role: session.role, lyDo, message: input?.message ?? null,
+      })
+    } catch (error) {
+      // Mã lần lỗi không có thật → 404 và KHÔNG ghi gì. Một dòng `reopen` mồ côi sẽ nằm
+      // trong sổ mãi mãi, trỏ vào hư không, và mọi bản hợp nhất về sau đều phải đoán.
+      const hong = new Error(error.message)
+      hong.status = 404
+      hong.field = 'episodeId'
+      throw hong
+    }
   }
 
   /** Serialises every write so two concurrent batches cannot interleave a save. */
@@ -476,6 +540,16 @@ export class BridgeService {
    *   a real clock with a sample would shorten every stop it touched.
    */
   ingestManualSnapshot(machine, snapshot) {
+    // Ngoại lệ duy nhất của đoạn trên: nếu máy đang có một lần lỗi mở, con số gõ tay là bằng
+    // chứng cuối cùng ta có về nó, và sổ lần lỗi phải đóng lại ở đây bằng lý do `nhap-tay` —
+    // KHÔNG kèm thời lượng. Người gõ số biết máy đang chạy lúc họ đứng đó; họ không biết máy
+    // hết lỗi từ lúc nào. Đây là ghi vào sổ lần lỗi, không phải `trackStatusChange`: cái đồng
+    // hồ "đang ở trạng thái này từ …" vẫn không bị một mẫu đơn lẻ ghi đè.
+    if (this.downtimeRecorded.has(machine.id) && this.statusSince.get(machine.id)?.status === 'fault') {
+      this.soLanLoi(machine.siteId).dongLanLoi(machine.id, {
+        ketThuc: snapshot.observedAt, trangThaiSau: null, chuaBietVi: CHUA_BIET_VI.NHAP_TAY,
+      })
+    }
     this.telemetry.set(machine.id, snapshot)
     const counted = this.countProduction(machine, snapshot)
     this.logger.info('Đã nhận số nhập tay.', { machineId: machine.id, source: snapshot.source, observedAt: snapshot.observedAt, counted: counted.counted })
@@ -627,6 +701,15 @@ export class BridgeService {
       targetType: 'machine', targetId: machineId, message,
       after: { status, reason, since, approximate: approximate ?? false, code: event?.code ?? null, eventMessage: event?.message ?? null, thresholdMinutes },
     })
+    // Chỉ `fault` mới vào sổ lần lỗi. Dừng-lâu là một câu chuyện khác — nó nói về sản lượng,
+    // không nói về hỏng hóc — và trộn hai loại vào một quyển sẽ làm mọi con số "máy hỏng bao
+    // nhiêu lâu" phồng lên bằng những lần công nhân đi ăn trưa.
+    if (reason === 'fault') {
+      const machine = this.store.machines.find((entry) => entry.id === machineId)
+      this.soLanLoi(machine?.siteId).moLanLoi(machineId, {
+        siteId: machine?.siteId ?? null, batDau: since, events, uocChung: approximate ?? false,
+      })
+    }
   }
 
   /** Dòng "máy ra khỏi ngừng" kèm thời lượng. `approximate` = không chắc mốc bắt đầu (in "ít nhất"). */
@@ -645,6 +728,16 @@ export class BridgeService {
         previousStatus: previous.status, reason: wasFault ? 'fault' : 'long-stop', status: newStatus,
         since: previous.at, clearedAt, durationSeconds: seconds, approximate: previous.approximate ?? false,
       },
+    })
+    if (!wasFault) return
+    // `unknown` KHÔNG phải "đã hết lỗi". Nó là "ta mất dấu con máy". Đóng nó như một lần lỗi
+    // kết thúc bình thường sẽ in ra "máy lỗi 12 phút" trong khi sự thật là "ta nhìn được tới
+    // phút thứ 12 thì mất tín hiệu" — máy có thể vẫn đang đứng đó với cùng cái lỗi.
+    const machine = this.store.machines.find((entry) => entry.id === machineId)
+    this.soLanLoi(machine?.siteId).dongLanLoi(machineId, {
+      ketThuc: clearedAt,
+      trangThaiSau: newStatus,
+      chuaBietVi: newStatus === 'unknown' ? CHUA_BIET_VI.MAT_TIN_HIEU : null,
     })
   }
 

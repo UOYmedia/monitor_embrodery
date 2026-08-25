@@ -195,6 +195,30 @@ const routes = [
     handler: (ctx) => service.audit.read({ limit: clampLimit(ctx.url.searchParams.get('limit')), targetPrefix: ctx.params[0] })
       .then(({ entries }) => ({ entries })),
   },
+  /**
+   * Lịch sử lần lỗi của một máy. Đọc bằng `fleet:read` — cùng quyền với việc nhìn trạng thái
+   * máy, vì "máy đang lỗi" và "máy đã lỗi hôm qua" là cùng một câu hỏi của cùng một người.
+   */
+  {
+    method: 'GET',
+    pattern: /^\/api\/v2\/machines\/([^/]+)\/faults$/,
+    permission: 'fleet:read',
+    handler: (ctx) => service.docLichSuLoi(ctx.params[0], {
+      from: ctx.url.searchParams.get('from'),
+      to: ctx.url.searchParams.get('to'),
+      limit: clampLimit(ctx.url.searchParams.get('limit')),
+    }),
+  },
+  /**
+   * Mở lại một lần lỗi. Đây là quyền GHI (`machine:update`), không phải `fleet:read`: nó đổi
+   * cách cả xưởng đọc một sự việc đã xảy ra. Người chỉ được xem thì thấy, không sửa.
+   */
+  {
+    method: 'POST',
+    pattern: /^\/api\/v2\/machines\/([^/]+)\/faults\/([^/]+)\/reopen$/,
+    permission: 'machine:update',
+    handler: (ctx) => service.moLaiLanLoi(ctx.params[0], ctx.params[1], ctx.body ?? {}, ctx.session),
+  },
   { method: 'GET', pattern: /^\/api\/v2\/network$/, permission: 'scan:run', handler: () => localNetworkIdentity() },
   /**
    * Tra tên mẫu trong thư viện của xưởng. Trả **lý do** chứ không chỉ có/không, vì "chưa cấu
