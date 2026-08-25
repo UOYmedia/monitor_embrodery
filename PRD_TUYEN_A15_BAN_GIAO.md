@@ -224,12 +224,12 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | S‑04 | L0 | Catalog cũ hỏng → `.bad` + bắt đầu lại rỗng, không sập | `test_enumerator.py` [8] | `test_enumerator.py` | 🟩 |
 | S‑05 | L0 | `enum-growth.csv` chỉ-ghi-thêm, đếm đúng, **không rò bí mật** | `test_enumerator.py` [9] | `test_enumerator.py` | 🟩 |
 | S‑06 | L0 | Trường tên nghi bí mật → `<redacted:name-only>` | Quét `catalog.json` thật: **4 trường đã che, 0 chuỗi nghi là khoá** | Quét toàn bộ `catalog.json` | 🟩 |
-| S‑07 | L2 | Frame Python thật → hợp đồng JS thật | `normalizeTelemetry` nhận, không mất trường | `scripts/broker-frame.test.mjs` | ✅ |
-| S‑08 | L1 | Độ tươi: `state` cũ hơn ngưỡng → **không** hiện như số sống | `freshness.ts` phân biệt tươi/ôi/mất | vitest | ✅ |
-| S‑09 | L3 | API trạng thái cần `fleet:read`; thiếu → 403, không token → 401 | Mã HTTP đúng | Test HTTP cổng 0 | ✅ |
-| S‑10 | L4 | Bất biến K1: thiếu dữ liệu controller → **không** hiện `0` | Hiện "Chưa đọc được từ controller" | happy-dom | ✅ |
-| S‑11 | L0 | Nhịp `state` trung bình trên cửa sổ sạch | Có số (đang là 1,54 s/bản), kèm min/max | `do_on_dinh.py` | 🟡 |
-| S‑12 | L0 | Bản tin `state` méo / giải mã hỏng | Bỏ qua có ghi log, **không** làm chết luồng | Bơm gói méo từ máy khách giả | ✅ |
+| S‑07 | L2 | Frame Python thật → hợp đồng JS thật | ✅ 25/08: 5/5, frame do chính `broker.py` sinh, không viết tay | `scripts/broker-frame.test.mjs` | 🟩 |
+| S‑08 | L1 | Độ tươi: `state` cũ hơn ngưỡng → **không** hiện như số sống | ✅ 25/08 đo đầu-cuối qua bridge THẬT, đủ ba mức: 0s→`online`; 60s→`stale` (>30s); 300s→hết `online`, `ageSeconds=301` kèm lý do bằng chữ. Số cũ **vẫn đọc được**, chỉ đổi nhãn | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
+| S‑09 | L3 | API trạng thái cần `fleet:read`; không token → 401 | ✅ 25/08: không token/token bịa → 401; máy **không tồn tại** + không token cũng 401 (không rò id máy); viewer → 200. **Nhánh 403 không chạm được trên đường này** — bảng quyền cấp `fleet:read` cho cả ba vai; 403 thật được kiểm trên `/api/v2/ingest` (`scan:run`) | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
+| S‑10 | L4 | Bất biến K1: thiếu dữ liệu controller → **không** hiện `0` | ✅ 25/08: frame thiếu `curStitch` → `null` suốt từ `broker.py` tới API, **không** hoá 0; các trường máy CÓ nói vẫn giữ nguyên | `scripts/trang-thai-a15-e2e.test.mjs` | 🟩 |
+| S‑11 | L0 | Nhịp `state` trung bình trên cửa sổ sạch | Trung bình đã có (1,54 s/bản). **Min/max chưa lấy được từ bất kỳ dữ liệu nào đang có**: `broker.log` không đóng dấu thời gian từng dòng, `enum-growth.csv` không có cột đếm bản tin ⇒ chỉ tính ra được trung bình = tổng/dải. Muốn có min/max phải **sửa `broker.py`** (thêm cột đếm bản tin vào CSV, hoặc đóng dấu giờ vào dòng `*** STATE`) → **cần duyệt**, xếp cùng nhóm với K‑20c | `do_on_dinh.py` | 🟡 |
+| S‑12 | L0 | Bản tin `state` méo / giải mã hỏng | ✅ 25/08: 11/11. Bốn kiểu hỏng vỡ ở bốn tầng khác nhau của `dec_json` → mỗi gói 1 dòng log + vẫn PUBACK; gói ĐÚNG ngay sau đó vẫn chạy (hồi phục thật). **Đối chứng âm**: bẻ chốt `try/except` → 4/11, đúng như mong đợi | `deploy-mini/tests/test_goi_hong.py` | 🟩 |
 | S‑13 | **L5** | **Ca sản xuất thật**: `curStitch` chạy từ 0 tới `patternStitch` | Telemetry tăng đơn điệu, khớp mẫu đang thêu | `state.log` + dashboard | 🔴 |
 | S‑14 | **L5** | Độ phủ trạng thái sau ≥3 ca thật | Liệt kê **mọi** giá trị `state` đã gặp, ghi rõ "chưa gặp sau X ca" | `catalog.json` | 🔴 |
 
@@ -310,12 +310,14 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | Nhóm | Tổng | 🟩 đã xanh | ✅ làm được ngay | 🟡 cần máy nối | 🔴 cần xưởng |
 | --- | --- | --- | --- | --- | --- |
 | K — Kết nối | 26 | **21** | **0** | 3 | 2 |
-| S — Trạng thái | 14 | 6 | 5 | 1 | 2 |
+| S — Trạng thái | 14 | **10** | **1** | 1 | 2 |
 | L — Báo lỗi | 33 | 5 | 24 | 0 | 4 |
 | P — Đẩy mẫu | 23 | 0 | 9 | 6 | 8 |
-| **Cộng** | **96** | **32** | **38** | **10** | **16** |
+| **Cộng** | **96** | **36** | **34** | **10** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
+
+**Nhóm S đã đóng phần làm được mà không cần xưởng** (S‑07…S‑10, S‑12 xanh ngày 25/08). S‑11 chờ duyệt sửa `broker.py`; S‑13/S‑14 chờ ca chạy thật.
 
 **Nhóm K đã đóng.** Không còn ca ✅ nào — mọi thứ làm được mà không cần máy chạy hay
 người ra xưởng đều đã xanh. Bốn ca 🟡 còn lại chờ *thời gian* chứ không chờ việc:
