@@ -4,8 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "preview": "vite preview",
     "bridge": "node --env-file-if-exists=.env bridge/index.mjs",
     "bridge:may-that": "BRIDGE_CONFIG=./bridge.config.may-that.json node --env-file-if-exists=.env bridge/index.mjs",
     "may-in": "node scripts/may-in-up.mjs",
@@ -14,7 +17,7 @@
     "probe:may-in": "node scripts/printer-probe.mjs",
     "capture:xem": "node scripts/xem-capture.mjs",
     "dns:log": "node scripts/dns-log.mjs",
-    "verify": "npm run test && npm run lint && npm run bridge:check && npm run test:enum",
+    "verify": "npm run test && npm run lint && npm run build && npm run bridge:check && npm run test:enum",
     "kiem-mang": "node scripts/kiem-mang.mjs",
     "lang-nghe": "node scripts/lang-nghe.mjs",
     "bridge:xuong": "BRIDGE_CONFIG=./bridge.config.xuong.json node --env-file-if-exists=.env bridge/index.mjs",
@@ -22,13 +25,23 @@
     "coverage": "vitest run --coverage --coverage.reporter=text --coverage.include=bridge/lib/** --coverage.include=scripts/lib/** --coverage.exclude=**/*.test.*"
   },
   "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^4.1.11",
+    "happy-dom": "^20.11.6",
     "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10"
   },
-  "description": "Dịch vụ thuần API giám sát đội máy thêu Dahao (bridge + broker). Không kèm giao diện."
+  "description": "Giám sát đội máy thêu Dahao: giao diện + bridge + broker. Giao diện do chính bridge phục vụ (uiPath), cùng origin."
 }
