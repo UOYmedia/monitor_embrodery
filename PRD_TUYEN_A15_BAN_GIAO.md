@@ -279,9 +279,9 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | L‑24 | L3 | R3 `reopen` trỏ `episodeId` không tồn tại | ✅ 25/08: 404 và file **không đổi một byte**; mở lại mà không ghi lý do → 400, cũng không ghi gì | `loi-may-e2e.test.mjs` | 🟩 |
 | L‑25 | L3 | R3 `reopen` hai lần cùng `episodeId` | ✅ 25/08: cho phép; bản hợp nhất lấy dòng sau, `soLanMoLai=2`; **cả hai dòng vẫn nằm trên đĩa**, lần đầu không bị đè | `loi-may-e2e.test.mjs` · `fault-episodes.test.mjs` | 🟩 |
 | L‑26 | L3 | R3 cần quyền **ghi**, không phải `fleet:read` | ✅ 25/08: `machine:update`; viewer → **403**, và 403 bắn **trước** khi tra mã lần lỗi nên không dò được mã qua chênh lệch 403/404 | `loi-may-e2e.test.mjs` | 🟩 |
-| L‑27 | L4 | Bảng lần lỗi: *lỗi gì · từ · đến · kéo dài* | Ba trường hợp "chưa biết" hiện thành **chữ**, không `0 phút` | happy-dom | ✅ |
-| L‑28 | L4 | Mã lỗi in **nguyên văn**, không dịch, không bảng tra | Chuỗi hiển thị khớp byte với `events[].code` | happy-dom | ✅ |
-| L‑29 | L4 | Lần lỗi đã `reopen` hiện là **đã mở lại**, kèm lý do | Không xoá dấu vết bản cũ | happy-dom | ✅ |
+| L‑27 | L4 | Bảng lần lỗi: *lỗi gì · từ · đến · kéo dài* | ✅ 26/08: ba lý do "chưa biết" (mất tín hiệu · có người gõ tay · bridge khởi động lại) đều ra **chữ**, và ô "kéo dài" **không lọt một chữ số nào** — canh bằng `/\d/` trên `textContent` của đúng ô. Số 0 **đo được** thì vẫn in `0s`: cái bị cấm là in số cho một khoảng không quan sát được, không phải cấm số 0. Đồng hồ controller nhảy lùi → "Không tính được" | `faultEpisodes.test.ts` · `FaultEpisodeTable.test.tsx` | 🟩 |
+| L‑28 | L4 | Mã lỗi in **nguyên văn**, không dịch, không bảng tra | ✅ 26/08: chuỗi trên màn hình khớp **từng byte** với `events[].code` — không `trim()`, không đổi hoa thường, không tra bảng. Máy không gửi mã thì nói thẳng là **không có mã**, chứ không bịa một chữ vào đúng chỗ của mã (chữ bịa trông y hệt một mã máy khai) | `faultEpisodes.test.ts` · `FaultEpisodeTable.test.tsx` | 🟩 |
+| L‑29 | L4 | Lần lỗi đã `reopen` hiện là **đã mở lại**, kèm lý do | ✅ 26/08: dấu mở lại mang đủ **ai · lúc nào · vì sao**, và nằm **cạnh** bản ghi cũ — mã, hai mốc và thời lượng ban đầu vẫn nguyên trên dòng đó, đúng tinh thần R3 (bridge ghi thêm dòng, không sửa dòng cũ). Mở lại đúng một lần thì không in "1 lần" thừa ra | `faultEpisodes.test.ts` · `FaultEpisodeTable.test.tsx` | 🟩 |
 | L‑30 | **L5** | **Máy lỗi thật** (đứt chỉ tự xảy ra) → enumerator bắt được trường mới | Có `state` mới ngoài `-1` và `15`; có `stateID`/`wstrStatusDesc` hay **không có** | `catalog.json` + `enum-growth.csv` | 🔴 |
 | L‑31 | **L5** | Suy ra nhánh `fault` từ dữ liệu thật (E3) | Điều kiện `fault` viết được, **có dẫn chứng**, không đoán | Ghi chú + code | 🔴 |
 | L‑32 | **L5** | Đối chiếu thời lượng hệ thống đo vs **đồng hồ tay người** | Lệch ≤5 giây, hoặc nói rõ vì sao lệch | Sổ ca + báo cáo | 🔴 |
@@ -327,9 +327,9 @@ L4 giao diện · L5 tại xưởng), thêm **L0** = `broker.py`.
 | --- | --- | --- | --- | --- | --- |
 | K — Kết nối | 27 | **23** | **0** | 2 | 2 |
 | S — Trạng thái | 14 | **12** | **0** | 0 | 2 |
-| L — Báo lỗi | 33 | **26** | **3** | 0 | 4 |
+| L — Báo lỗi | 33 | **29** | **0** | 0 | 4 |
 | P — Đẩy mẫu | 23 | **9** | **0** | 6 | 8 |
-| **Cộng** | **97** | **70** | **3** | **8** | **16** |
+| **Cộng** | **97** | **73** | **0** | **8** | **16** |
 
 *(Bảng này đếm bằng máy, không đếm tay: quét mọi dòng `| X‑NN | … | dấu |` trong mục 4.)*
 
@@ -369,7 +369,7 @@ Hai điều đọc được từ header 2 file `.DST` thật, cần **mắt ngư
 mã hoá đúng. Chúng KHÔNG chứng minh máy nhận được mẫu. Máy chưa từng gửi `pattern/query` lần nào
 — đó là P‑16/P‑17, và cổng vẫn là mức `registration` trên HMI.
 
-**Nhóm L: đã xanh L‑11…L‑26 ngày 25/08, và phải đọc kèm một giới hạn.** Sổ lần lỗi
+**Nhóm L: đã xanh L‑11…L‑26 ngày 25/08, L‑27…L‑29 ngày 26/08, và phải đọc kèm một giới hạn.** Sổ lần lỗi
 (`bridge/lib/fault-episodes.mjs`) là code MỚI viết cho nhóm này — trước đó hệ thống không hề có
 `episodeId`, không có `previousEpisodeId`, và `fault → unknown` đang ghi ra một thời lượng **như
 thể máy đã hết lỗi thật**. Nay đã có, đã nối vào bridge, và đã đo đầu-cuối qua HTTP thật.
@@ -400,8 +400,18 @@ hỏng không che sự kiện thật, bắt buộc múi giờ, `unknown` không 
 trần 40 ký tự của `code`, từ chối cả gói thay vì bỏ riêng sự kiện hỏng) → mỗi lần đúng ca tương
 ứng đỏ, không ca nào ngoài phạm vi.
 
-L‑27/L‑28/L‑29 là ca giao diện (happy-dom) và **thuộc repo trên máy chính**, không làm được ở
-Mini (bản Mini không có thư mục `src/`). Xem mục "hai repo đã lệch nhau".
+**L‑27/L‑28/L‑29 xanh ngày 26/08 — và đây là bộ test giao diện đầu tiên của cả repo.** Trước
+đó ba ca này bị kẹt vì `src/` nằm ở repo bên máy chính; gộp repo xong (`9ead540`) thì chạy
+được ngay tại Mini. Chia hai tầng có chủ đích: `src/lib/faultEpisodes.ts` (hàm thuần, 18 ca)
+quyết định **ô này phải nói gì**, còn `FaultEpisodeTable.test.tsx` (11 ca, `happy-dom` +
+`@testing-library/react`) chốt `textContent` của **đúng ô người ta nhìn** — vì một hàm thuần
+trả về đúng chữ vẫn có thể bị JSX đặt nhầm cột, bọc vào thẻ bị ẩn, hay bị một `formatDuration`
+gọi thẳng ghi đè.
+
+Chốt chặt nhất của nhóm này là một phép đo **âm**: ô "kéo dài" của ba trường hợp "chưa biết"
+phải không chứa **một chữ số nào**. Bắt theo kiểu "khác chuỗi `0 phút`" thì `0 giây`, `0s`,
+`00:00` đều lọt — mà chúng đọc ra cùng một câu nói dối: *máy lỗi rồi hết ngay*, trong khi sự
+thật là *ta chỉ nhìn được tới đó*. Hai câu trái ngược nhau, và câu sai lại là câu trấn an.
 
 **Nhóm S đã đóng sạch phần làm được mà không cần xưởng** (S‑07…S‑12 xanh ngày 25/08).
 Không còn ca 🟡 nào: S‑11 đóng bằng số đo thật sau khi dấu giờ được duyệt và lên production
@@ -487,15 +497,16 @@ P‑21, P‑22 (thao tác HMI)  ──mở khoá──▶  P‑16
 | Canh mốc mili-giây khi nạp mẫu | `~/hmi_watch.py` (Mini) | Đang chạy nền |
 | Cài đặt một phát | `deploy-mini/install.sh` + `README.txt` | Có |
 
-### 6.1 Hai việc BẮT BUỘC làm trước khi đưa mã ra ngoài
+### 6.1 Việc BẮT BUỘC làm trước khi đưa mã ra ngoài
 
 1. **Khoá AES/XXTEA đang nằm cứng trong `deploy-mini/broker.py` và đã vào lịch sử git**
    (commit `458550b`). Repo **chưa có remote nào** nên hiện chưa lọt ra ngoài — nhưng giao repo
    đi là giao luôn cả khoá trong lịch sử. Phải chốt: đưa ra biến môi trường / file bí mật riêng,
    và quyết định có cần viết lại lịch sử git hay không. **Đừng giao trước khi chốt xong việc này.**
-2. **Hai bản repo đang lệch nhau.** Máy chính `4a76958`, Mac Mini `7fa61e8`, mỗi bên có việc bên
-   kia không có. Mọi con số "verify xanh / N test" chỉ đúng với **một** bên. Phải hợp nhất trước
-   khi giao, nếu không đội nhận sẽ tin vào một con số không có thật.
+2. ~~**Hai bản repo đang lệch nhau.**~~ **XONG 26/08** (`9ead540`): đã gộp về **một** repo duy
+   nhất, nằm trên Mac Mini. Từ đây mọi con số "verify xanh / N test" chỉ còn một nguồn —
+   `npm run verify` trên Mini, xanh **1447/1447** ngày 26/08. Giữ mục này lại thay vì xoá đi để
+   người đọc bản PRD cũ biết chuyện đã được chốt chứ không phải bị quên.
 
 ### 6.2 Ba điều đội nhận phải biết ngay ngày đầu
 

@@ -15,6 +15,7 @@ import type { BridgeApi } from '../services/bridgeApi'
 import { BridgeApiError } from '../services/bridgeApi'
 import type { AuditEntry, MachineView, ProductionReport, Site } from '../types/fleet'
 import { DesignThumb } from './DesignThumb'
+import { FaultEpisodeTable } from './FaultEpisodeTable'
 import { ManualReadingForm } from './ManualReadingForm'
 import { PlainRow, ReadingRow } from './ReadingRow'
 import { ConnectionBadge, SeverityBadge, StatusBadge, VerificationBadge } from './StateBadge'
@@ -31,12 +32,15 @@ import { ConnectionBadge, SeverityBadge, StatusBadge, VerificationBadge } from '
  * "máy đang sao, vì sao, bao lâu rồi" mà không phải cuộn.
  */
 
-type DetailTab = 'overview' | 'maintenance' | 'alerts' | 'production' | 'audit'
+type DetailTab = 'overview' | 'maintenance' | 'alerts' | 'faults' | 'production' | 'audit'
 
 const tabLabels: [DetailTab, string][] = [
   ['overview', 'Tổng quan'],
   ['maintenance', 'Bảo trì'],
   ['alerts', 'Cảnh báo'],
+  // Đứng riêng khỏi "Cảnh báo": cảnh báo là *việc đang cần ai đó xử lý*, lần lỗi là *lịch sử máy
+  // đã dừng bao lâu*. Gộp hai thứ vào một tab thì cái đã xong sẽ đẩy cái đang cần làm xuống dưới.
+  ['faults', 'Lần lỗi'],
   ['production', 'Sản lượng máy'],
   ['audit', 'Audit'],
 ]
@@ -295,6 +299,10 @@ export function MachineDetail({
             </>
           )}
         </section>
+      )}
+
+      {tab === 'faults' && (
+        <FaultEpisodeTable api={api} machineId={machine.identity.id} timeZone={timeZone} />
       )}
 
       {tab === 'production' && (

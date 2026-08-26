@@ -449,6 +449,54 @@ export interface ProductionReport {
   excluded: { unverifiedRows: number; reason: string }
 }
 
+/**
+ * Một **lần lỗi** của máy, đúng như `bridge/lib/fault-episodes.mjs` (`docHopNhat`) trả ra: dòng mở,
+ * dòng đóng và các dòng `reopen` đã được hợp nhất sẵn ở bridge.
+ *
+ * Ba trường dưới đây là chỗ dễ đọc nhầm nhất, nên nói rõ ngay tại đây:
+ * — `thoiLuongGiay === null` nghĩa là **không quan sát được**, không phải bằng 0. Một số 0 thật
+ *   (lỗi và hết lỗi trong cùng một giây) vẫn về đây là số 0.
+ * — `ketThuc` khi `chuaBietVi !== null` là mốc *ta thôi nhìn thấy*, không phải mốc *máy hết lỗi*.
+ * — `daMoLai` không xoá gì của bản ghi cũ; nó là một lớp thông tin chồng thêm.
+ */
+export interface FaultEpisode {
+  episodeId: string
+  machineId: string
+  siteId: string | null
+  batDau: string
+  ketThuc: string | null
+  thoiLuongGiay: number | null
+  dangMo: boolean
+  lyDoDong: string | null
+  /** `null` = controller thật sự báo hết lỗi. Khác `null` = ba lý do "chưa biết". */
+  chuaBietVi: string | null
+  trangThaiSau: string | null
+  /** Mã lỗi **nguyên văn** máy gửi. Không dịch, không tra bảng. */
+  ma: string | null
+  moTa: string | null
+  previousEpisodeId: string | null
+  /** Máy đã lỗi từ trước lúc bridge kịp nhìn thấy ⇒ mốc `batDau` chỉ là "ít nhất từ". */
+  batDauUocChung: boolean
+  /** Đồng hồ controller lùi về quá khứ giữa lần lỗi này ⇒ không tính được độ dài. */
+  mocDangNgo: boolean
+  ghiLuc: string | null
+  daMoLai: boolean
+  soLanMoLai: number
+  moLaiLuc: string | null
+  moLaiBoi: string | null
+  lyDoMoLai: string | null
+  /** Câu chữ do bridge viết. Giao diện ưu tiên câu này thay vì tự viết lại. */
+  cauChu: string | null
+}
+
+export interface FaultEpisodePage {
+  machineId: string
+  episodes: FaultEpisode[]
+  /** `true` = còn lần lỗi cũ hơn không nằm trong trang này. */
+  truncated: boolean
+  tongCong: number
+}
+
 export type SocketMessage =
   | { type: 'hello'; schemaVersion: number; serverTime: string; session: SessionSummary; heartbeatSeconds: number }
   | { type: 'fleet_state'; schemaVersion: number; revision: number; at: string; sites: Site[]; machines: MachineView[] }

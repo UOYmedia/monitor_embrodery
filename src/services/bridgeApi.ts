@@ -1,4 +1,4 @@
-import type { AuditEntry, AuditPage, AuditRetention, BridgeHealth, IngestStatus, MachineView, OperationalStatus, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
+import type { AuditEntry, AuditPage, AuditRetention, BridgeHealth, FaultEpisodePage, IngestStatus, MachineView, OperationalStatus, ProductionReport, ScanResult, SessionSummary } from '../types/fleet'
 
 /**
  * REST client for the bridge.
@@ -182,6 +182,16 @@ export class BridgeApi {
   }
 
   machineAudit(machineId: string, limit = 50) { return this.request<{ entries: AuditEntry[] }>('GET', `/machines/${encodeURIComponent(machineId)}/audit?limit=${limit}`) }
+
+  /**
+   * Lịch sử **lần lỗi** của một máy, đã hợp nhất mở + đóng + mở-lại ở bridge.
+   *
+   * Chỉ đọc. Đường mở lại một lần lỗi (`POST …/faults/:id/reopen`) nằm riêng và cần quyền
+   * `machine:update`; bảng lần lỗi trên giao diện không gọi nó.
+   */
+  machineFaults(machineId: string, limit = 100) {
+    return this.request<FaultEpisodePage>('GET', `/machines/${encodeURIComponent(machineId)}/faults?limit=${limit}`)
+  }
 
   /** Tra một loạt tên mẫu trong thư viện của xưởng: có ảnh hay không, và nếu không thì vì sao. */
   designs(files: string[]) {

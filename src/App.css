@@ -956,6 +956,22 @@
 .audit-denied { background: var(--critical-bg); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; }
 
+/* ---------- bảng lần lỗi ---------- */
+
+/* Mã lỗi in nguyên văn máy gửi. `white-space: pre` là phần bắt buộc, không phải trang trí: mã có
+   thể mang khoảng trắng ở đầu/cuối hoặc ở giữa, và HTML mặc định gộp chúng lại — lúc đó chuỗi
+   trên màn hình không còn khớp byte với `events[].code` nữa, đúng cái ca L‑28 cấm. */
+.fault-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: pre;
+}
+
+/* Chỗ hệ thống KHÔNG quan sát được, ngả sang chữ nghiêng nhạt để mắt phân biệt ngay với một phép
+   đo thật ở cùng cột. Không dùng màu làm dấu hiệu duy nhất — cùng luật với các badge phía trên. */
+.fault-unknown { color: var(--ink-muted); font-style: italic; }
+
 /* ---------- badges: word + symbol, never colour alone ---------- */
 
 .badge {
