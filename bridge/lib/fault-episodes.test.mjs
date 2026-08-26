@@ -14,12 +14,31 @@ import { CHUA_BIET_VI, DONG_BINH_THUONG, DONG_CHUA_BIET, FaultEpisodeLog, thoiLu
  */
 
 let dir
+
+// Mọi sổ đã mở trong ca hiện tại, để `afterEach` còn đợi hàng đợi ghi cạn trước khi xoá.
+const soDaMo = []
+
 beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'loi-')) })
-afterEach(async () => { await rm(dir, { recursive: true, force: true }) })
+
+afterEach(async () => {
+  // `moLanLoi`/`dongLanLoi` KHÔNG phải hàm async: chúng đẩy dòng vào `this.queue` rồi trả về
+  // ngay (xem `ghi()` trong fault-episodes.mjs) — cố ý, để đường telemetry nóng không phải
+  // đợi đĩa. Nhưng nếu ca test xoá thư mục tạm mà không đợi hàng đợi, lần ghi còn treo sẽ
+  // `mkdir` lại ĐÚNG thư mục vừa xoá rồi `appendFile` vào giữa lúc `rm` đang duyệt: `rm`
+  // đọc thư mục thấy trống, tới lúc `rmdir` thì đã có file mới ⇒ ENOTEMPTY.
+  //
+  // Đây là ca đỏ THẬT — bắt được 2/15 lần chạy ngày 26/08, mỗi lần rơi vào một `it` khác
+  // nhau (vì nó là chuyện của `afterEach`, không của ca nào cả). Một ca đỏ chập chờn kiểu
+  // này nguy hơn một ca đỏ hẳn: đội nhận mã sẽ chạy lại cho tới lúc xanh rồi thôi, và từ
+  // đó không ai còn tin bộ test nữa.
+  await Promise.all(soDaMo.splice(0).map((so) => so.flush().catch(() => {})))
+  await rm(dir, { recursive: true, force: true })
+})
 
 function moSo(options = {}) {
   const dongHo = { at: Date.parse('2026-08-25T08:00:00.000Z') }
   const so = new FaultEpisodeLog(join(dir, 'loi-test-1.jsonl'), { now: () => dongHo.at, ...options })
+  soDaMo.push(so)
   return { so, dongHo }
 }
 

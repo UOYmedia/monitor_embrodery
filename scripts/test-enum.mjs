@@ -42,7 +42,27 @@ for (const [probe, vi_sao] of [
 
 // stdio kế thừa: người chạy thấy nguyên văn `== ENUM SELF-TEST PASS ==` hoặc chỗ trượt.
 // execFileSync ném khi mã thoát khác 0 -> node thoát khác 0 -> `verify` đỏ. Đúng ý đồ.
+//
+// Trừ đúng một mã: **77 = tự bỏ qua**. Đó là quy ước của chính mấy self-test này
+// (`test_tu_hoi_phuc.py`, `test_goi_hong.py`, `test_ben_vung_live.py` đều `sys.exit(77)` khi
+// thiếu tiền đề), và nó cùng nghĩa với `bo_qua()` ở trên — chỉ khác là nó phát ra từ tiến
+// trình con. Đọc 77 thành "trượt" làm `verify` đỏ VĨNH VIỄN trên mọi máy không đặt
+// `DAHAO_CHO_PHEP_GIET=1`, tức là đỏ trên máy đội nhận mã ngay ngày đầu — mà cái cờ ấy cố ý
+// khó bật, vì bài test sau nó giết tiến trình production thật. Một cổng luôn đỏ không bảo vệ
+// được gì; nó chỉ dạy người ta cách đi vòng qua nó.
+const MA_BO_QUA = 77
+let soBoQua = 0
 for (const ten of cacTest) {
   console.log(`--- ${ten}`)
-  execFileSync('python3', [thuMuc + ten], { stdio: 'inherit' })
+  try {
+    execFileSync('python3', [thuMuc + ten], { stdio: 'inherit' })
+  } catch (error) {
+    if (error?.status !== MA_BO_QUA) throw error
+    soBoQua += 1
+  }
+}
+// Bỏ qua thì phải NÓI TO, đúng ranh giới ghi ở đầu file: một bước lặng lẽ không chạy gì cả
+// trông y hệt một bước chạy xong và xanh.
+if (soBoQua > 0) {
+  console.log(`(${soBoQua}/${cacTest.length} self-test tự bỏ qua vì thiếu tiền đề — xem các dòng "BỎ QUA:" ở trên)`)
 }
