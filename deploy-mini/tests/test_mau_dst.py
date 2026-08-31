@@ -284,7 +284,7 @@ def p08():
 
         goi = []
         that = broker.deliver
-        broker.deliver = lambda topic, payload: (goi.append((topic, payload)), 1)[1]
+        broker.deliver = lambda topic, payload, plain=None: (goi.append((topic, payload)), 1)[1]
         try:
             broker._reply('DEV1', 'emCAD/server/v1/pattern/data', {'mesgNo': '77'}, {
                 'barCodeID': p['barCodeID'],
