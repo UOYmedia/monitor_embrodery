@@ -1,11 +1,40 @@
 #!/usr/bin/env python3
 # Broker MQTT tối giản (3.1/3.1.1) + bắt tay auth XXTEA cho máy Dahao BECS-A15.
 # Mục tiêu: qua được auth/login -> secret -> encode -> confirm để máy publish `state`.
-import socket, threading, struct, json, base64, os, sys, time, random
+import ast, socket, threading, struct, json, base64, os, sys, time, random
+from pathlib import Path
 from Crypto.Cipher import AES
 
 HOST='0.0.0.0'; PORT=3865
-KEY=b'***REMOVED***'; IV=b'***REMOVED***'
+def _load_aes_secrets():
+    secret_path = Path(__file__).with_name('broker_secrets.py')
+    try:
+        secret_source = secret_path.read_text(encoding='utf-8')
+        secret_tree = ast.parse(secret_source, filename=str(secret_path))
+    except FileNotFoundError:
+        raise RuntimeError(f'Thiếu file cấu hình khoá AES: {secret_path}') from None
+    except Exception as exc:
+        raise RuntimeError(f'Không đọc được file cấu hình khoá AES {secret_path}: {exc}') from exc
+
+    values = {}
+    try:
+        for node in secret_tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in {'KEY', 'IV'}:
+                    values[target.id] = ast.literal_eval(node.value)
+    except Exception as exc:
+        raise RuntimeError(f'Khoá AES trong {secret_path} không hợp lệ: {exc}') from exc
+
+    missing = {'KEY', 'IV'} - values.keys()
+    if missing:
+        raise RuntimeError(f'File cấu hình khoá AES {secret_path} thiếu: {", ".join(sorted(missing))}')
+    if any(not isinstance(values[name], bytes) or len(values[name]) != 16 for name in ('KEY', 'IV')):
+        raise RuntimeError(f'KEY và IV trong {secret_path} phải là bytes dài 16 byte.')
+    return values['KEY'], values['IV']
+
+KEY, IV = _load_aes_secrets()
 A=[0x40269286,0x7c032a72,0x6a6de9ac,0x5c258294]
 B=[0x650a9c4f,0x4ef3306a,0x32c03b32,0x59770a4a]
 LOG=os.path.join(os.path.dirname(__file__),'broker.log')
@@ -159,7 +188,7 @@ def mk_publish(topic, payload, qos=0):
     body=vh+payload
     return bytes([0x30|(qos<<1)])+enc_remlen(len(body))+body
 
-def deliver(topic, payload):
+def deliver(topic, payload, plain=None):
     # gửi tới mọi client có subscription khớp
     with lock:
         targets=[c for c in clients if any(sub_match(s,topic) for s in c[1])]
@@ -211,7 +240,7 @@ def handle_auth_login(conn_sub, topic, payload):
                    "encode":[float(s32(x)) for x in encode]}}
     ct=aes_enc_json(reply)
     rtopic='emCAD/server/v1/auth/secret/'+dev
-    n=deliver(rtopic, ct.encode())
+    n=deliver(rtopic, ct.encode(), reply)
     log('  << login mesgNo=%s Nc=%d | >> secret Ns=%d encode=%s expect=%s (sub=%d)'%(hdr.get('mesgNo'),Nc[0],nsv,encode,expect,n))
 
 def handle_auth_encode(topic, payload):
@@ -471,7 +500,7 @@ def _reply(dev, base_topic, req_hdr, body):
     obj={'header':{'mesgNo':str((req_hdr or {}).get('mesgNo','1')),'version':'1.0'},'body':body}
     ct=aes_enc_json(obj)
     topic=base_topic+'/'+dev
-    return deliver(topic,ct.encode()), topic
+    return deliver(topic,ct.encode(),obj), topic
 
 def _send_browse(dev, hdr, req_body=None):
     rq=req_body if isinstance(req_body,dict) else {}

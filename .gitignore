@@ -46,3 +46,6 @@ deploy-mini/patterns-nap.csv
 
 # Số đo nhịp `state` (S‑11 min/max, K‑20c tỉ lệ dòng lặp) — broker tự nối thêm 5 phút một dòng.
 deploy-mini/nhip-state.csv
+
+# Khoá xác thực broker: chỉ tồn tại trên máy vận hành, không đưa vào Git.
+deploy-mini/broker_secrets.py
