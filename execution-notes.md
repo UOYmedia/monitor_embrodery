@@ -623,3 +623,724 @@ Mỗi bản vá kèm test hồi quy. `bridge/lib` phủ **85,75% câu lệnh / 8
 - [ ] `derivedAlerts` (cảnh báo lỗi/mất kết nối/dừng lâu) hiện **chỉ tồn tại phía client cũ**. Bỏ
       giao diện nghĩa là API chưa phục vụ nhóm cảnh báo đó. Cần chuyển sang bridge trước khi bên
       tích hợp dựng màn hình, nếu không họ phải tự nghĩ lại toàn bộ logic đó.
+
+---
+
+## Nhiều máy trên một broker — đã lên production (26/08)
+
+### Tình trạng: Phần 1 ĐẠT. Phần 2 (Grafana) đang làm.
+
+**Vấn đề gốc.** "Nhiều client" hoá ra là bài toán **định danh**, không phải sức tải. Broker vốn
+đã đa luồng và tách trạng thái theo `dev`. Chỗ hỏng nằm trọn ở mối nối broker → bridge: mọi máy
+đẩy telemetry qua **chung một socket** ra từ `127.0.0.1`, mà bridge thì định danh theo địa chỉ
+nguồn. Bốn chốt chặn, cả bốn đều hỏng kiểu im lặng hoặc chặn cứng:
+
+| Chốt | Trước | Sau |
+|---|---|---|
+| `dial-in.mjs` | Danh tính chốt theo IP lúc mở kết nối | Thêm nhánh **cổng tin cậy**: danh tính theo từng khung |
+| `identifyDialIn` | 2 máy cùng IP → `ambiguous_source`, vứt **cả** luồng | Ở cổng đã khai → `gateway.resolve(machineId)` |
+| `assertNoDuplicates` | Chặn ghép 2 máy cùng IP | Nới đúng ở địa chỉ cổng; mọi nơi khác vẫn chặn |
+| `broker._first_dev()` | Lệnh đẩy file lấy "máy nào nối trước" | `@<dev>`; hai máy mà không ghi → TỪ CHỐI |
+
+Nguyên tắc an toàn cũ giữ nguyên: `machineId` chỉ phân giải được sang máy **đã ghép sẵn tại chính
+địa chỉ đó**. `ingest.gateways` mặc định rỗng, không nhận CIDR, bật lên thì cảnh báo lúc khởi động.
+
+### Bằng chứng
+
+- **Gói thật, một socket, hai máy nói xen kẽ** (`~/thu-hai-may/thu.mjs`): máy 01 giữ 333/`mau-mot.dst`,
+  máy 02 giữ 444/`mau-hai.dst`, khung mạo danh bị vứt (`unknown_machine_id: 1`). Không trộn.
+- **Đối chứng âm** (`KHONG_CONG=1`, `gateways` rỗng): `ValidationError: IP 127.0.0.1 đã thuộc về máy
+  mch-a-01` — không ghép nổi hai máy. Đúng bức tường trước bản vá ⇒ kết quả trên là do bản vá.
+- **Test:** 1489/1489 (mốc cũ 1418, +71) + 13/13 test broker mới + 4 bộ test broker cũ vẫn đạt.
+
+### Production (backup `20260826-021918`)
+
+Kiểm trước khi đè: `broker.py` production **khớp repo HEAD từng byte** (`8cd05ce9…`, 46.626 byte),
+`bridge/lib` chỉ lệch 1 file test. Không có bản vá nóng nào bị đè mất.
+
+Bốn tiêu chí sau khởi động lại:
+
+| # | Tiêu chí | Kết quả |
+|---|---|---|
+| 1 | A15 đẩy telemetry tươi trong 60s | ✅ trễ 2,2s, `telemetryError: null` |
+| 2 | `[MAP] nạp 1 máy` | ✅ `may.json: 1 máy (mch-a15-mqtt)` |
+| 3 | `pairedGateway=true` cho `127.0.0.1` | ✅ kèm `gateway: true` trên dòng địa chỉ |
+| 4 | Khung thật đi qua nhánh cổng | ✅ 51 khung nhận, `rejections: {}` rỗng |
+
+Tiêu chí 4 là mạnh nhất: **nhánh cổng bắt buộc mỗi khung phải khai `machineId`**, thiếu là
+`machine_id_missing`. Rỗng lỗi + khung vẫn nhận ⇒ broker thật đang khai tên, bridge thật đang
+phân giải. Toàn tuyến thông.
+
+### Một chỗ tôi làm sai và đã sửa
+
+Nhánh cổng lúc đầu cắt socket khi một máy vượt nhịp — tức một máy nói nhiều làm **rụng telemetry
+của mọi máy đi chung dây**, mà chúng không làm gì sai. Tách `rateGuard(..., {cut:false})` cho đường
+đó, giữ cắt cho rác ở mức cổng, và thêm test hồi quy.
+
+### Ghi chú đọc số
+
+Trạng thái A15 là `stopped` chứ không phải `online` vì máy đang rỗi (`state=15`, `curStitch=0`) —
+đúng như telemetry thật xưa nay. Tiêu chí "còn sống" ở đây đọc bằng **độ tươi của mốc quan sát**,
+không đọc bằng chữ trạng thái.
+
+### Gói cài đã lạc hậu (phát sinh)
+
+`dahao-gateway.tar.gz` còn chứa `broker.py` và `bridge/` cũ, làm đỏ 2 bài canh drift trong
+`scripts/deploy-mini-sync.test.mjs` — đúng cái bẫy đã cắn thật 22/08 và 25/08. Đã đóng gói lại
+bằng `deploy-mini/dong_goi.sh`.
+
+## Tầng quan sát Grafana — đã chạy thật trên Mini (26/08)
+
+Việc: dựng Loki + Alloy + Grafana chạy thật trên máy sản xuất, đọc log thật, **không** dashboard
+tĩnh, **không** dữ liệu mẫu. Là tầng THÊM cạnh `xem.html`/app React, không phải bản thay.
+
+### Chọn brew thay vì Docker — và vì sao
+
+OrbStack không khởi động nổi trên Mini: `orb start` treo ở `phase=create_vm`, `lsof` cho thấy
+`vmgr` **chưa mở file đĩa VM nào** — chưa từng tạo được máy ảo. Đã loại trừ chữ ký app, Gatekeeper,
+thiếu tài nguyên. Phần cài đặt lần đầu cần màn hình + mật khẩu quản trị, mà Mini chạy không màn hình.
+
+Nên bỏ hẳn đường container: `brew install grafana loki grafana-alloy`. Ít hơn một tầng để hỏng.
+`docker-compose.yml` giữ nguyên trong `quan-sat/` cho ai sau này muốn quay lại.
+
+**Bẫy tên gói:** `brew info alloy` ra `alloy-analyzer` — một phần mềm hoàn toàn khác.
+Tên đúng là **`grafana-alloy`**.
+
+### Đã dựng gì
+
+| Job launchd | Bản | Nghe ở | Cấu hình |
+|---|---|---|---|
+| `com.dahao.loki` | 3.7.6 | `127.0.0.1:3100` | `quan-sat/native/loki.yml` |
+| `com.dahao.alloy` | 1.19.1 | `127.0.0.1:12345` | `quan-sat/native/config.alloy` |
+| `com.dahao.grafana` | 13.2.0 | `100.107.219.95:3000` | `quan-sat/native/grafana.ini` |
+
+Thư mục `quan-sat/native/` khác bản container **đúng hai chỗ**: `/nhat-ky/…` → đường thật
+`/Users/phong/dahao-gateway/…`, và `http://loki:3100` → `http://127.0.0.1:3100`. File JSON của
+bảng dùng chung, sửa một chỗ hai bản cùng thấy. Mật khẩu admin ở `grafana-admin.env` (chmod 600),
+nạp qua `chay-grafana.sh` — không chép vào plist. `chay-grafana.sh` chờ địa chỉ tailnet xuất hiện
+trước khi bind, đúng lỗi `EADDRNOTAVAIL` đã cắn với bridge.
+
+### Đóng cổng: đã kiểm bằng `lsof`, không bằng ý định
+
+```
+loki    127.0.0.1:3100      alloy   127.0.0.1:12345
+loki    127.0.0.1:9096      grafana 100.107.219.95:3000
+```
+
+Loki `auth_enabled: false` nên **phải** ở loopback — ai gọi thẳng 3100 là đọc được log thô;
+Grafana proxy hộ. Grafana chỉ nghe địa chỉ tailnet, đúng quyết định đã ghi sẵn trong
+`docker-compose.yml` từ trước. `cloudflare-config.yml` **không** nhắc tới 3000/3100 (đã grep, đếm = 0).
+
+### ĐẠT / HỎNG
+
+| Tiêu chí | Kết quả |
+|---|---|
+| Dashboard `dahao-tuyen` tự nạp ở cổng 3000 | ✅ `/api/dashboards/home` → `/d/…/tuyen-dahao-e28094-van-hanh` |
+| Panel hiện dòng STATE THẬT 15 phút gần nhất | ✅ **9/9 panel** có dữ liệu (chạy đúng câu truy vấn của từng panel qua proxy Grafana, không xem ảnh) |
+| Nhãn `may` tách theo từng máy | ✅ 13 nhóm, **0 nhóm thiếu nhãn** |
+| Kiểm bằng truy vấn Loki > 0 dòng | ✅ 763 điểm/3 phút, 896 dòng STATE |
+| Giết tiến trình → launchd dựng lại | ✅ PID 78382 → 80719, `runs = 2`, health OK sau 25 s |
+| Tuyến sản xuất còn nguyên | ✅ bridge/broker PID không đổi, A15 `connection.state = online`, telemetry 2 s |
+| Không gom `state.log` | ✅ vẫn loại trừ, có ghi lý do trong config |
+
+### Cái bẫy regex — hỏng im lặng, suýt lọt
+
+Biểu thức tách dòng STATE viết `pat=(?P<mau>\S*)`. Tên file mẫu **thật** có dấu cách:
+
+```
+*** STATE dev=3CE4B0C54F54 … pat=4153725796 front(1).DST @2026-08-26T09:34:09Z
+```
+
+`\S*` dừng ở dấu cách → `@(?P<thoi_diem>…)` hết khớp → **cả biểu thức trượt** → dòng vào Loki
+**không nhãn nào**. Máy biến mất khỏi bảng, không có lỗi nào để đọc. Đúng họ lỗi của cả dự án này.
+Lúc phát hiện: 2 trên 6 máy vô hình. Đã sửa `(?P<mau>.*?)` ở **cả** bản native lẫn bản container.
+
+Mẫu gốc dùng để viết regex lấy từ A15 lúc rỗi (`pat=` rỗng) nên không lộ ra lỗi — bài học là
+mẫu một-máy-lúc-rỗi không đủ để chốt định dạng.
+
+### Bẫy đo lường: `| may = ""` cho số sai
+
+Định dùng `sum(count_over_time({…} | may = "" [3m]))` làm câu canh "có dòng nào mất nhãn không".
+Nó trả về **45** trong khi truy vấn log cùng bộ lọc trả về **0 dòng**, và `sum by (may)` cho thấy
+13 nhóm không nhóm nào rỗng. Suýt kết luận nhầm là bản vá regex chưa ăn. Câu canh đúng là
+`sum by (may) (count_over_time(…))` rồi nhìn có nhóm nào thiếu nhãn không. Đã ghi vào README.
+
+## VIỆC ĐANG MỞ — quan trọng nhất còn lại
+
+**Xưởng có 13 máy, `may.json` mới khai 1.** Tầng quan sát vừa bật lên đã lòi ra ngay: 13 định danh
+máy khác nhau cùng đẩy vào broker, nhiều máy **đang thêu thật** (`state=-1`, số mũi tăng, tên `.DST`
+thật). Bộ đếm bridge lúc 09:44:
+
+```
+nhận: 668   |   từ chối: {"machine_id_missing": 2618}
+```
+
+Tức **khoảng 80 % telemetry của xưởng đang bị từ chối** vì máy chưa khai tên. Đây là hành vi ĐÚNG
+của bản vá "nhiều máy" — thà báo lỗi to còn hơn cộng dồn số mũi 13 máy vào một máy, mà đó chính là
+thứ đang xảy ra âm thầm trước ngày 26/08. Bản vá không phải phòng xa: nó chặn một lỗi đang chảy.
+
+Việc còn phải làm: mỗi máy cần một bản ghi trong fleet + một dòng trong `may.json`. **Chỉ chủ xưởng
+biết định danh nào ứng với máy nào ngoài hiện trường** — không tự đoán, dừng ở đây chờ người quyết.
+
+13 định danh đã thấy: `3CE4B0C54F54` `602602621294` `602602621948` `602602704E7B` `602602911CB8`
+`6026029341EB` `6026029348ED` `60260295C907` `60260298B4C7` `602602A6F22B` `B83DF60B3FB8`
+`C0D60A8F4D52` `F4B8985355EF` (danh sách còn dài ra, xem nhãn `may` trên Grafana).
+
+## Khai 13 máy vào bridge — XONG (26/08)
+
+Chủ xưởng xác nhận các máy lạ là máy vừa lắp thêm, nên chỗ "dừng chờ người quyết" ở mục trên
+đã được gỡ. Đã khai đủ 13 máy.
+
+### Trước khi khai: tìm tên thật thay vì đặt bừa
+
+Catalog của enumerator có trường `body.machineName` — tức máy TỰ khai tên. Đã giải mã khung
+`state` cuối cùng của **từng** máy (dùng `dec_json` của chính broker, chỉ in `machineName`/
+`patternName`/`curStitch`) để lấy tên thật. Kết quả: **cả 13 máy đều để tên rỗng** — chưa ai
+đặt tên trên HMI. Nên tên trong fleet là tên TẠM, đặt theo 6 ký tự cuối mã máy (`Máy C54F54`).
+
+Cố ý **không** đánh số `Máy 1…13`: thứ tự mã máy không liên quan gì tới vị trí ngoài xưởng,
+một con số sai còn tệ hơn không có số. Đổi tên sau chỉ là sửa trường `name`, định danh không đổi.
+
+### Đã làm
+
+1. Sao lưu `bridge-data/fleet-store.dahao-mqtt.json.pre13.bak` và `may.json.pre13.bak`.
+2. `launchctl bootout` bridge trước khi ghi (bridge có ghi đè sổ máy, ghi lúc nó đang chạy là đua).
+3. Sinh 12 bản ghi máy mới, bản ghi A15 **giữ nguyên từng byte** (khớp theo `serial`).
+   Mỗi máy: `siteId=xuong-a15`, `ipAddress=127.0.0.1`, `adapter=dial-in`, `serial=<dev>`,
+   `assetTag=<dev>`, `id=mch-<dev viết thường>`, `verification=unverified`, `zone="Chưa gán"`.
+4. `may.json` 13 dòng `<dev> -> <machineId>`.
+5. `launchctl bootstrap` bridge.
+
+Nhiều máy chung `127.0.0.1` KHÔNG vướng `assertNoDuplicates`: nó nhận `sharedAddresses` từ
+`ingest.gateways` (`bridge-service.mjs:359`), và `identifyDialIn` xét nhánh cổng tin cậy
+TRƯỚC phép đếm trùng (`:795`). Đây đúng là ca dùng mà bản vá "nhiều máy" sinh ra để phục vụ.
+
+### ĐẠT / HỎNG
+
+| Tiêu chí | Kết quả |
+|---|---|
+| Broker nạp bảng máy | ✅ `[MAP] nạp may.json: 13 máy` (nạp nóng, không phải khởi động lại broker) |
+| 13/13 máy `connection.state = online` | ✅ qua `/api/v2/fleet` |
+| Mỗi máy một mẫu + số mũi RIÊNG | ✅ 13 tên `.DST` khác nhau, không máy nào trùng số mũi |
+| Từ chối vì thiếu định danh | ✅ **0** — trước khi khai là 2 618 |
+| Khung nhận | ✅ 946 và tăng đều; `pairedGateway=true`, `pairedCount=13` |
+| Suy trạng thái tách theo máy | ✅ đo 2 lần cách 30 s: `Máy 9341EB` +3 mũi ⇒ `running`, 12 máy còn lại đứng yên ⇒ `stopped` |
+| Trang thợ chịu được 13 máy | ✅ lưới 13 thẻ, ô đếm đúng `13 tổng / 13 dừng`; `test.phonh.io.vn` 200 |
+| Grafana tách nhãn `may` | ✅ `/loki/api/v1/label/may/values` trả đúng 13 |
+
+### Việc mới lòi ra, chưa làm
+
+- **Xuất hiện hai giá trị `state` chưa từng gặp: `0` và `2`** (trước chỉ có `-1` và `15`).
+  Chưa biết chúng nghĩa là gì; broker không dịch `state` sang chữ mà suy `running/stopped`
+  từ chênh lệch `curStitch`, nên không sai gì — nhưng đây là dữ liệu để làm E3 (phân loại lỗi).
+  Vẫn **không** đặt tên cho mã trạng thái chưa hiểu.
+- Tên máy còn là tên tạm; cần một vòng đi xưởng đối chiếu mã máy với vị trí thật rồi sửa `name`
+  + `zone`, và bật `verification` khi đã xác minh tận nơi.
+
+---
+
+## 26/08 — Sự kiện máy, lọc nhật ký, và câu hỏi "sao mũi không tăng"
+
+Ba câu hỏi của chủ xưởng: màn hình có báo lỗi đúng không, có theo thời gian thực không (thấy
+số mũi đứng yên), và làm sao cho nhật ký đừng nhảy quá nhiều.
+
+### 1. Báo lỗi: TRƯỚC ĐÂY HỎNG THẬT, đã vá cả hai đầu
+
+Ba lỗ độc lập, cái nào cũng đủ để ô "Lỗi máy" đứng yên ở 0 vĩnh viễn:
+
+| Lỗ | Ở đâu | Vì sao im |
+|---|---|---|
+| Máy A15 không gửi `wstrStatusDesc` | `broker.py: controller_state_event` | Nhánh thiếu mô tả trả `None` ⇒ **chưa bao giờ** đẩy nổi một sự kiện nào lên bridge. Đã kiểm catalog 13 máy: trường này không tồn tại. |
+| `state_to_status` không bao giờ trả `'fault'` | `broker.py` | Nó chỉ suy `running`/`stopped` từ chênh `curStitch`. Ô "Lỗi máy" đếm đúng `fault` ⇒ về cấu trúc là không thể khác 0. |
+| `m.telemetryError` không được vẽ ra | `xem/index.html: theMay()` | Bridge có trường này, thẻ máy không hiện. |
+
+Đã vá:
+
+- `controller_state_event` nay báo bằng chính con số máy tự khai, và **chỉ báo khi mã ĐỔI**
+  (`_prev_state` theo từng dev). Máy đẩy `state` mỗi 1–2 giây; báo mỗi nhịp là biến nhật ký
+  thành dòng chảy vô nghĩa. Vẫn **không dịch mã sang chữ**: đo trên 15 270 khung thật thì mã 0
+  gần như luôn kèm mũi tăng, mã 2 luôn đứng giữa mẫu, mã 15 phần lớn là hết mẫu — nhưng
+  "gần như" không phải "chắc chắn", và đặt tên cho mã chưa hiểu là nói hộ máy.
+  Chú ý giới hạn hợp đồng: `code` ≤ 40 (`contract.mjs:224`), `id` ≤ 80 (`:236`),
+  `message` ≤ 400 (`:239`) — vượt là bridge **từ chối cả gói**, không phải cắt bớt.
+- Thẻ máy nay có hộp đỏ `telemetryError` và dòng "Mã máy tự khai: N · đổi X trước".
+- Ô tổng thứ 4 đổi tên **"Lỗi máy" → "Cần xem"**, đếm `fault` HOẶC `telemetryError` HOẶC
+  cảnh báo chưa nhận HOẶC dừng giữa mẫu. Đây là quyết định tự làm, không hỏi: ô cũ đếm mỗi
+  `fault` nên nó là một lời hứa "không máy nào hỏng" mà hệ thống không có cách nào giữ.
+
+**Còn chưa chứng minh được:** một mã lỗi máy THẬT. Từ 21/08 tới nay máy chỉ phát trạng thái
+chạy/dừng/rỗi. Không cố ý làm hỏng máy để lấy mẫu. Đợi ca chạy có sự cố thật.
+
+Backup: `broker.py.pre-sukien.bak`, `xem/index.html.pre-loc.bak`, `xem/index.html.pre-nhay.bak`.
+
+### 2. Thời gian thực: ĐÚNG LÀ THỰC. Số mũi đứng yên vì máy tắt, không phải màn hình treo
+
+Đo trên trang đang chạy, cách nhau 55 giây:
+
+| | lúc đầu | sau 55 s |
+|---|---|---|
+| Máy A15 (còn sống) | `0 giây trước` | `1 giây trước` |
+| Máy 0B3FB8 (đã tắt) | `13 phút 30 giây trước` | `14 phút 25 giây trước` (**+55 s, đúng bằng thời gian trôi**) |
+
+Đồng hồ trang chạy; dữ liệu 12 máy kia thì không, vì máy không gửi nữa. `arp -a -l -n` cho
+`192.168.7.206–.216` trả `(incomplete)` — Mini hỏi mà không ai đáp. Không có lỗi phần mềm nào
+xoá được một địa chỉ khỏi bảng ARP.
+
+Và số mũi **đã từng tăng thật**, đo trên `broker.log`:
+
+```
+10:17:14  cur=4213  tot=9993  state=-1     ← máy 95C907
+10:17:16  cur=4231  tot=9993  state=0
+10:17:18  cur=4244  tot=9993  state=0
+10:17:20  cur=4258  tot=9993  state=0
+...
+10:31:57  cur=6854  tot=9993                ← khung cuối trước khi mất mạng
+```
+
+Cả phiên: **2 / 13 máy** có khung tăng mũi (95C907 = 194 lần, 98B4C7 = 335 lần). 11 máy còn
+lại nối vào lúc 10:17 khi đã ở số cuối cùng và không nhúc nhích — phần lớn là `cur == tot`
+(C54F54 35 854/35 854, 5355EF 17 799/17 799): **mẫu đã xong**, máy đứng chờ. Nên "mũi không
+tăng" phần lớn là sự thật của xưởng, không phải lỗi hiển thị. Ngoại lệ đáng chú ý:
+9348ED dừng ở 19 478/19 495 — thiếu 17 mũi là hết mẫu.
+
+Tên mẫu lòi ra số đơn RedThread: `4153725796 front(1).DST`, `4149448886 front 1.DST`.
+
+### 3. Nhật ký: đã lọc, cộng thêm bộ chống nháy
+
+Trước: mỗi bản tin WebSocket một dòng ⇒ ~10 dòng/giây với 13 máy.
+Nay `ghi()` chỉ chạy khi có **thay đổi**: máy báo sự kiện, đổi trạng thái vận hành, đổi tình
+trạng kết nối, `telemetryError` hiện/tắt, cảnh báo mới theo `id`, đổi mẫu. Ô "Ghi mọi bản tin"
+để bật lại kiểu cũ khi cần soi.
+
+| Phép đo | Kết quả |
+|---|---|
+| 13 máy đang chạy, ~2,5 phút | **53 dòng / 479 bản tin** |
+| 1 máy rỗi, 55 giây | **0 dòng mới** (đứng yên ở 8 dòng khởi động) |
+
+**Bộ chống nháy** (`chongNhay`/`xaNhay`): đo thật lúc 17:31 máy 95C907 đang dừng giữa mẫu nhảy
+mã `0↔15` **ba lần trong nửa giây**, mũi đứng im ở 6822/9993. Cả phiên 95C907 đổi mã 40 lần,
+98B4C7 34 lần, trong khi 11 máy đứng yên chỉ đổi 1 lần — tức đúng những máy đang chạy mới nháy.
+Ghi từng lần là lấp kín nhật ký bằng một sự việc; bỏ đi thì mất luôn sự việc đó. Nên: 3 lần
+đầu trong cửa sổ 30 giây ghi đủ, phần sau gom thành một dòng có đếm số và nói rõ đã gom bao
+nhiêu. **Việc mức `warning`/`critical` không bao giờ bị gom** — cái đáng sợ nhất của một bộ lọc
+là nó nuốt đúng dòng người ta cần đọc.
+
+### Việc mới lòi ra, chưa làm
+
+- `telemetry.controller` vẫn `null` và `normalizeController` (`contract.mjs:177–218`) không có
+  ô chữ tự do nào cho mã trạng thái thô. Nên dòng "Mã máy tự khai" trên thẻ còn trống cho tới
+  khi trang tự thấy lần đổi mã đầu tiên. **Cố tình không** mượn `controller.firmware` hay
+  `hoopName` để nhét con số vào — sai ngữ nghĩa thì lần sau không ai gỡ được.
+- 12 máy mới rời mạng đồng loạt lúc 17:31–17:33 giờ VN (hết ca). Chưa có ngày thứ hai để so
+  nhịp — chúng chỉ mới xuất hiện trong log từ `2026-08-26T09` UTC, tức lắp trong hôm nay.
+- `deriveAlerts` bỏ qua `severity === 'info'` (`alerts.mjs:37`); sự kiện đổi mã hiện đều là
+  `info` nên `alerts` vẫn luôn rỗng. Đúng thiết kế, ghi ra đây để khỏi đi tìm lại.
+
+---
+
+## 26/08 — Ngưỡng dừng, cảnh báo tự tính, và một cảnh báo chưa từng nổ
+
+Làm lúc cả xưởng tắt máy (hết ca), theo đúng yêu cầu "làm logic xong đã". Máy tắt nên không đo
+được đường lỗi bằng máy thật; phần nào không đo được thì nói rõ là chưa đo, không dựng số giả.
+
+### 1. `bridge-service.mjs:295` — `Date.parse(this.now())` ⇒ `NaN`
+
+`this.now()` trả về **số** mili-giây (mặc định `() => Date.now()`). `Date.parse` của một con số
+ép nó về chuỗi `"1787743974360"` rồi chịu thua ⇒ `NaN`. Mọi so sánh với `NaN` đều false.
+
+Hậu quả: `state:idle-long` — cảnh báo "máy dừng quá ngưỡng của xưởng", dòng **duy nhất** trong
+`derived-alerts.mjs` có cửa chặn theo thời lượng — **chưa bao giờ nổ một lần nào** trên
+production. Không lỗi, không log, không ai biết. Chứng minh trên dữ liệu sống:
+
+```
+Date.parse(Date.now())  = NaN
+keoDai voi (a): {"minutes":null,...}     derivedAlerts (a) = []
+keoDai voi (b): {"minutes":7.106,...}    derivedAlerts (b) = [ 'state:idle-long/warning' ]
+```
+
+Vì sao bài thử cũ không bắt được: `derived-alerts.test.mjs` gọi **thẳng** `derivedAlerts(may,
+moc)` với mốc đúng. Chỗ hỏng nằm ở **khúc nối** giữa `machineView` và `derivedAlerts`, không nằm
+trong hàm nào. Bài thử hồi quy mới (2 bài) cố ý đi vòng qua `machineView` — đúng đường API thật
+đi — và đã kiểm chứng là **đỏ trên mã cũ, xanh trên mã mới**.
+
+Sau khi triển khai, A15 mang `state:idle-long` lần đầu tiên: *"đã dừng ít nhất 7 phút"*.
+
+> Ghi chú lây sang chỗ khác: `sweepDowntime` cũng dùng `this.now()` nhưng làm phép **số học**
+> nên vẫn đúng — nhật ký kiểm toán **có** ghi các đợt dừng dài suốt thời gian qua. Chỉ đường API
+> là chết. Nên "sổ kiểm toán có số" không chứng minh được "cảnh báo còn sống".
+
+### 2. Ba nấc cho đợt dừng giữa mẫu — ngưỡng đo, không phải ngưỡng đoán
+
+Đo 182 đợt dừng giữa mẫu trên 13 máy, toàn bộ `broker.log` kể cả bản đã xoay:
+
+| phân vị | p50 | p85 | p90 | **p95** | **p99** | max |
+|---|---|---|---|---|---|---|
+| thời lượng | 2 s | 8 s | 44 s | **213 s** | **983 s** | 3 608 s |
+
+91,2 % đợt dừng dưới 1 phút. Nên: **60 s** = đáng để ý (đã ra ngoài nhịp thường), **300 s** = nên
+đi xem (nằm giữa p95 và p99, chỉ ~3 % số đợt tới đây). Ô "Cần xem" chỉ đếm từ nấc 1 trở lên —
+đếm mọi đợt dừng thì ô ấy kêu suốt ngày và thành đồ trang trí.
+
+**Đợt dừng dài nhất (60,1 phút, máy 9348ED) báo mã `15`, không phải mã `2`** (`{15:1796, -1:1}`).
+Nên mã trạng thái **không đủ** để phát hiện máy đứng dở mẫu — chỉ số mũi mới đủ. Đây là lý do
+`dungGiuaMau()` phải giữ nguyên lối so số mũi.
+
+Việc ghi nhật ký nấc dừng **bắt buộc** nằm trong nhịp đồng hồ chứ không trong nhánh "có bản tin
+mới": máy đang dừng vẫn đẩy bản tin đều 1–2 giây, nhưng **nội dung không đổi**, nên `ghiThayDoi()`
+không có gì để ghi. Đó chính là lý do đợt 60,1 phút đi qua màn hình cũ mà không để lại dòng nào.
+
+### 3. Tên mã trạng thái — chỉ 3 mã, đo trên ~58 000 lượt khung
+
+| mã | tổng lượt | mũi TĂNG | mũi ĐỨNG | giữa mẫu | hết/không mẫu | tên |
+|---|---|---|---|---|---|---|
+| `15` | 52 347 | 0,4 % | 99,5 % | 6,5 % | 91,9 % | không thêu |
+| `0` | 4 477 | 91,5 % | 8,3 % | 99,6 % | 0,2 % | đang thêu |
+| `2` | 1 155 | 0,2 % | 99,8 % | 100,0 % | 0 % | dừng giữa mẫu |
+| `-1` | 20 | 30 % | 55 % | 50 % | 50 % | **cố ý để trần** |
+
+`-1` và mọi mã lạ để **nguyên số**, cả trong broker lẫn trên trang. Giao thức này không có trường
+báo lỗi nào để cãi lại, nên đặt tên cho một mã chưa hiểu là nói hộ máy. Bảng tên ở hai nơi
+(`broker.py:TEN_MA`, `xem/index.html:TEN_MA`) phải khớp từng chữ — hai màn hình gọi cùng một mã
+bằng hai cái tên là cách nhanh nhất để hai người cãi nhau về cùng một cái máy.
+
+### 4. `derivedAlerts` lên màn hình — nhưng chỉ phần thẻ CHƯA nói
+
+`alerts` (lưu lại, bấm "đã xem" được) khác `derivedAlerts` (tính lại mỗi lần trả dữ liệu, tự tắt,
+bridge **trả 400** nếu ai thử xác nhận). Trang chỉ đọc `m.alerts`, nên `derivedAlerts` xưa nay vô
+hình.
+
+Đổ thẳng cả danh sách lên thẻ thì 4/5 loại **nói lại đúng thứ thẻ đã nói**: kết nối, lỗi đọc,
+trạng thái hỏng. Nên `CANH_TU_TINH_BO_QUA` chặn từng cái **kèm lý do từng cái**, viết theo lối
+"chặn cái đã biết" chứ không "chỉ cho qua cái đã biết" — cảnh báo nào bridge thêm về sau sẽ **tự
+hiện ra** thay vì biến mất im lặng.
+
+Còn đúng một loại lọt qua hôm nay: `state:idle-long` khi máy **không dở mẫu nào** — đúng khoảng
+trống của `mucDung()`, vốn cố ý chỉ đếm lúc dừng dở mẫu. Ô "Cần xem" đếm thêm cảnh báo tự tính
+**mức nặng** (dùng danh sách thô, không dùng danh sách đã lọc: bảng chặn nói "thẻ đã in chữ này
+rồi", không nói "chuyện này không quan trọng").
+
+### 5. Một lỗi máy — một dòng, không phải hai
+
+Lời máy nói đi vào **hai** đường: `telemetry.events` (sống 1–2 giây) và `alerts` (`deriveAlerts`
+biến mỗi sự kiện không phải `info` thành cảnh báo, `title` **chính là** `message` của sự kiện).
+Mục 1 và mục 5 của `ghiThayDoi` đọc hai đường ấy ⇒ một lần đứt chỉ đẻ ra **hai dòng y hệt**.
+Bài thử dựng khung bắt được; vá bằng sổ `daNoi` khớp theo **id** (`event:<id>`), không khớp theo
+chuỗi lời nhắn — hai lỗi khác nhau vẫn có thể trùng chữ. Chỉ bỏ khi **chính lần gọi này** đã in:
+nếu sự kiện đã bay mất mà cảnh báo bây giờ mới tới thì dòng ấy là dòng duy nhất, bỏ là mất hẳn.
+
+### 6. Máy giả gõ cửa — phải bị chặn, và đã bị chặn
+
+Đã chốt: **không khai máy giả vào `may.json`**. Nên đây không phải bài thử "đẩy lỗi giả lên màn
+hình" mà là bài thử ngược lại. Gõ thẳng cổng dial-in 1600 từ `127.0.0.1` — tức từ đúng cổng đã
+được tin — bằng ba khung là đúng những byte `build_frame` sinh ra cho một máy chưa khai:
+
+| khung | lý do bị từ chối |
+|---|---|
+| không có `machineId` (máy chưa khai) | `machine_id_missing` |
+| `machineId` lạ, kèm sự kiện `critical` "đứt chỉ kim số 7" | `unknown_machine_id` |
+| `mch-a15-mqtt-gia` (giả mạo tiền tố máy thật) | `unknown_machine_id` |
+
+Đội vẫn **đúng 13 máy**, danh sách y nguyên, `framesAccepted` vẫn tăng (máy thật không bị nghẽn).
+Khung thứ ba xác nhận bridge so **khớp chính xác**, không so tiền tố.
+
+Hệ quả: đường lỗi **không thể** thử qua production. Chứng cứ mức màn hình phải là bài thử dựng
+khung — mục 7.
+
+### 7. Bài thử
+
+Ba bộ khung chạy trên **chính mã đang phục vụ**, rút ra lúc chạy chứ không chép sang tệp riêng
+(chép thì tệp thử trôi khỏi bản thật lúc nào không biết):
+
+| bộ | chạy trên | số bài |
+|---|---|---|
+| `thu-nguong.mjs` | `<script>` rút thẳng từ `xem/index.html` đang phục vụ | **72** |
+| `thu-sukien.py` | `controller_state_event` rút thẳng từ `broker.py` đang chạy | **24** |
+| `thu-may-gia.py` | bridge production qua cổng dial-in thật | **6** |
+| `npx vitest run` | repo | **1 495** |
+
+Bài thử che cả những chỗ **không được** kêu: máy tắt không được biến thành báo động; thiếu
+`statusSince` thì im ("không biết thì không báo"); `statusSince` ở tương lai (lệch đồng hồ) thì im;
+bấm "đã xem" **không** kéo máy đang hỏng ra khỏi ô "Cần xem"; nhánh `wstrStatusDesc` chưa bao giờ
+chạy trên dữ liệu thật; cả ba giới hạn hợp đồng (`code` 40 / `id` 80 / `message` 400 — **vượt là
+bridge từ chối cả gói**).
+
+### 8. Gói cài từng tự mâu thuẫn
+
+`dong_goi.sh` có ghi chú "đây là dịch vụ thuần API" nên **cố ý bỏ giao diện**, trong khi
+`bridge.config.dahao-mqtt.json` **đi kèm trong cùng gói** lại đặt `uiPath: "./xem"`. Cài từ gói
+ấy ⇒ bridge trả 404 *"Chưa build giao diện"* ở đúng cái trang cả xưởng đang nhìn — và không có gì
+kêu lên, vì bridge vẫn chạy, API vẫn xanh, chỉ màn hình là trống.
+
+Thêm nữa: `xem/index.html` — **toàn bộ màn hình vận hành** — chưa từng nằm trong repo. Nay đã đưa
+vào `deploy-mini/xem/`, đóng vào gói, và có hai guard mới canh (`scripts/deploy-mini-sync.test.mjs`):
+gói phải có đủ thứ `uiPath` trỏ tới, và bản trong gói phải khớp bản trong repo. Đã thử **đối chứng
+âm** — bỏ `xem/` đi thì guard đổ.
+
+### Việc mới lòi ra, chưa làm
+
+- `statusSince` chỉ nằm trong bộ nhớ: khởi động lại bridge là đồng hồ "dừng bao lâu" đặt lại từ
+  đầu (`approximate: true` có khai điều đó, nhưng cảnh báo dừng lâu sẽ im thêm một ngưỡng nữa).
+- Đường lỗi thật vẫn **chưa đo được bằng máy thật** — từ 21/08 tới nay 13 máy chỉ phát `state=15`
+  idle, không có `stateID`/`wstrStatusDesc` lần nào. Muốn đo phải có ca máy hỏng thật.
+- `deploy-mini/broker.py` vẫn chứa khoá AES/XXTEA nguyên văn, và đã nằm trong lịch sử git từ
+  `458550b`. **Việc bắt buộc số 1 trước khi giao mã cho đội khác.**
+
+---
+
+## 27/08 — Bảng Grafana "Dahao — tình trạng máy"
+
+Yêu cầu: *"đổi lại 3 cái bao gồm là đang chạy, lỗi, máy off … nếu hoàn thành thì … ghi là hoàn
+thành … hiển thị luôn mẫu đang làm … nếu lỗi thì biết lỗi bao lâu và nếu dừng thì dừng bao lâu ấy
+làm grafana"*. Phần trang `xem/` đã xong ở lượt trước; đây là phần Grafana.
+
+Bảng ở `quan-sat/grafana/dashboards/dahao-tinh-trang.json`, uid `dahao-tinh-trang`, 9 ô. Xem tại
+`http://100.107.219.95:3000/d/dahao-tinh-trang/` — chỉ trong tailnet, không qua tunnel.
+
+### Trả lời "bao lâu" bằng BỀ NGANG, không bằng con số
+
+Ô trung tâm là `state-timeline` *"Tình trạng từng máy theo thời gian"*: mỗi máy một hàng, mỗi dải
+màu một quãng cùng trạng thái. Muốn biết "dừng bao lâu" thì đo bề ngang dải cam. Cách này trả lời
+được cả những câu mà ba ô đếm ở trên không trả lời được — dừng lúc mấy giờ, dừng mấy lần, lần nào
+dài — mà không phải đẻ thêm ô đếm nào.
+
+Tên trạng thái lấy **nguyên** bảng `TEN_MA` đã đo trong `broker.py`, không tự đặt thêm:
+`0 = đang thêu`, `2 = dừng giữa mẫu`, `15 = không thêu`. **Mã −1 để nguyên là "mã −1 (chưa hiểu)"**
+— nó là sentinel mất dữ liệu, và đã chốt là không đặt tên cho mã chưa đọc được trong sổ tay.
+
+### Cái bẫy mất nửa buổi: `color.mode = "thresholds"` nuốt bảng ánh xạ
+
+Ô dòng thời gian ban đầu vẽ ra **một dải xám duy nhất mỗi hàng, ghi `-∞+`** — trong khi bảng ánh
+xạ giá trị nằm đúng chỗ trong `fieldConfig.defaults.mappings`, và cùng bảng ấy chạy đúng ở ô
+`table` bên cạnh.
+
+Đã soi khung dữ liệu Grafana thật sự nhận (`/api/ds/query`): trường kiểu `number`, giá trị đúng là
+`0 / 2 / 15`. Dữ liệu không sai, ánh xạ không sai. Sai ở `color.mode`: với `state-timeline`,
+Grafana lấy **thang ngưỡng** ra làm trạng thái khi color mode là `thresholds`. Thang ấy chỉ có một
+bậc (`value: null` = −∞, màu `text`), nên cả hàng gộp thành một dải xám mang đúng cái tên bậc ngưỡng
+là `-∞+`.
+
+Chữa: `color.mode = "fixed"`, bỏ hẳn `thresholds` khỏi ô này. Màu và chữ khi ấy đến từ bảng ánh xạ.
+
+Một lượt vá **trước đó đã thất bại** vì đoán sai bệnh: nhân đôi bảng ánh xạ sang một `override`
+kiểu `byType: number`. Override lên đúng (API xác nhận) mà màn hình không đổi gì — vì bệnh không
+nằm ở chỗ thiếu ánh xạ. Ghi lại để lần sau đừng đoán tiếp: **soi khung dữ liệu trước, vá sau.**
+
+### Ba ô đếm và chỗ chúng nói dối
+
+| ô | công thức | đọc thế nào |
+|---|---|---|
+| Đang chạy | `max_over_time(unwrap mui_hien_tai[2m]) - min_over_time(...) > 0` | đếm máy có **số mũi tăng thật**, không tin mã trạng thái máy tự khai |
+| Lỗi | đếm máy đang ở `trang_thai="-1"` | **bình thường luôn bằng 0** — xem dưới |
+| Máy off | tổng máy − số máy còn nói trong 5 phút | |
+
+**Ô "Lỗi" bằng 0 không có nghĩa là xưởng không hỏng.** Giao thức A15 **không có trường lỗi**:
+`state_to_status()` chỉ trả `running / stopped / unknown`, không bao giờ trả `fault`. Ô này chỉ
+sáng khi bridge **không đọc nổi** máy (mã −1). Máy dừng giữa mẫu — thứ thợ thật sự cần biết — không
+vào ô nào cả; nó nằm ở **dải cam trong dòng thời gian**. Cả chú thích ô lẫn tooltip trên trang
+`xem/` nay đều nói thẳng điều này bằng tiếng Việt.
+
+Ô cuối *"Sự cố tuyến đo — KHÔNG phải lỗi máy"* tách riêng `warn/error` của bridge và số lần API bị
+từ chối. Đỉnh nhọn hôm 26/08 là **trang `/xem/` tự gọi API không kèm token** — tiếng ồn của chính
+mình, không phải sự cố xưởng. Trước khi tách, con số này lọt vào ô "Lỗi" và đọc ra **9 K**: đúng
+về số học, vô dụng và gây hoảng khi làm tiêu đề.
+
+### Cách kiểm — và vì sao phải kiểm ở cửa sổ 26/08
+
+`scratchpad/soi-bang.py` phát lại **từng truy vấn đã lưu** qua chính `/api/ds/query` của Grafana
+(chứ không gọi thẳng Loki — gọi thẳng thì lỗi ở tầng datasource lọt lưới), thay `$may → .+`,
+`$__auto → 1m`, và báo đỏ refId nào ra 0 khung.
+
+Phải kiểm ở cửa sổ **26/08 09:30Z–10:30Z** vì lúc đó 13 máy đang chạy thật. Đo ở "bây giờ" thì cả
+xưởng đã tắt, mọi ô đều 0 — **không phân biệt được "đúng là 0" với "truy vấn hỏng"**. Kết quả:
+9/9 ô ra dữ liệu, và đã soi mắt trên trình duyệt.
+
+### Việc mới lòi ra, chưa làm
+
+- `?kiosk` **trắng trang với mọi bảng** trên bản Grafana này, kể cả `dahao-tuyen` có từ trước —
+  không phải lỗi của bảng mới. Nghĩa là bảng cũ nhiều khả năng **chưa từng** treo tường được.
+- Toàn bộ `quan-sat/` trước nay **ngoài git** — đúng lớp với `xem/index.html` hôm trước. Nay đã
+  chép 24 tệp cấu hình vào `quan-sat/` trong repo (đã soi không lọt chuỗi bí mật nào; `du-lieu/`
+  và `*.env` chặn bằng `.gitignore` ngay trong thư mục). **Chưa commit** — chờ ý kiến.
+- Tên máy 13/13 vẫn là địa chỉ MAC (`machineName` HMI để trống), nên dòng thời gian và bảng đều
+  đọc bằng MAC. Muốn đọc bằng tên xưởng thì phải khai tên vào `may.json` trước.
+
+### Mở Grafana ra internet (27/08)
+
+`https://grafana.phonh.io.vn` — hostname thứ ba trên **cùng** tunnel Cloudflare đã có, trỏ vào
+`100.107.219.95:3000` (hai hostname kia trỏ bridge 8790).
+
+**Tắt `auth.anonymous` TRƯỚC khi tên miền sống**, không phải sau. Grafana khác trang `xem/`: trang
+`xem/` chỉ trả con số nên để mở là chủ ý; Grafana đọc **log thô** — tên file mẫu, MAC máy, cảnh báo
+bridge. Hở vài phút cũng đủ cho một con bot quét đọc hết. Thứ tự đã làm: sửa ini → khởi động lại
+Grafana → **đo `401` trên đường tailnet** → mới tạo bản ghi DNS → khởi động lại tunnel.
+
+Hai chỗ dễ sai, đã ghi chú ngay trong `grafana.ini`:
+
+- **Phải đặt `root_url = https://grafana.phonh.io.vn/`.** Không có nó, đăng nhập xong Grafana đá
+  người dùng về `http://100.107.219.95:3000` — địa chỉ tailnet, ngoài xưởng không với tới.
+- **KHÔNG bật `security.cookie_secure`.** Bật lên thì đường tailnet (http trần) không đăng nhập
+  được nữa. Tailnet đã mã hoá ở tầng dưới; đây là lựa chọn, không phải quên.
+
+Đo trên đường công khai thật (User-Agent trình duyệt — `Python-urllib/*` bị Cloudflare trả 403,
+không phải lỗi token):
+
+| phép đo | kết quả |
+|---|---|
+| `/api/health` | 200 |
+| `/api/dashboards/uid/…` không đăng nhập | **401** |
+| `/d/dahao-tinh-trang/` không đăng nhập | **302 → `/login?redirectTo=…`**, đúng tên miền công khai |
+| `redthread.phonh.io.vn/xem/`, `test.phonh.io.vn/xem/` | 200 — không làm hỏng hai hostname cũ |
+| tài khoản trong `grafana-admin.env` | 200 |
+| tên đúng + mật khẩu sai | **401** (đối chứng âm) |
+
+Chống dò mật khẩu để **mặc định** (Grafana khoá 5 phút sau 5 lần sai) — đừng tắt.
+
+Sao lưu trước khi sửa: `grafana.ini.pre-public.bak`, `cloudflare-config.yml.pre-grafana.bak`.
+
+**Bản mẫu đóng gói cũng đã thêm** (`deploy-mini/cloudflare/config.yml`) — sửa bản chạy mà quên bản
+mẫu là đúng cái bẫy `uiPath`/`xem/` lặp lại.
+
+### Lệch có sẵn trong bản mẫu tunnel, chưa sửa
+
+`deploy-mini/cloudflare/config.yml` đã lệch với bản đang chạy **từ trước lượt này**:
+
+- thiếu hẳn `test.phonh.io.vn`;
+- `service: http://127.0.0.1:8790` trong khi bản chạy dùng `http://100.107.219.95:8790`.
+
+Cài mới từ gói sẽ ra một tunnel chỉ có một hostname và trỏ loopback. Chưa đụng vào vì không thuộc
+việc lượt này — nhưng cần chốt: bản mẫu nên giữ `<TUNNEL-ID>` + loopback (đúng chất bản mẫu) hay
+nên khớp đúng bản chạy?
+
+### Ô "trạng thái" của bảng `dahao-tuyen` vẽ nhầm số bản tin (vá 27/08)
+
+Phát hiện khi user mở Grafana trên điện thoại: ô **"Trạng thái từng máy theo thời gian"** của bảng
+`dahao-tuyen` hiện một đám chữ đè lên nhau. Chữ đè chỉ là triệu chứng.
+
+Truy vấn cũ:
+
+```
+sum by (may, trang_thai) (count_over_time({job="broker", loai="trang-thai", may=~"$may"} [1m]))
+```
+
+`count_over_time` là **số bản tin mỗi phút**, không phải trạng thái. Nên các dải trong ô ghi
+`30`, `29`, `41` — đó là số bản tin; máy không có mã trạng thái nào như thế (chỉ có `-1`, `0`, `2`,
+`15`). Ô "Nhịp bản tin — mỗi máy một đường" ngay cạnh đã vẽ đúng đại lượng đó rồi, nên ô này vừa
+thừa vừa sai nhãn.
+
+Hai hệ quả cộng lại thành đám chữ nát: gộp theo `(may, trang_thai)` nên **mỗi cặp máy×trạng thái là
+một hàng riêng** (13 máy đổi trạng thái vài lần ⇒ hai ba chục hàng), và tên hàng là
+`{{may}} — state {{trang_thai}}` dài ~20 ký tự. Nhồi vào ô cao 9 ô lưới thì mỗi hàng chưa tới 18px.
+
+Đã vá bằng cách lấy nguyên cấu hình ô tương ứng bên `dahao-tinh-trang` (đã đo trên dữ liệu thật):
+`last_over_time … unwrap trang_thai … by (may)`, nhãn rút còn `{{may}}`, kèm bảng ánh xạ mã→chữ và
+`color.mode: "fixed"`. Nới chiều cao 9 → 14 (cả ô cùng hàng, để desktop không so le) và
+`dahao-tinh-trang` ô 5 nới 11 → 15, đẩy các ô dưới xuống tương ứng. Sao lưu: `*.pre-dechu.bak`.
+Provisioning tự nạp lại sau ~30 s, **không phải khởi động lại Grafana**.
+
+Đối chứng qua chính `/api/ds/query` (không hỏi Loki suông — lỗi nằm ở khúc nối cấu hình↔dữ liệu,
+hỏi Loki thì lúc nào cũng thấy "dữ liệu ổn"): cả hai ô trả **14 hàng**, **0 nhãn dài quá 16 ký tự**,
+mã gặp được là `[0, 2, 15]` — không có mã lạ. Script kiểm còn tự quét từng ô lưới xem có ô nào đè
+lên ô nào sau khi đẩy chiều cao.
+
+**Bài học lặp lại lần thứ hai:** tên ô không phải bằng chứng ô vẽ đúng thứ. Lần trước là
+`color.mode` nuốt mappings, lần này là truy vấn vẽ nhầm đại lượng — cả hai đều chỉ lòi ra khi đọc
+truy vấn/khung dữ liệu thật thay vì nhìn ô.
+
+**Còn treo:** `default_home_dashboard_path` vẫn trỏ `dahao-tuyen.json`, nên mở
+`grafana.phonh.io.vn` là rơi vào bảng tuyến chứ không phải bảng tình trạng. Đổi được nhưng phải
+khởi động lại Grafana.
+
+### Grafana và trang `xem/` nay đếm chung một nguồn — luồng `tinh-trang` (27/08)
+
+**Triệu chứng user báo:** "grafana nó thực sự chưa hiển thị đang chạy và lỗi + thời gian thực như
+cái test.phonh.io.vn".
+
+**Nguyên nhân, không phải lỗi truy vấn:** hai màn hình đọc hai nguồn khác nhau về BẢN CHẤT.
+
+- `test.phonh.io.vn` (`xem/index.html`) gọi `/api/v2/fleet` rồi chạy `tinhTrang()` trong trình
+  duyệt. Hàm ấy cần bốn thứ: máy còn kết nối không (`connection.state`), bridge có đọc nổi máy
+  không (`telemetryError`), có cảnh báo mức `critical` không (`derivedAlerts`), và mẫu xong hay
+  còn dở (`currentStitch` vs `totalStitches`).
+- Grafana đọc `broker.log`. Trong đó **không có một trong bốn thứ ấy**. Chỉ có mã máy tự khai
+  (`state=0/2/15/-1`) và số mũi.
+
+Nên bốn ô đếm cũ buộc phải tự chế định nghĩa riêng: "đang chạy" = số mũi có tăng trong 2 phút,
+"lỗi" = có khung mã `-1`. Không truy vấn LogQL nào chữa được — **thiếu dữ liệu thì viết khéo tới
+đâu cũng chịu**. Và viết lại `tinhTrang()` lần thứ hai bằng LogQL thì hai bản sẽ lệch nhau sau vài
+tuần, không ai biết bản nào đúng.
+
+**Cách chữa:** đẩy chính kết luận của bridge vào Loki, Grafana chỉ việc đếm.
+
+```
+bridge /api/v2/fleet  ──(2 s)──>  dong-bo-tinh-trang.py  ──stdout──>  logs/tinh-trang.out
+                                                                            │
+                                              Alloy (loki.process.tinh_trang)
+                                                                            ↓
+                                                          Loki  job="tinh-trang"
+```
+
+Bốn quyết định đáng ghi lại:
+
+1. **Ghi ra stdout, không tự mở file.** launchd hứng vào `logs/tinh-trang.out`. Đặt đuôi `.out` là
+   CỐ Ý: `com.dahao.xoaylog` quét `logs/*.out|*.err` nên file này được xoay sẵn, bằng đúng lối
+   chép-rồi-cắt đã chứng minh an toàn với fd `O_APPEND`. Viết vòng xoay thứ hai cho riêng nó là
+   thêm một chỗ để sai.
+2. **`at` là giờ của PHÉP ĐO, không phải `telemetry.observedAt`.** Máy mất kết nối thì giờ nó tự
+   khai đứng lại; lấy làm dấu giờ của dòng log thì dòng "máy off" rơi tụt về quá khứ và biến mất
+   khỏi mọi cửa sổ "bây giờ" — đúng lúc cần nhìn thấy nó nhất. Giờ máy khai giữ riêng ở `do_luc`.
+3. **Thêm trường số `ma` (0..6).** Grafana không lọc được theo "nhãn mới nhất"; muốn đếm "mấy máy
+   đang chạy lúc này" thì phải `unwrap` một con số. Bảng mã lấy đúng thứ tự sắp xếp của trang
+   `xem/` (`loi:0, dung:1, off:2, chuaro:3, hoanthanh:4, cho:5, chay:6`) để hai bên đọc chung một
+   bảng. Câu nền của cả 4 ô đếm:
+   `last_over_time({job="tinh-trang", may=~"$may"} | json | unwrap ma [2m]) by (may)`.
+4. **Bỏ khoá rỗng thay vì ghi `null`.** `stage.json` bên Alloy gặp `null` thì đẩy chuỗi rỗng vào
+   metadata, rồi `unwrap` bên LogQL vấp phải chuỗi rỗng. Thiếu khoá thì cả hai tầng bỏ qua gọn.
+
+**Ô canh đường ống — "Nhịp số liệu (dòng/phút)".** Đây là thứ quan trọng nhất trong lượt vá này mà
+user không yêu cầu. Nếu bộ đẩy chết, bốn ô kia đọc ra **0** chứ không báo lỗi — tức là màn hình
+hiển thị "cả xưởng dừng, không máy nào lỗi" một cách tự tin. Ô nhịp bắt lấy đúng chế độ hỏng đó:
+13 máy × nhịp tim 20 giây = 39 dòng/phút; đỏ ở 0, cam dưới 13, xanh từ 13. Bỏ `or vector(0)` để ô
+tự hiện "No data" thì lại lẫn "không có lỗi nào" với "không có số liệu" — cũng sai, nên giữ
+`or vector(0)` và canh bằng ô riêng.
+
+**Giữ lại mã thô làm ô 10.** Ô 5 cũ (mã máy tự khai 0/2/15/−1, kèm toàn bộ ghi chú đã đo trên
+~58.000 lượt khung) không bị xoá mà chuyển xuống dưới. Lý do: khi nghi bridge phân loại sai, đây là
+chỗ duy nhất đối chiếu được — ô trên nói "DỪNG GIỮA MẪU" mà ô dưới máy vẫn khai mã 0 thì lỗi nằm ở
+bridge, không phải ở máy.
+
+**Đối chứng.** Không hỏi Loki suông — hai lỗi đã cắn (`color.mode` nuốt mappings; ô vẽ nhầm đại
+lượng) đều nằm ở khúc nối cấu hình↔dữ liệu, mà hỏi Loki thì lúc nào cũng thấy "dữ liệu ổn". Nên
+lấy đúng câu đang lưu trong file bảng, bắn qua `/api/ds/query` của Grafana, rồi so với
+`/api/v2/fleet` cùng thời điểm:
+
+```
+Tổng máy   grafana=13  bridge=13
+Đang chạy  grafana=4   bridge=4
+Lỗi        grafana=0   bridge=0
+Máy off    grafana=0   bridge=0
+nhịp số liệu = 39 dòng/phút (cần ≥ 13)
+```
+
+Lượt so ĐẦU TIÊN lệch 2 chỗ (`chay` 1↔2, `dung` 4↔3). Chạy lại ba lượt cách nhau 12 giây thì khớp
+cả ba. Nguyên nhân: đường ống có độ trễ vài giây (Alloy gom lô rồi mới đẩy), mà một máy đang ở
+19.478/19.495 mũi thì lật running↔stopped ngay trong khoảng ấy. **Một lượt so lệch chưa phải bằng
+chứng hỏng — phải lặp lại mới phân biệt được độ trễ với sai logic.**
+
+`--tu-kiem` trong `dong-bo-tinh-trang.py` giữ 12 ca thử cho bản chép của `tinhTrang()` (kèm ca
+"cảnh báo nhẹ KHÔNG phải lỗi" và "dừng ở mũi 0 → chờ, không phải dừng"), cộng một ca canh bảng
+`MA_TT` phủ đủ 7 tình trạng. **Đây là chỗ dễ lệch nhất về sau: sửa `tinhTrang()` bên
+`xem/index.html` là phải sửa cả bên này.**
+
+**Về "hiển thị lỗi cụ thể" — không làm được, và lý do nằm ở giao thức.** Đã soi `catalog.json`
+(enumerator tự phát): **224.016 khung trạng thái**, luôn đúng **8 trường** (`mesgNo`, `version`,
+`state`, `machineName`, `patternName`, `curStitch`, `patternStitch`, `patternNetID`) và **4 giá trị
+`state`** (`-1`, `0`, `2`, `15`). Không có trường mã lỗi, không có trường mô tả lỗi. Trường duy
+nhất nghe như lý do là `body.reason` (18 lượt, chuỗi 7 ký tự) và nó thuộc topic
+`emCAD/client/v1/pattern/data/ack/<MAC>` — tức biên nhận ĐẨY FILE, không phải trạng thái máy. Máy
+đứt chỉ / gãy kim báo trên HMI của nó chứ không đẩy lý do ra mạng. Ô "Lỗi" trên Grafana vì thế là
+"đường đo có vấn đề / bridge tự thấy bất thường", **không phải mã lỗi máy** — đã ghi thẳng câu này
+vào phần mô tả của ô để không ai hiểu nhầm.
+
+**Còn treo:** biến `$may` vẫn lấy từ `label_values({job="broker", loai="trang-thai"}, may)`, nên máy
+`A15-MQTT` (client giả, không khai trong `may.json`) không có trong danh sách chọn — chọn "All"
+(`.+`) thì vẫn đếm đúng. Và `default_home_dashboard_path` vẫn trỏ `dahao-tuyen.json`.
