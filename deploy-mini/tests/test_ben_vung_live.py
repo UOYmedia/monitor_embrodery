@@ -21,7 +21,7 @@ import socket, struct, time, os, sys
 HOST = os.environ.get('DAHAO_HOST', '127.0.0.1')
 PORT = int(os.environ.get('DAHAO_PORT', '3865'))
 BLOG = os.environ.get('DAHAO_LOG', os.path.expanduser('~/dahao-gateway/broker.log'))
-DEV_THAT = os.environ.get('DAHAO_DEV', '602602704E7B')
+DEV_THAT = os.environ.get('DAHAO_DEV', '3CE4B0C54F54')
 DEV_GIA = 'AABBCCDDEEFF'
 HAN_IM = 60          # broker đặt settimeout(60) lúc vào luồng, trước khi đọc CONNECT
 KIEN_NHAN = HAN_IM + 30
