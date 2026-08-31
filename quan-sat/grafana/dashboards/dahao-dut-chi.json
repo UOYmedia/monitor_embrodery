@@ -1,0 +1,564 @@
+{
+  "uid": "dahao-dut-chi",
+  "title": "Dahao — đứt chỉ & vá",
+  "tags": [
+    "dahao",
+    "xuong",
+    "dut-chi"
+  ],
+  "description": "Chuyên đề đứt chỉ. Nhắc lại: máy KHÔNG tự báo đứt chỉ — đây là suy luận từ thao tác lùi khung (sổ tay §2.4).",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "editable": false,
+  "graphTooltip": 0,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "may",
+        "label": "Máy",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-dahao"
+        },
+        "query": "label_values({job=\"tinh-trang\"}, may)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values({job=\"broker\", loai=\"trang-thai\"}, may)"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 201,
+      "type": "stat",
+      "title": "Nghi đứt chỉ",
+      "description": "Đếm số lần thợ phải LÙI KHUNG để vá trong khoảng thời gian đang xem. Gần như luôn là đứt chỉ trên hoặc hết suốt dưới.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum(count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 202,
+      "type": "stat",
+      "title": "Tổng lần dừng",
+      "description": "Mọi lần dừng giữa mẫu đủ dài để đáng nhìn, gồm cả vá lẫn dừng thường. Dừng thoáng đúng một nhịp đo (2 giây) mà không lùi mũi thì bỏ qua — cắt chỉ và đổi màu rơi vào đó, ghi lại thì lấp mất những lần đáng nhìn.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum(count_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 203,
+      "type": "stat",
+      "title": "Tỉ lệ phải vá",
+      "description": "Trong tất cả các lần dừng, bao nhiêu phần trăm là có người lùi khung vá. Mẫu số lọc `> 0` để khỏi ra NaN khi chưa có lần dừng nào.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "100 * (sum(count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range]))\n  / (sum(count_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} [$__range])) > 0))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 204,
+      "type": "table",
+      "title": "Máy nào hay phải vá nhất",
+      "description": "Xếp hạng theo số lần lùi khung. Máy đứng đầu bảng là nơi đáng đi xem tận nơi trước: chỉ, kim, suốt, hay căn khung.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sort_desc(sum by (may) (count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range])))"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "may": "Máy",
+              "Value": "Số lần vá"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 205,
+      "type": "table",
+      "title": "Mẫu nào hay đứt chỉ nhất",
+      "description": "Gộp theo tên file mẫu. Mẫu lên đầu bảng thường là mẫu dày mũi hoặc nhiều màu — đáng xem lại chỉ / kim trước khi chạy mẻ sau.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sort_desc(sum by (mau) (count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range])))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(mau|Value)$"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "mau": "Mẫu",
+              "Value": "Số lần vá"
+            },
+            "indexByName": {
+              "mau": 0,
+              "Value": 1
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "md",
+        "showHeader": true
+      }
+    },
+    {
+      "id": 206,
+      "type": "timeseries",
+      "title": "Lý do dừng theo thời gian — cột cao là lúc xưởng vất",
+      "description": "Mỗi cột là số lần dừng trong một nhịp, tách theo lý do. Cột `nghi-dut-chi` dày lên là lúc chỉ hoặc suốt có vấn đề.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum by (nghi) (count_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} [$__interval]))",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "barAlignment": 0,
+            "gradientMode": "none"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nghi-dut-chi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mat-ket-noi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-han"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-lau"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-ngan"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "doi-mau"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "khoi-dong-lai"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 207,
+      "type": "logs",
+      "title": "Từng lần dừng — nguyên văn",
+      "description": "Mỗi dòng là một lần dừng đã khép lại. Muốn chỉ xem lần vá thì sửa truy vấn thành nghi=\"nghi-dut-chi\".\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"va-mau\", viec=\"dong\", may=~\"$may\"} | line_format \"{{.may}}  {{.nghi}}  |  lùi {{.lui}} mũi  |  ở {{.mui}}/{{.tong}}  |  dừng {{.giay}}s  |  {{.mau}}  —  {{.y_nghia}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ],
+  "version": 4
+}

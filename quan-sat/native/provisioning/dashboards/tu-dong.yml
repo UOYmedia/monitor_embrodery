@@ -1,0 +1,17 @@
+apiVersion: 1
+
+providers:
+  - name: dahao
+    orgId: 1
+    folder: Dahao
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    # Cho sửa trên giao diện để người vận hành thử nghiệm nhanh; muốn giữ lại thì
+    # xuất JSON rồi chép đè file trong grafana/dashboards/.
+    allowUiUpdates: true
+    options:
+      # Bản native đọc thẳng thư mục thật (bản container gắn vào /var/lib/grafana/dashboards).
+      # DÙNG CHUNG file JSON với bản container — sửa bảng một chỗ, hai bản cùng thấy.
+      path: /Users/phong/dahao-gateway/quan-sat/grafana/dashboards
+      foldersFromFilesStructure: false

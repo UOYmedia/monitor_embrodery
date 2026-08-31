@@ -1,0 +1,2291 @@
+{
+  "uid": "dahao-can-xu-ly",
+  "title": "Dahao — cần xử lý",
+  "tags": [
+    "dahao",
+    "xuong",
+    "xu-ly"
+  ],
+  "description": "Máy nào cần người ra tay, tách theo LOẠI VIỆC phải làm.",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "editable": false,
+  "graphTooltip": 0,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "may",
+        "label": "Máy",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-dahao"
+        },
+        "query": "label_values({job=\"tinh-trang\"}, may)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values({job=\"broker\", loai=\"trang-thai\"}, may)"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 101,
+      "type": "stat",
+      "title": "Dừng giữa mẫu",
+      "description": "Máy đang dở tấm mà đứng im. Đây là nhóm CẦN RA XEM NGAY.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 102,
+      "type": "stat",
+      "title": "Im hoặc lỗi — cần ra xem",
+      "description": "Máy không còn gửi tin VÀ đó là chuyện cần ra tay: mất tín hiệu giữa lúc thêu dở (mã 2), bridge gọi không ai nhấc (mã 7), cả xưởng cùng im vì cúp điện hoặc đứt mạng (mã 9), hoặc chính đường đo hỏng (mã 0). Xem cột \"Bridge nói gì\" ở bảng dưới.\n\nCỐ Ý KHÔNG đếm: máy tắt ngoài giờ làm (mã 8) và thợ tắt máy sau khi thêu xong tấm (mã 10). Hai cái đó là chuyện bình thường; kéo vào đây thì đêm nào bảng cũng đỏ và người ta thôi nhìn nó. Muốn đếm đủ mọi máy đang im thì xem ô \"Máy im\" bên bảng Tình trạng.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 103,
+      "type": "stat",
+      "title": "Xong tấm / chờ việc",
+      "description": "Máy khỏe nhưng không có việc. Cần nạp mẫu mới hoặc thay khung.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 104,
+      "type": "stat",
+      "title": "Đang chạy",
+      "description": "Máy đang thêu ngay lúc này.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi + nhịp tim 20 giây). KHÔNG phải mã máy tự khai trong broker.log — mã ấy không biết máy còn kết nối không, bridge có đọc nổi không, mẫu xong hay còn dở.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 56
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 120,
+      "type": "stat",
+      "title": "🟠 ĐANG DỪNG GIỮA MẪU — ra xem ngay",
+      "description": "Mỗi thẻ một máy đang dở tấm mà đứng im. Chữ dưới tên là SUY LUẬN từ số mũi — máy không tự báo lỗi bao giờ.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "(last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [2m]) by (may))\n  * on (may) group_left(ten) (0 * ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may, ten) == 1)) + 1)\n  or (0 * ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may, ten) == 1)) + 90)",
+          "queryType": "range",
+          "legendFormat": "{{ten}}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "percentChangeColorMode": "standard",
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 22
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "nghi đứt chỉ — đang vá",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "dừng hẳn, chưa chạy lại",
+                  "color": "orange",
+                  "index": 1
+                },
+                "2": {
+                  "text": "dừng lâu, không lùi mũi",
+                  "color": "yellow",
+                  "index": 2
+                },
+                "3": {
+                  "text": "dừng thoáng",
+                  "color": "text",
+                  "index": 3
+                },
+                "4": {
+                  "text": "đổi mẫu",
+                  "color": "blue",
+                  "index": 4
+                },
+                "5": {
+                  "text": "mất tin",
+                  "color": "purple",
+                  "index": 5
+                },
+                "6": {
+                  "text": "làm tấm mới",
+                  "color": "green",
+                  "index": 6
+                },
+                "90": {
+                  "text": "đang dừng — chưa rõ vì sao",
+                  "color": "orange",
+                  "index": 90
+                }
+              }
+            }
+          ],
+          "noValue": "Không có máy nào"
+        },
+        "overrides": []
+      },
+      "timeFrom": "5m"
+    },
+    {
+      "id": 121,
+      "type": "stat",
+      "title": "🔴 IM HOẶC LỖI — cần ra xem (số là ĐÃ THẾ BAO LÂU)",
+      "description": "Không kết luận được là máy hỏng: có thể máy tắt, rớt mạng, hoặc chính đường đo hỏng. Mở \"Chi tiết\" ở dưới để đọc nguyên văn bridge nói gì.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may, ten))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+          "queryType": "range",
+          "legendFormat": "{{ten}}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "percentChangeColorMode": "standard",
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 22,
+          "valueSize": 34
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "Không có máy nào"
+        },
+        "overrides": []
+      },
+      "timeFrom": "5m"
+    },
+    {
+      "id": 122,
+      "type": "stat",
+      "title": "⚪ XONG TẤM / CHỜ VIỆC — cần nạp mẫu (số là ĐÃ RẢNH BAO LÂU)",
+      "description": "Máy khỏe, chỉ là hết việc. Việc cần làm là nạp mẫu / thay khung, không phải sửa máy.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may, ten))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+          "queryType": "range",
+          "legendFormat": "{{ten}}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "percentChangeColorMode": "standard",
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 22,
+          "valueSize": 34
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "Không có máy nào"
+        },
+        "overrides": []
+      },
+      "timeFrom": "5m"
+    },
+    {
+      "collapsed": true,
+      "type": "row",
+      "id": 130,
+      "title": "Chi tiết — bảng chữ nhỏ, mẫu, mũi, nhật ký (bấm để mở)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "panels": [
+        {
+          "id": 110,
+          "type": "table",
+          "title": "🟠 Đang dừng giữa mẫu — mẫu, mũi, bao lâu",
+          "description": "Máy đang dở tấm mà số mũi đứng im. Cột \"Vì sao dừng\" là SUY LUẬN từ số mũi (máy không tự báo lỗi) — \"nghi đứt chỉ\" nghĩa là đã có người lùi khung để vá.",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 25
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "D",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(sum by (may, ten, mau) (count_over_time({job=\"tinh-trang\", may=~\"$may\"} [45s])))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "E",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)) / (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may) > 0))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [1m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) <= 1))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 1))",
+              "queryType": "instant",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "pattern": "^(may|ten|mau|Value.*)$"
+                }
+              }
+            },
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "may",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #B": true,
+                  "may": true,
+                  "Value #C": true
+                },
+                "renameByName": {
+                  "ten": "Máy",
+                  "may": "Mã máy",
+                  "Value #C": "Tình trạng",
+                  "Value #G": "Vì sao dừng",
+                  "Value #E": "Bao lâu rồi",
+                  "mau": "Mẫu đang làm",
+                  "Value #A": "Mũi hiện tại",
+                  "Value #B": "Mũi tổng",
+                  "Value #F": "Xong"
+                },
+                "indexByName": {
+                  "ten": 0,
+                  "Value #G": 1,
+                  "Value #E": 2,
+                  "mau": 3,
+                  "Value #A": 4,
+                  "Value #F": 5
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Tình trạng",
+                    "desc": false
+                  }
+                ]
+              }
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "cellHeight": "md",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              },
+              "noValue": "—"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Tình trạng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 145
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "đang lỗi",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "đang dừng",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "mất tín hiệu",
+                            "color": "orange",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "chưa rõ",
+                            "color": "purple",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đã hoàn thành",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "chờ việc",
+                            "color": "text",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "đang thêu",
+                            "color": "green",
+                            "index": 6
+                          },
+                          "7": {
+                            "text": "máy tắt hẳn",
+                            "color": "#8e8e9a",
+                            "index": 7
+                          },
+                          "8": {
+                            "text": "ngoài giờ",
+                            "color": "#4b4b58",
+                            "index": 8
+                          },
+                          "9": {
+                            "text": "cả xưởng im",
+                            "color": "#d9a441",
+                            "index": 9
+                          },
+                          "10": {
+                            "text": "thợ tắt máy",
+                            "color": "#6b6b7a",
+                            "index": 10
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Vì sao dừng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 235
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "nghi đứt chỉ — đang vá",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "dừng hẳn, chưa chạy lại",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "dừng lâu, không lùi mũi",
+                            "color": "yellow",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "dừng thoáng",
+                            "color": "text",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đổi mẫu",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "mất tin",
+                            "color": "purple",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "làm tấm mới",
+                            "color": "green",
+                            "index": 6
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bao lâu rồi"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Xong"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "^Mũi .*$"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mã máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": 111,
+          "type": "table",
+          "title": "🔴 Im hoặc lỗi — bridge nói gì",
+          "description": "Cột \"Bridge nói gì\" chép nguyên văn câu bridge tự nhận xét — đọc câu ấy trước khi kết luận máy hỏng.",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "D",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(sum by (may, ten, mau, loi_text) (count_over_time({job=\"tinh-trang\", may=~\"$may\"} [45s])))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "E",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)) / (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may) > 0))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [1m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) <= 1))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 0) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 9))",
+              "queryType": "instant",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "pattern": "^(may|ten|mau|loi_text|Value.*)$"
+                }
+              }
+            },
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "may",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #B": true,
+                  "Value #A": true,
+                  "Value #G": true,
+                  "may": true
+                },
+                "renameByName": {
+                  "ten": "Máy",
+                  "may": "Mã máy",
+                  "Value #C": "Tình trạng",
+                  "Value #G": "Vì sao dừng",
+                  "Value #E": "Bao lâu rồi",
+                  "mau": "Mẫu đang làm",
+                  "Value #A": "Mũi hiện tại",
+                  "Value #B": "Mũi tổng",
+                  "Value #F": "Xong",
+                  "loi_text": "Bridge nói gì"
+                },
+                "indexByName": {
+                  "ten": 0,
+                  "Value #C": 1,
+                  "Value #E": 2,
+                  "loi_text": 3,
+                  "mau": 4,
+                  "Value #F": 5
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Tình trạng",
+                    "desc": false
+                  }
+                ]
+              }
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "cellHeight": "md",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              },
+              "noValue": "—"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Tình trạng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 145
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "đang lỗi",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "đang dừng",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "mất tín hiệu",
+                            "color": "orange",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "chưa rõ",
+                            "color": "purple",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đã hoàn thành",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "chờ việc",
+                            "color": "text",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "đang thêu",
+                            "color": "green",
+                            "index": 6
+                          },
+                          "7": {
+                            "text": "máy tắt hẳn",
+                            "color": "#8e8e9a",
+                            "index": 7
+                          },
+                          "8": {
+                            "text": "ngoài giờ",
+                            "color": "#4b4b58",
+                            "index": 8
+                          },
+                          "9": {
+                            "text": "cả xưởng im",
+                            "color": "#d9a441",
+                            "index": 9
+                          },
+                          "10": {
+                            "text": "thợ tắt máy",
+                            "color": "#6b6b7a",
+                            "index": 10
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Vì sao dừng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 235
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "nghi đứt chỉ — đang vá",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "dừng hẳn, chưa chạy lại",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "dừng lâu, không lùi mũi",
+                            "color": "yellow",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "dừng thoáng",
+                            "color": "text",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đổi mẫu",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "mất tin",
+                            "color": "purple",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "làm tấm mới",
+                            "color": "green",
+                            "index": 6
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bao lâu rồi"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Xong"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "^Mũi .*$"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mã máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": 112,
+          "type": "table",
+          "title": "⚪ Xong tấm / chờ việc",
+          "description": "Máy nào đang làm gì, NGAY LÚC NÀY. Lấy giá trị mới nhất trong 3 phút gần đây.\n\n**Tình trạng** đọc từ luồng `tinh-trang` (bridge kết luận, cùng một bảng luật với trang `xem/`), KHÔNG phải mã thô máy tự khai — máy A15 chỉ khai được 4 mã nên mã thô gộp hết mọi thứ không-đang-thêu làm một. Bảy tình trạng:\n\n- **đang thêu** — mũi đang tăng\n- **đang dừng** — dừng khi mẫu CÒN DỞ (0 < mũi < tổng). Đây là thứ đáng đứng dậy đi xem.\n- **đã hoàn thành** — mũi ≥ tổng, xong tấm, đang chờ thợ tháo khung\n- **chờ việc** — máy sống, đứng yên, chưa nạp mẫu nào\n- **đang lỗi** — bridge đọc máy không nổi / máy khai `fault` / có cảnh báo mức critical\n- **máy tắt** — mất kết nối, trạng thái cũ không còn là câu trả lời\n- **chưa rõ** — máy khai một kiểu chưa xếp được, KHÔNG suy bừa thành \"dừng\"\n\n⚠ **\"đang lỗi\" ở đây KHÔNG phải mã lỗi của máy.** Giao thức A15 không có trường lỗi — đã soi 224.016 khung thật, luôn đúng 8 trường, 4 giá trị `state`, không trường nào là lý do; 51 topic chia 4 họ, không họ nào là alarm. Máy đứt chỉ thì báo trên màn hình HMI của nó, không đẩy lý do ra mạng. \"Đang lỗi\" nghĩa là ĐƯỜNG ĐO có vấn đề.\n\n⚠ **Cột \"Vì sao dừng\" là SUY ĐOÁN, không phải máy báo.** Suy từ dấu vết số mũi (sổ tay BECS-A15 §2.4/§2.6: đứt chỉ thì máy tự dừng, thợ bấm lùi khung để vá — mũi GIẢM giữa mẫu). Phân biệt được \"có người đang vá\" với \"dừng bình thường\"; KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim. Muốn chắc thì hỏi thợ hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi\" là vì thế.\n\nCột \"Xong\" để TRỐNG khi máy chưa nạp mẫu — tổng mũi bằng 0 thì không có phần trăm nào để nói, in số ra là bịa.\n\nXếp theo Tình trạng tăng dần: nặng trước (lỗi, dừng), nhẹ sau (chờ, đang chạy).",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 39
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "D",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(sum by (may, ten, mau) (count_over_time({job=\"tinh-trang\", may=~\"$may\"} [45s])))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "E",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)) / (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may) > 0))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [1m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) <= 1))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 3) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 4) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 5))",
+              "queryType": "instant",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "pattern": "^(may|ten|mau|Value.*)$"
+                }
+              }
+            },
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "may",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true,
+                  "Value #B": true,
+                  "Value #A": true,
+                  "may": true
+                },
+                "renameByName": {
+                  "ten": "Máy",
+                  "may": "Mã máy",
+                  "Value #C": "Tình trạng",
+                  "Value #G": "Vì sao dừng",
+                  "Value #E": "Bao lâu rồi",
+                  "mau": "Mẫu đang làm",
+                  "Value #A": "Mũi hiện tại",
+                  "Value #B": "Mũi tổng",
+                  "Value #F": "Xong"
+                },
+                "indexByName": {
+                  "ten": 0,
+                  "Value #C": 1,
+                  "Value #E": 2,
+                  "mau": 3,
+                  "Value #F": 4
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Tình trạng",
+                    "desc": false
+                  }
+                ]
+              }
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "cellHeight": "md",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              },
+              "noValue": "—"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Tình trạng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 145
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "đang lỗi",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "đang dừng",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "mất tín hiệu",
+                            "color": "orange",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "chưa rõ",
+                            "color": "purple",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đã hoàn thành",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "chờ việc",
+                            "color": "text",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "đang thêu",
+                            "color": "green",
+                            "index": 6
+                          },
+                          "7": {
+                            "text": "máy tắt hẳn",
+                            "color": "#8e8e9a",
+                            "index": 7
+                          },
+                          "8": {
+                            "text": "ngoài giờ",
+                            "color": "#4b4b58",
+                            "index": 8
+                          },
+                          "9": {
+                            "text": "cả xưởng im",
+                            "color": "#d9a441",
+                            "index": 9
+                          },
+                          "10": {
+                            "text": "thợ tắt máy",
+                            "color": "#6b6b7a",
+                            "index": 10
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Vì sao dừng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 235
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "nghi đứt chỉ — đang vá",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "dừng hẳn, chưa chạy lại",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "dừng lâu, không lùi mũi",
+                            "color": "yellow",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "dừng thoáng",
+                            "color": "text",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đổi mẫu",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "mất tin",
+                            "color": "purple",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "làm tấm mới",
+                            "color": "green",
+                            "index": 6
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bao lâu rồi"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Xong"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "^Mũi .*$"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mã máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": 113,
+          "type": "logs",
+          "title": "Máy vừa dừng vì gì — mới nhất ở trên",
+          "description": "Mỗi dòng là một lần dừng đã khép lại. Muốn chỉ xem lần vá thì sửa truy vấn thành nghi=\"nghi-dut-chi\".\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 45
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "queryType": "range",
+              "expr": "{job=\"va-mau\", viec=\"dong\", may=~\"$may\"} | line_format \"{{.may}}  {{.nghi}}  |  lùi {{.lui}} mũi  |  ở {{.mui}}/{{.tong}}  |  dừng {{.giay}}s  |  {{.mau}}  —  {{.y_nghia}}\""
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          }
+        },
+        {
+          "id": 114,
+          "type": "table",
+          "title": "🟢 Đang chạy — không phải làm gì",
+          "description": "Máy nào đang làm gì, NGAY LÚC NÀY. Lấy giá trị mới nhất trong 3 phút gần đây.\n\n**Tình trạng** đọc từ luồng `tinh-trang` (bridge kết luận, cùng một bảng luật với trang `xem/`), KHÔNG phải mã thô máy tự khai — máy A15 chỉ khai được 4 mã nên mã thô gộp hết mọi thứ không-đang-thêu làm một. Bảy tình trạng:\n\n- **đang thêu** — mũi đang tăng\n- **đang dừng** — dừng khi mẫu CÒN DỞ (0 < mũi < tổng). Đây là thứ đáng đứng dậy đi xem.\n- **đã hoàn thành** — mũi ≥ tổng, xong tấm, đang chờ thợ tháo khung\n- **chờ việc** — máy sống, đứng yên, chưa nạp mẫu nào\n- **đang lỗi** — bridge đọc máy không nổi / máy khai `fault` / có cảnh báo mức critical\n- **máy tắt** — mất kết nối, trạng thái cũ không còn là câu trả lời\n- **chưa rõ** — máy khai một kiểu chưa xếp được, KHÔNG suy bừa thành \"dừng\"\n\n⚠ **\"đang lỗi\" ở đây KHÔNG phải mã lỗi của máy.** Giao thức A15 không có trường lỗi — đã soi 224.016 khung thật, luôn đúng 8 trường, 4 giá trị `state`, không trường nào là lý do; 51 topic chia 4 họ, không họ nào là alarm. Máy đứt chỉ thì báo trên màn hình HMI của nó, không đẩy lý do ra mạng. \"Đang lỗi\" nghĩa là ĐƯỜNG ĐO có vấn đề.\n\n⚠ **Cột \"Vì sao dừng\" là SUY ĐOÁN, không phải máy báo.** Suy từ dấu vết số mũi (sổ tay BECS-A15 §2.4/§2.6: đứt chỉ thì máy tự dừng, thợ bấm lùi khung để vá — mũi GIẢM giữa mẫu). Phân biệt được \"có người đang vá\" với \"dừng bình thường\"; KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim. Muốn chắc thì hỏi thợ hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi\" là vì thế.\n\nCột \"Xong\" để TRỐNG khi máy chưa nạp mẫu — tổng mũi bằng 0 thì không có phần trăm nào để nói, in số ra là bịa.\n\nXếp theo Tình trạng tăng dần: nặng trước (lỗi, dừng), nhẹ sau (chờ, đang chạy).",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 55
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "D",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(sum by (may, ten, mau) (count_over_time({job=\"tinh-trang\", may=~\"$may\"} [45s])))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "E",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)) / (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may) > 0))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-dahao"
+              },
+              "expr": "((last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [1m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) <= 1))\n  and on (may) ((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) == 6))",
+              "queryType": "instant",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "pattern": "^(may|ten|mau|Value.*)$"
+                }
+              }
+            },
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "may",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value #G": true,
+                  "Value #E": true,
+                  "may": true,
+                  "Value #C": true
+                },
+                "renameByName": {
+                  "ten": "Máy",
+                  "may": "Mã máy",
+                  "Value #C": "Tình trạng",
+                  "Value #G": "Vì sao dừng",
+                  "Value #E": "Bao lâu rồi",
+                  "mau": "Mẫu đang làm",
+                  "Value #A": "Mũi hiện tại",
+                  "Value #B": "Mũi tổng",
+                  "Value #F": "Xong"
+                },
+                "indexByName": {
+                  "ten": 0,
+                  "mau": 1,
+                  "Value #A": 2,
+                  "Value #B": 3,
+                  "Value #F": 4
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Tình trạng",
+                    "desc": false
+                  }
+                ]
+              }
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "cellHeight": "md",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              },
+              "noValue": "—"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Tình trạng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 145
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "đang lỗi",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "đang dừng",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "mất tín hiệu",
+                            "color": "orange",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "chưa rõ",
+                            "color": "purple",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đã hoàn thành",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "chờ việc",
+                            "color": "text",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "đang thêu",
+                            "color": "green",
+                            "index": 6
+                          },
+                          "7": {
+                            "text": "máy tắt hẳn",
+                            "color": "#8e8e9a",
+                            "index": 7
+                          },
+                          "8": {
+                            "text": "ngoài giờ",
+                            "color": "#4b4b58",
+                            "index": 8
+                          },
+                          "9": {
+                            "text": "cả xưởng im",
+                            "color": "#d9a441",
+                            "index": 9
+                          },
+                          "10": {
+                            "text": "thợ tắt máy",
+                            "color": "#6b6b7a",
+                            "index": 10
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Vì sao dừng"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 235
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "nghi đứt chỉ — đang vá",
+                            "color": "red",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "dừng hẳn, chưa chạy lại",
+                            "color": "orange",
+                            "index": 1
+                          },
+                          "2": {
+                            "text": "dừng lâu, không lùi mũi",
+                            "color": "yellow",
+                            "index": 2
+                          },
+                          "3": {
+                            "text": "dừng thoáng",
+                            "color": "text",
+                            "index": 3
+                          },
+                          "4": {
+                            "text": "đổi mẫu",
+                            "color": "blue",
+                            "index": 4
+                          },
+                          "5": {
+                            "text": "mất tin",
+                            "color": "purple",
+                            "index": 5
+                          },
+                          "6": {
+                            "text": "làm tấm mới",
+                            "color": "green",
+                            "index": 6
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bao lâu rồi"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Xong"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "^Mũi .*$"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mã máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Máy"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "version": 4
+}

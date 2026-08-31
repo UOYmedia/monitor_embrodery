@@ -1,0 +1,523 @@
+{
+  "uid": "dahao-tuyen",
+  "title": "Dahao — kỹ thuật (đường ống, không phải bảng xưởng)",
+  "description": "Bảng KỸ THUẬT: đo đường truyền, không đo máy. Muốn biết máy nào đang chạy / đang lỗi thì mở \"Dahao — xem nhanh\" hoặc \"Dahao — cần xử lý\".",
+  "tags": [
+    "dahao",
+    "van-hanh",
+    "ky-thuat"
+  ],
+  "timezone": "Asia/Ho_Chi_Minh",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "may",
+        "label": "Máy",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-dahao"
+        },
+        "query": {
+          "label": "may",
+          "refId": "may",
+          "stream": "{job=\"broker\"}",
+          "type": 1
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Máy đang nói (5 phút qua)",
+      "description": "Đếm số định danh máy khác nhau có phát bản tin trạng thái trong 5 phút gần đây.\n\nÔ này đọc THẲNG log broker nên không biết mấy giờ: 0 lúc 9 giờ tối là cả xưởng đã tắt máy về nhà, 0 lúc 10 giờ sáng là đường ống chết. Nó không phân biệt được, và cố ý không đoán — vì thế 0 để màu trung tính chứ không đỏ. Muốn biết máy nào đang cần người thì xem bảng 'Cần xử lý', bảng đó có đồng hồ.\n\nSửa 27/08: trước đây không có nhánh `or vector(0)`, nên khi máy ngừng nói thì chuỗi Loki KẾT THÚC (Loki không phát mẫu 0) và `lastNotNull` giữ nguyên con số cũ vô thời hạn — ô đứng ở 3 màu xanh suốt đêm.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "(count(count by (may) (count_over_time({job=\"broker\", loai=\"trang-thai\"} [5m])))) or vector(0)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Bản tin trạng thái / giây",
+      "description": "Tổng nhịp mọi máy cộng lại. Một máy A15 rảnh phát khoảng 0,5 bản/giây (một bản mỗi 2 giây).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "(sum(rate({job=\"broker\", loai=\"trang-thai\"} [1m]))) or vector(0)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Giá trị trạng thái đã gặp",
+      "description": "Số giá trị `state` khác nhau đã từng thấy trong khoảng đang xem.\n\nĐã chốt trên 224.016 khung thật: máy A15 chỉ phát BỐN giá trị — `-1`, `0`, `2`, `15` — và khung LUÔN đủ 8 trường, không hề có trường mã lỗi. Nên ô này đọc 4 là bình thường; nhảy lên 5 mới là vừa gặp một trạng thái CHƯA TỪNG BIẾT, lúc đó phải tra sổ tay trước khi đặt tên cho nó.\n\nSửa 27/08: mô tả cũ (viết 26/08) nói mới thấy hai giá trị `-1` và `15` và coi 3 là bất thường — đó là số liệu của một ngày đo ít, ô sẽ kêu oan.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "(count(count by (trang_thai) (count_over_time({job=\"broker\", loai=\"trang-thai\"} [$__range])))) or vector(0)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Lượt gọi API bị từ chối",
+      "description": "Từ nhật ký kiểm toán của bridge. Khác 0 không có nghĩa là bị tấn công — trang xem tự gọi thử trước khi nạp token cũng đếm vào đây.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "(sum(count_over_time({job=\"bridge-kiem-toan\", ket_qua=\"denied\"} [$__range]))) or vector(0)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Nhịp bản tin — mỗi máy một đường",
+      "description": "Nhịp bản tin của từng máy, mỗi máy một đường.\n\nMáy ngừng nói thì đường **ĐỨT**, không phải tụt xuống 0 — Loki không phát mẫu 0 cho khoảng trống. `spanNulls` để tắt chính là để nhìn thấy chỗ đứt đó; đừng bật lên, bật lên là nối liền qua quãng mất tín hiệu. Cột `min` trong chú giải là nhịp thấp nhất ĐO ĐƯỢC, không phải mức máy tụt xuống.\n\nThêm máy vào xưởng thì đường mới tự hiện, không phải sửa bảng.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "min"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "legendFormat": "{{may}}",
+          "expr": "sum by (may) (rate({job=\"broker\", loai=\"trang-thai\", may=~\"$may\"} [1m]))"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "state-timeline",
+      "title": "Trạng thái từng máy theo thời gian",
+      "description": "Mỗi dải là một máy, màu là giá trị `state` máy khai. CHƯA dịch mã sang chữ: tới nay chỉ quan sát được -1 và 15, và đặt tên cho một mã chưa từng thấy là bịa.\n\nGhi chú 27/08: ô này trước vẽ `count_over_time` (số bản tin/phút) nhưng lại đặt tên là \"trạng thái\", nên các dải ghi 30/29/41 — đó là số bản tin, không phải mã máy. Đã đổi sang `last_over_time ... unwrap trang_thai ... by (may)` cho đúng một hàng mỗi máy.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "spanNulls": false,
+            "insertNulls": 180000
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "đang thêu",
+                  "color": "green",
+                  "index": 0
+                },
+                "2": {
+                  "text": "dừng giữa mẫu",
+                  "color": "orange",
+                  "index": 1
+                },
+                "15": {
+                  "text": "không thêu",
+                  "color": "blue",
+                  "index": 2
+                },
+                "-1": {
+                  "text": "mã −1 (chưa hiểu)",
+                  "color": "purple",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "máy không gửi khung",
+                  "color": "#3a3a44",
+                  "index": 4
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "auto",
+        "rowHeight": 0.9,
+        "mergeValues": true,
+        "alignValue": "center",
+        "perPage": 20,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "legendFormat": "{{may}}",
+          "expr": "last_over_time({job=\"broker\", loai=\"trang-thai\", may=~\"$may\"} | unwrap trang_thai [$__auto]) by (may)"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Sự kiện: kết nối, ngắt, đẩy file",
+      "description": "Đã lọc bỏ dòng trạng thái lặp. Đây là chỗ nhìn khi hỏi 'máy có vào được không' và 'đã đẩy file lần nào chưa'.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"broker\", loai=~\"ket-noi|ngat-ket-noi|day-file|mau-thieu\"}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Nhật ký broker — bỏ dòng trạng thái lặp",
+      "description": "99 % dòng trong broker.log là bản tin trạng thái lặp lại y nguyên lúc máy rảnh (đã đếm: 99,0 %). Bảng này bỏ chúng đi để còn nhìn thấy phần có tin.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"broker\"} != \"*** STATE\""
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "logs",
+      "title": "Kiểm toán bridge — ai gọi vào API",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"bridge-kiem-toan\"}"
+        }
+      ]
+    }
+  ]
+}

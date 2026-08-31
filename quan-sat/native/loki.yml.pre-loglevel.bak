@@ -1,0 +1,82 @@
+# Loki một nốt, chạy THẲNG trên macOS (brew), không container.
+#
+# Khác duy nhất so với ../loki/loki.yml: mọi đường dẫn `/loki` của container
+# đổi thành thư mục thật dưới ~/dahao-gateway/quan-sat/du-lieu/loki, và Loki
+# nghe ở 127.0.0.1 chứ không phải 0.0.0.0 — vì `auth_enabled: false`, ai gọi
+# thẳng vào cổng 3100 là đọc được toàn bộ log thô. Grafana proxy hộ.
+auth_enabled: false
+
+server:
+  http_listen_address: 127.0.0.1
+  http_listen_port: 3100
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki
+  storage:
+    filesystem:
+      chunks_directory: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki/chunks
+      rules_directory: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2026-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# Cửa sổ nhận ghi LỆCH THỨ TỰ = max_chunk_age / 2. Mặc định 2h, tức chỉ nhận lệch 1 tiếng.
+# Mọi lần đọc lại log cũ — bật một bộ đẩy muộn, dựng lại Alloy, mất tệp vị trí — đều bị Loki
+# vứt phần cũ hơn 1 tiếng. Chỗ vứt nằm trong logs/loki.err ("entry too far behind"), KHÔNG
+# hiện ra ở Grafana: bảng vẫn vẽ đẹp, chỉ là thiếu số.
+#
+# Đã cắn thật 27/08: bù 19 lần vá của bộ dò lý-do-dừng thì chỉ 17 vào được, riêng máy
+# 602602A6F22B mất 4/6 -> bảng "máy nào hay phải vá nhất" xếp sai hạng, mà không báo gì.
+# 48h -> cửa sổ 24h, đủ cho mọi lần bù trong ngày.
+ingester:
+  max_chunk_age: 48h
+
+limits_config:
+  # Broker phát ~2 bản tin/giây/máy. Mười máy vẫn thừa sức, nhưng đặt trần
+  # để một máy phát điên không nuốt hết đĩa.
+  ingestion_rate_mb: 8
+  ingestion_burst_size_mb: 16
+  max_streams_per_user: 5000
+  max_label_names_per_series: 20
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  # Giữ 30 ngày. Dài hơn cửa sổ đo K-19 (7 ngày) đủ xa để còn truy lại được.
+  retention_period: 720h
+  allow_structured_metadata: true
+
+compactor:
+  working_directory: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki/compactor
+  delete_request_store: filesystem
+  retention_enabled: true
+  retention_delete_delay: 2h
+  compaction_interval: 10m
+
+# Tắt hẳn phần gọi về nhà.
+analytics:
+  reporting_enabled: false
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki/rules
+  rule_path: /Users/phong/dahao-gateway/quan-sat/du-lieu/loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.dahao.tinhtrang</string>
+
+  <!-- Đẩy TÌNH TRẠNG MÁY (thứ trang `xem/` hiển thị) vào Loki để Grafana đọc được cùng con số.
+       Grafana chỉ có log thô của broker — trong đó không có "máy còn kết nối không", "bridge đọc
+       nổi không", "có cảnh báo nặng không", "mẫu xong hay đang dở". Nên không truy vấn LogQL nào
+       làm Grafana khớp trang `xem/` được; phải mang chính kết quả bridge đã tính sang.
+       Ghi ra stdout -> launchd hứng vào logs/tinh-trang.out -> Alloy tail -> Loki.
+       Đặt tên đuôi `.out` là CỐ Ý: `com.dahao.xoaylog` xoay sẵn mọi `logs/*.out|*.err`. -->
+  <key>ProgramArguments</key>
+  <array><string>/Users/phong/dahao-gateway/chay-tinh-trang.sh</string></array>
+
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <!-- Bridge chưa lên thì script tự chờ rồi thoát; đừng để launchd quay vòng đốt CPU. -->
+  <key>ThrottleInterval</key><integer>10</integer>
+
+  <key>WorkingDirectory</key><string>/Users/phong/dahao-gateway</string>
+  <key>StandardOutPath</key><string>/Users/phong/dahao-gateway/logs/tinh-trang.out</string>
+  <key>StandardErrorPath</key><string>/Users/phong/dahao-gateway/logs/tinh-trang.err</string>
+</dict></plist>

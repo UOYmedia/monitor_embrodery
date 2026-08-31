@@ -1,0 +1,49 @@
+; Grafana chạy THẲNG trên macOS (brew), không container.
+; Bản container đặt các thứ này bằng biến môi trường GF_* trong docker-compose.yml;
+; bản native đặt bằng file ini để plist launchd không phải ôm một đống biến.
+;
+; MẬT KHẨU admin KHÔNG nằm trong file này — nó ở ~/dahao-gateway/quan-sat/grafana-admin.env
+; (chmod 600) và được `chay-grafana.sh` nạp vào biến môi trường. Cùng cách làm
+; với token bridge: bí mật đúng một chỗ, không nhân bản vào file ai cũng đọc được.
+
+[paths]
+data         = /Users/phong/dahao-gateway/quan-sat/du-lieu/grafana
+logs         = /Users/phong/dahao-gateway/quan-sat/du-lieu/grafana/log
+plugins      = /Users/phong/dahao-gateway/quan-sat/du-lieu/grafana/plugins
+provisioning = /Users/phong/dahao-gateway/quan-sat/native/provisioning
+
+[server]
+protocol  = http
+; CHỈ nghe trên địa chỉ tailnet. Đổi sang 0.0.0.0 là mở ra cả LAN xưởng —
+; Grafana đọc được log thô, khác hẳn trang xem vốn chỉ hiện con số. Cân nhắc trước khi đổi.
+; Không có hostname nào của bộ này trong cloudflare-config.yml: tunnel chỉ trỏ cổng 8790.
+http_addr = 100.107.219.95
+http_port = 3000
+
+[auth.anonymous]
+; Xem thì không cần đăng nhập (giống trang xem), nhưng SỬA thì phải đăng nhập.
+enabled  = true
+org_name = Main Org.
+org_role = Viewer
+
+[users]
+allow_sign_up = false
+default_theme = dark
+
+[dashboards]
+; Mở http://100.107.219.95:3000 là ra thẳng bảng tuyến Dahao, không phải bấm tìm.
+default_home_dashboard_path = /Users/phong/dahao-gateway/quan-sat/grafana/dashboards/dahao-tuyen.json
+
+[analytics]
+; Không gọi về nhà, không hỏi bản mới — máy này là máy sản xuất.
+reporting_enabled           = false
+check_for_updates           = false
+check_for_plugin_updates    = false
+feedback_links_enabled      = false
+
+[news]
+news_feed_enabled = false
+
+[log]
+mode  = console file
+level = info

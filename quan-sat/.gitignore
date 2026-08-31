@@ -1,0 +1,5 @@
+# Mọi file bí mật của phần quan sát. `.gitignore` ở gốc repo CHỈ khớp `.env` và `.env.*`,
+# KHÔNG khớp `grafana-admin.env` / `mcp-grafana.env` / `grafana-viewer.env` — nên phải có
+# file này, kẻo lần commit `quan-sat/` đầu tiên là mật khẩu admin lọt thẳng vào lịch sử git.
+*.env
+!*.env.example

@@ -1,0 +1,2136 @@
+{
+  "uid": "dahao-tinh-trang",
+  "title": "Dahao — tình trạng máy",
+  "description": "Cùng bộ từ vựng với màn hình vận hành /xem/: đang chạy · lỗi · máy off, mẫu đang làm, và mỗi tình trạng kéo dài bao lâu. Nguồn: broker.log qua Alloy → Loki.",
+  "tags": [
+    "dahao",
+    "xuong",
+    "tinh-trang"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 11,
+  "refresh": "5s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "may",
+        "label": "Máy",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-dahao"
+        },
+        "query": "label_values({job=\"broker\", loai=\"trang-thai\"}, may)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values({job=\"broker\", loai=\"trang-thai\"}, may)"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Tổng máy",
+      "description": "Số máy bridge đang theo dõi. Bốn ô bên phải cộng với “Hoàn thành/Chờ/Chưa rõ” (xem dòng thời gian bên dưới) phải bằng đúng con số này — lệch là đường ống có chỗ hở.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi + nhịp tim 20 giây). KHÔNG phải mã máy tự khai trong broker.log — mã ấy không biết máy còn kết nối không, bridge có đọc nổi không, mẫu xong hay còn dở.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Đang chạy",
+      "description": "Máy đang thêu ngay lúc này.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi + nhịp tim 20 giây). KHÔNG phải mã máy tự khai trong broker.log — mã ấy không biết máy còn kết nối không, bridge có đọc nổi không, mẫu xong hay còn dở.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 6) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Đang lỗi",
+      "description": "Đếm máy có mức = 2.\n\nTrước 27/08 ô này đếm `ma == 0`, mà `ma == 0` là điều KHÔNG THỂ xảy ra: broker không sinh trạng thái `fault`, mọi sự kiện máy đều để mức `info` nên `deriveAlerts` không có đường ra `critical`, và `telemetryError` rỗng ở cả 13 máy. Đo 24 giờ: 0/3600 mẫu. Ô này đứng yên ở 0 vì CÁCH HỎI, không phải vì xưởng không có vấn đề.\n\nLƯU Ý: đây vẫn KHÔNG phải mã lỗi của máy. Đã soi 224.016 khung thật — khung A15 chỉ có 8 trường và 4 giá trị trạng thái, không trường nào là mã lỗi. Máy đứt chỉ, gãy kim thì báo trên màn hình HMI của nó. Con số ở đây là chuyện bridge đọc được: đọc không nổi máy, hoặc máy còn trên mạng mà ngừng gửi số liệu. Xem bảng ngay dưới để biết máy nào và vì sao.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi trạng thái, khi đổi mức lỗi, và nhịp tim 20 giây).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap muc [2m]) by (may) == 2) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Cảnh báo",
+      "description": "Đếm máy có mức = 1 — bridge thấy bất thường nhưng chưa đủ để gọi là lỗi (máy dừng quá ngưỡng 5 phút của xưởng, máy tắt hẳn...). Lúc mở ô này ra lần đầu có 3 máy đang nằm đây, và trước đó không màn hình nào hiển thị chúng: `tinh_trang` chỉ nhận cảnh báo mức `critical`, còn cảnh báo mức `warning` thì rơi thẳng xuống đất.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi trạng thái, khi đổi mức lỗi, và nhịp tim 20 giây).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap muc [2m]) by (may) == 1) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Nghi đứt chỉ",
+      "description": "Đếm số lần thợ phải LÙI KHUNG để vá trong khoảng thời gian đang xem. Gần như luôn là đứt chỉ trên hoặc hết suốt dưới.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum(count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Lần dừng",
+      "description": "Mọi lần dừng giữa mẫu đủ dài để đáng nhìn, gồm cả vá lẫn dừng thường. Dừng thoáng đúng một nhịp đo (2 giây) mà không lùi mũi thì bỏ qua — cắt chỉ và đổi màu rơi vào đó, ghi lại thì lấp mất những lần đáng nhìn.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum(count_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Máy im",
+      "description": "Máy không còn đẩy dữ liệu về. Gộp cả NĂM lý do, vì câu hỏi của ô này là \"có bao nhiêu máy đang không nói gì\", không phải \"có bao nhiêu máy hỏng\":\n\n· mã 2 — mất tín hiệu giữa lúc đang thêu dở (đây mới là cái đáng lo)\n· mã 7 — bridge gọi không ai nhấc, máy tắt hẳn\n· mã 8 — ngoài giờ làm (cửa 06:00–19:00), máy tắt sau ca là bình thường\n· mã 9 — CẢ XƯỞNG cùng im: cúp điện hoặc đứt mạng\n· mã 10 — thợ tắt máy sau khi thêu xong tấm\n\nBan đêm ô này đọc gần bằng tổng số máy là ĐÚNG, không phải báo động — xem bảng dòng thời gian ngay dưới để biết từng máy im vì lý do nào. Muốn đếm riêng cái đáng ra tay thì xem bảng \"Cần xử lý\".\n\nVì sao phải gộp: máy A15 cắm điện thì đẩy khung mỗi 2 giây suốt 24/7 kể cả lúc rảnh (đo 1.799 khung/giờ suốt đêm). Nên máy im KHÔNG BAO GIỜ nghĩa là \"máy rảnh\".",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "count((last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 2) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 7) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 8) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 9) or (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [2m]) by (may) == 10)) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Nhịp số liệu",
+      "description": "Ô CANH ĐƯỜNG ỐNG, không phải số liệu xưởng. Bộ đẩy phát nhịp tim 20 giây cho mỗi máy, nên 13 máy thì bình thường ≥ 39 dòng/phút. Về 0 nghĩa là bộ đẩy chết — và lúc ấy bốn ô bên trái sẽ đọc ra 0 chứ không báo lỗi, tức là “cả xưởng dừng” giả. Đỏ ở đây thì đừng tin bốn ô kia.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi + nhịp tim 20 giây). KHÔNG phải mã máy tự khai trong broker.log — mã ấy không biết máy còn kết nối không, bridge có đọc nổi không, mẫu xong hay còn dở.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum(count_over_time({job=\"tinh-trang\"}[1m])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 13
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "type": "table",
+      "title": "Máy nào đang báo lỗi — và lỗi gì",
+      "description": "Chỉ hiện máy đang có chuyện; xưởng chạy trơn thì bảng này TRỐNG, và trống là tin tốt. Cột \"Ai báo\" là chỗ phải đọc kỹ: \"bridge suy ra\" nghĩa là máy KHÔNG hề báo gì, bridge tự nhìn số liệu mà kết luận. Giao thức A15 không có trường lỗi (soi 224.016 khung, luôn đúng 8 trường; 51 topic chia 4 họ, không họ nào là alarm), nên tới giờ mọi dòng ở đây đều là \"bridge suy ra\". Máy đứt chỉ hay gãy kim thì báo trên màn hình HMI của nó.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\", muc_ten!=\"thuong\"} | json | unwrap muc [90s]) by (may, ten, loi_do, loi_nguon)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\", muc_ten!=\"thuong\"} | json | unwrap giay [90s]) by (may)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\", muc_ten!=\"thuong\"} | json | unwrap ma [90s]) by (may)"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\", muc_ten!=\"thuong\"} | json | unwrap loi_so [90s]) by (may)"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "(last_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} | json | unwrap ma_nghi [30m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\", muc_ten!=\"thuong\"} | json | unwrap muc [90s]) by (may))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(may|ten|loi_do|loi_nguon|Value.*)$"
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "may",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "ten": "Máy",
+              "may": "Mã máy",
+              "Value #A": "Mức",
+              "loi_do": "Vì sao",
+              "loi_nguon": "Ai báo",
+              "Value #B": "Bao lâu rồi",
+              "Value #C": "Tình trạng",
+              "Value #D": "Số cảnh báo đang mở",
+              "Value #E": "Lần dừng gần nhất"
+            },
+            "indexByName": {
+              "ten": 0,
+              "Value #A": 1,
+              "loi_do": 2,
+              "loi_nguon": 3,
+              "Value #C": 5,
+              "Value #B": 6,
+              "Value #D": 7,
+              "may": 8,
+              "Value #E": 4
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Mức",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mức"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Cảnh báo",
+                        "color": "yellow",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "ĐANG LỖI",
+                        "color": "red",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vì sao"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "adapter-cam": {
+                        "text": "Máy còn trên mạng nhưng ngừng gửi số liệu",
+                        "index": 0
+                      },
+                      "bridge-khong-doc-duoc": {
+                        "text": "Bridge không đọc được máy",
+                        "index": 1
+                      },
+                      "may-bao-fault": {
+                        "text": "Máy tự khai đang hỏng",
+                        "index": 2
+                      },
+                      "controller-event": {
+                        "text": "Máy tự khai một sự kiện",
+                        "index": 3
+                      },
+                      "sensor-event": {
+                        "text": "Node cảm biến báo",
+                        "index": 4
+                      },
+                      "thread-break-rate": {
+                        "text": "Đứt chỉ nhiều hơn ngưỡng xưởng đặt",
+                        "index": 5
+                      },
+                      "maintenance": {
+                        "text": "Tới hạn bảo trì",
+                        "index": 6
+                      },
+                      "connection": {
+                        "text": "Dừng quá ngưỡng xưởng đặt",
+                        "index": 7
+                      },
+                      "tat-han": {
+                        "text": "Bridge gọi không ai nhấc",
+                        "index": 8
+                      },
+                      "chua-ket-luan": {
+                        "text": "Chưa kết luận được",
+                        "index": 9
+                      },
+                      "ca-cum-im": {
+                        "text": "Cả xưởng cùng im — chưa biết vì đâu (điện, mạng, hết ca, hay bộ ghi)",
+                        "index": 10
+                      },
+                      "mat-tin-hieu-dang-theu": {
+                        "text": "Mất tín hiệu giữa lúc đang thêu dở",
+                        "index": 11
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ai báo"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "controller": {
+                        "text": "MÁY TỰ BÁO",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "sensor": {
+                        "text": "cảm biến ngoài",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "bridge": {
+                        "text": "bridge suy ra",
+                        "color": "text",
+                        "index": 2
+                      },
+                      "dashboard": {
+                        "text": "sổ sách dashboard",
+                        "color": "text",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bao lâu rồi"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tình trạng"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "đang lỗi",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "đang dừng",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "mất tín hiệu",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "chưa rõ",
+                        "color": "purple",
+                        "index": 3
+                      },
+                      "4": {
+                        "text": "đã hoàn thành",
+                        "color": "blue",
+                        "index": 4
+                      },
+                      "5": {
+                        "text": "chờ việc",
+                        "color": "text",
+                        "index": 5
+                      },
+                      "6": {
+                        "text": "đang thêu",
+                        "color": "green",
+                        "index": 6
+                      },
+                      "7": {
+                        "text": "máy tắt hẳn",
+                        "color": "text",
+                        "index": 7
+                      },
+                      "8": {
+                        "text": "ngoài giờ",
+                        "color": "text",
+                        "index": 8
+                      },
+                      "9": {
+                        "text": "cả xưởng im",
+                        "color": "yellow",
+                        "index": 9
+                      },
+                      "10": {
+                        "text": "thợ tắt máy",
+                        "color": "text",
+                        "index": 10
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mã máy"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lần dừng gần nhất"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "nghi đứt chỉ — có người vá",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "dừng hẳn, chưa chạy lại",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "dừng lâu, không lùi mũi",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "dừng thoáng rồi chạy tiếp",
+                        "color": "text",
+                        "index": 3
+                      },
+                      "4": {
+                        "text": "đổi mẫu",
+                        "color": "text",
+                        "index": 4
+                      },
+                      "5": {
+                        "text": "mất tín hiệu giữa chừng",
+                        "color": "orange",
+                        "index": 5
+                      },
+                      "6": {
+                        "text": "làm tấm mới",
+                        "color": "green",
+                        "index": 6
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "noValue",
+                "value": "—"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "logs",
+      "title": "Vì sao máy dừng — SUY TỪ SỐ MŨI, không phải máy tự báo",
+      "description": "Mỗi dòng là một lần dừng đã khép lại. Muốn chỉ xem lần vá thì sửa truy vấn thành nghi=\"nghi-dut-chi\".\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"va-mau\", viec=\"dong\", may=~\"$may\"} | line_format \"{{.may}}  {{.nghi}}  |  lùi {{.lui}} mũi  |  ở {{.mui}}/{{.tong}}  |  dừng {{.giay}}s  |  {{.mau}}  —  {{.y_nghia}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Máy nào hay phải vá nhất",
+      "description": "Xếp hạng theo số lần lùi khung. Máy đứng đầu bảng là nơi đáng đi xem tận nơi trước: chỉ, kim, suốt, hay căn khung.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sort_desc(sum by (may) (count_over_time({job=\"va-mau\", nghi=\"nghi-dut-chi\", viec=\"dong\", may=~\"$may\"} [$__range])))"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "may": "Máy",
+              "Value": "Số lần vá"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Lý do dừng theo thời gian — cột cao là lúc xưởng vất",
+      "description": "Mỗi cột là số lần dừng trong một nhịp, tách theo lý do. Cột `nghi-dut-chi` dày lên là lúc chỉ hoặc suốt có vấn đề.\n\n⚠ ĐÂY LÀ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Giao thức A15 không có trường lỗi — đã chốt trên 224.016 khung (luôn 8 trường, 4 giá trị trạng thái, không trường nào là lý do) và trên 51 topic MQTT (chia đúng 4 họ: auth/encode, auth/login, pattern/data/ack, state — không họ nào là alarm). Chỗ này suy từ một dấu vết gián tiếp: sổ tay BECS-A15 §2.6 nói đứt chỉ / hết suốt thì MÁY TỰ DỪNG, §2.4 nói thợ bấm nút lùi khung để vá (\"The purpose of returning is for patching\"). Lùi khung = số mũi GIẢM giữa mẫu — chuyện không bao giờ xảy ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.\n\nPhân biệt được \"có người đang vá\" với \"dừng bình thường\". KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim — muốn biết chính xác thì thợ nhập tay hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi-\" là vì thế.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum by (nghi) (count_over_time({job=\"va-mau\", viec=\"dong\", may=~\"$may\"} [$__interval]))",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "barAlignment": 0,
+            "gradientMode": "none"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nghi-dut-chi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mat-ket-noi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-han"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-lau"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dung-ngan"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "doi-mau"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "khoi-dong-lai"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": "logs",
+      "title": "Sổ báo lỗi TUYẾN ĐO — nguyên văn câu bridge nói, không viết lại",
+      "description": "Chỉ ghi đúng lúc đổi: vào lỗi, đổi lý do, và hết lỗi. Câu chữ giữ nguyên văn của bridge — nếu ô này viết khác `logs/tinh-trang.out` thì là màn hình sai, không phải bridge sai.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "expr": "{job=\"tinh-trang\", may=~\"$may\"} | json | doi_loi=\"true\" | line_format \"{{.ten}}  ·  {{if eq .muc_ten \\\"loi\\\"}}LỖI{{else if eq .muc_ten \\\"canh-bao\\\"}}cảnh báo{{else}}đã hết báo lỗi{{end}}  ·  {{if .loi_text}}{{.loi_text}}{{else}}(máy trở lại bình thường){{end}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Giờ máy nào đang làm gì",
+      "description": "Máy nào đang làm gì, NGAY LÚC NÀY. Lấy giá trị mới nhất trong 3 phút gần đây.\n\n**Tình trạng** đọc từ luồng `tinh-trang` (bridge kết luận, cùng một bảng luật với trang `xem/`), KHÔNG phải mã thô máy tự khai — máy A15 chỉ khai được 4 mã nên mã thô gộp hết mọi thứ không-đang-thêu làm một. Bảy tình trạng:\n\n- **đang thêu** — mũi đang tăng\n- **đang dừng** — dừng khi mẫu CÒN DỞ (0 < mũi < tổng). Đây là thứ đáng đứng dậy đi xem.\n- **đã hoàn thành** — mũi ≥ tổng, xong tấm, đang chờ thợ tháo khung\n- **chờ việc** — máy sống, đứng yên, chưa nạp mẫu nào\n- **đang lỗi** — bridge đọc máy không nổi / máy khai `fault` / có cảnh báo mức critical\n- **máy tắt** — mất kết nối, trạng thái cũ không còn là câu trả lời\n- **chưa rõ** — máy khai một kiểu chưa xếp được, KHÔNG suy bừa thành \"dừng\"\n\n⚠ **\"đang lỗi\" ở đây KHÔNG phải mã lỗi của máy.** Giao thức A15 không có trường lỗi — đã soi 224.016 khung thật, luôn đúng 8 trường, 4 giá trị `state`, không trường nào là lý do; 51 topic chia 4 họ, không họ nào là alarm. Máy đứt chỉ thì báo trên màn hình HMI của nó, không đẩy lý do ra mạng. \"Đang lỗi\" nghĩa là ĐƯỜNG ĐO có vấn đề.\n\n⚠ **Cột \"Vì sao dừng\" là SUY ĐOÁN, không phải máy báo.** Suy từ dấu vết số mũi (sổ tay BECS-A15 §2.4/§2.6: đứt chỉ thì máy tự dừng, thợ bấm lùi khung để vá — mũi GIẢM giữa mẫu). Phân biệt được \"có người đang vá\" với \"dừng bình thường\"; KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim. Muốn chắc thì hỏi thợ hoặc đọc HMI. Nhãn nào cũng mở đầu bằng \"nghi\" là vì thế.\n\nCột \"Xong\" để TRỐNG khi máy chưa nạp mẫu — tổng mũi bằng 0 thì không có phần trăm nào để nói, in số ra là bịa.\n\nXếp theo Tình trạng tăng dần: nặng trước (lỗi, dừng), nhẹ sau (chờ, đang chạy).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may)",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may)",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "sum by (may, ten, mau) (count_over_time({job=\"tinh-trang\", may=~\"$may\"} [45s]))",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap giay [3m]) by (may)",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "(last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap mui [3m]) by (may)) / (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap tong [3m]) by (may) > 0)",
+          "queryType": "instant",
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "(last_over_time({job=\"va-mau\", may=~\"$may\", viec=~\"mo|dang\"} | unwrap ma_nghi [1m]) by (may)) and on (may) (last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [3m]) by (may) <= 1)",
+          "queryType": "instant",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(may|ten|mau|Value.*)$"
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "may",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Value #D": true
+            },
+            "renameByName": {
+              "ten": "Máy",
+              "may": "Mã máy",
+              "Value #C": "Tình trạng",
+              "Value #G": "Vì sao dừng",
+              "Value #E": "Bao lâu rồi",
+              "mau": "Mẫu đang làm",
+              "Value #A": "Mũi hiện tại",
+              "Value #B": "Mũi tổng",
+              "Value #F": "Xong"
+            },
+            "indexByName": {
+              "ten": 0,
+              "may": 1,
+              "Value #C": 2,
+              "Value #G": 3,
+              "Value #E": 4,
+              "mau": 5,
+              "Value #A": 6,
+              "Value #B": 7,
+              "Value #F": 8
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Tình trạng",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "—"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tình trạng"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 145
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "đang lỗi",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "đang dừng",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "mất tín hiệu",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "chưa rõ",
+                        "color": "purple",
+                        "index": 3
+                      },
+                      "4": {
+                        "text": "đã hoàn thành",
+                        "color": "blue",
+                        "index": 4
+                      },
+                      "5": {
+                        "text": "chờ việc",
+                        "color": "text",
+                        "index": 5
+                      },
+                      "6": {
+                        "text": "đang thêu",
+                        "color": "green",
+                        "index": 6
+                      },
+                      "7": {
+                        "text": "máy tắt hẳn",
+                        "color": "#8e8e9a",
+                        "index": 7
+                      },
+                      "8": {
+                        "text": "ngoài giờ",
+                        "color": "#4b4b58",
+                        "index": 8
+                      },
+                      "9": {
+                        "text": "cả xưởng im",
+                        "color": "#d9a441",
+                        "index": 9
+                      },
+                      "10": {
+                        "text": "thợ tắt máy",
+                        "color": "#6b6b7a",
+                        "index": 10
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vì sao dừng"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 235
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "nghi đứt chỉ — đang vá",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "dừng hẳn, chưa chạy lại",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "dừng lâu, không lùi mũi",
+                        "color": "yellow",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "dừng thoáng",
+                        "color": "text",
+                        "index": 3
+                      },
+                      "4": {
+                        "text": "đổi mẫu",
+                        "color": "blue",
+                        "index": 4
+                      },
+                      "5": {
+                        "text": "mất tin",
+                        "color": "purple",
+                        "index": 5
+                      },
+                      "6": {
+                        "text": "làm tấm mới",
+                        "color": "green",
+                        "index": 6
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bao lâu rồi"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Xong"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^Mũi .*$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mã máy"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 125
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Máy"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "state-timeline",
+      "title": "Tình trạng từng máy theo thời gian — đọc BỀ NGANG để biết dừng/lỗi bao lâu",
+      "description": "Mỗi dòng một máy, mỗi dải màu một tình trạng; bề ngang của dải chính là thời gian kéo dài. Rê chuột vào dải để đọc mốc bắt đầu.\n\nBảy tên ở đây là ĐÚNG BẢY TÊN của trang test.phonh.io.vn, cùng một phép phân loại, cùng một nguồn — nên hai màn hình không thể nói khác nhau.\n\nGhi chú cấu hình: ô này KHÔNG dùng thang ngưỡng (threshold). Với state-timeline, Grafana lấy thang ngưỡng ra làm trạng thái và nuốt mất bảng ánh xạ giá trị — cả hàng gộp thành một dải xám \"-∞+\". Màu và tên đến từ bảng ánh xạ giá trị.\n\nNguồn: luồng `tinh-trang` — chính kết luận của bridge, cùng thứ trang test.phonh.io.vn vẽ ra (job `com.dahao.tinhtrang` hỏi /api/v2/fleet mỗi 2 giây, ghi khi đổi + nhịp tim 20 giây). KHÔNG phải mã máy tự khai trong broker.log — mã ấy không biết máy còn kết nối không, bridge có đọc nổi không, mẫu xong hay còn dở.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "legendFormat": "{{may}}",
+          "expr": "last_over_time({job=\"tinh-trang\", may=~\"$may\"} | json | unwrap ma [$__auto]) by (may)"
+        }
+      ],
+      "options": {
+        "showValue": "auto",
+        "rowHeight": 0.9,
+        "mergeValues": true,
+        "alignValue": "center",
+        "perPage": 20,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "spanNulls": false,
+            "insertNulls": 180000
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "LỖI",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "DỪNG GIỮA MẪU",
+                  "color": "orange",
+                  "index": 1
+                },
+                "2": {
+                  "text": "MẤT TÍN HIỆU",
+                  "color": "orange",
+                  "index": 2
+                },
+                "3": {
+                  "text": "CHƯA RÕ",
+                  "color": "purple",
+                  "index": 3
+                },
+                "4": {
+                  "text": "HOÀN THÀNH",
+                  "color": "blue",
+                  "index": 4
+                },
+                "5": {
+                  "text": "CHỜ",
+                  "color": "#8e8e9a",
+                  "index": 5
+                },
+                "6": {
+                  "text": "ĐANG CHẠY",
+                  "color": "green",
+                  "index": 6
+                },
+                "7": {
+                  "text": "MÁY TẮT HẲN",
+                  "color": "#3a3a44",
+                  "index": 7
+                },
+                "8": {
+                  "text": "NGOÀI GIỜ",
+                  "color": "#4b4b58",
+                  "index": 8
+                },
+                "9": {
+                  "text": "CẢ XƯỞNG IM",
+                  "color": "#d9a441",
+                  "index": 9
+                },
+                "10": {
+                  "text": "THỢ TẮT MÁY",
+                  "color": "#6b6b7a",
+                  "index": 10
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không có số liệu",
+                  "color": "#22222a",
+                  "index": 7
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Mũi thêu dồn theo máy — đường NẰM NGANG là máy đang đứng",
+      "description": "Số mũi hiện tại của từng máy. Đường đi lên = đang thêu; đường phẳng = đứng yên và chiều dài đoạn phẳng chính là thời gian đứng; đường tụt về 0 = vừa đổi mẫu hoặc vừa xoá mẫu.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 64
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "max_over_time({job=\"broker\", loai=\"trang-thai\", may=~\"$may\"} | unwrap mui_hien_tai [$__auto]) by (may)",
+          "legendFormat": "{{may}}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 6,
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "state-timeline",
+      "title": "Máy TỰ KHAI mã gì (thô) — để đối chiếu khi nghi bridge phân loại sai",
+      "description": "Ô này là MÃ THÔ máy tự đẩy ra mạng, chưa qua bridge. Giữ lại để đối chiếu: nếu ô tình trạng bên trên nói “DỪNG GIỮA MẪU” mà ở đây máy vẫn khai mã 0 (đang thêu), thì chỗ sai nằm ở bridge chứ không phải ở máy.\n\nMỗi dòng là một máy, mỗi dải màu là một tình trạng; bề ngang của dải chính là thời gian kéo dài. Rê chuột vào dải để đọc mốc bắt đầu.\n\nTên ba mã dưới đây lấy đúng bảng đã đo trong broker.py (~58.000 lượt khung, 13 máy): mã 0 = đang thêu (91,5% kèm mũi tăng), mã 2 = dừng giữa mẫu (99,8% mũi đứng yên, 100% đang ở giữa mẫu), mã 15 = không thêu (91,9% hết mẫu / chưa có mẫu). Mã −1 CỐ Ý để trống tên: mới có ~20 lượt, chưa đủ để gọi tên — đặt tên cho một mã chưa hiểu là nói hộ máy. Chỗ trống trên dòng = máy không gửi gì (off).\n\nGhi chú cấu hình: ô này KHÔNG dùng thang ngưỡng (threshold). Với state-timeline, Grafana lấy thang ngưỡng ra làm trạng thái và nuốt mất bảng ánh xạ giá trị — cả hàng gộp thành một dải xám \"-∞+\". Màu và tên trạng thái ở đây đến từ bảng ánh xạ giá trị.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 74
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "last_over_time({job=\"broker\", loai=\"trang-thai\", may=~\"$may\"} | unwrap trang_thai [$__auto]) by (may)",
+          "legendFormat": "{{may}}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showValue": "auto",
+        "rowHeight": 0.9,
+        "mergeValues": true,
+        "alignValue": "center",
+        "perPage": 20,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "spanNulls": false,
+            "insertNulls": 180000
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "đang thêu",
+                  "color": "green",
+                  "index": 0
+                },
+                "2": {
+                  "text": "dừng giữa mẫu",
+                  "color": "orange",
+                  "index": 1
+                },
+                "15": {
+                  "text": "không thêu",
+                  "color": "blue",
+                  "index": 2
+                },
+                "-1": {
+                  "text": "mã −1 (chưa hiểu)",
+                  "color": "purple",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "máy không gửi khung",
+                  "color": "#3a3a44",
+                  "index": 4
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Sự cố tuyến đo — KHÔNG phải lỗi máy",
+      "description": "Đây là sức khoẻ của ĐƯỜNG ĐO, không phải của máy thêu: dòng warn/error của bridge, và số lượt gọi API bị từ chối (gọi thiếu token). Đỉnh cao chót vót hôm 26/08 là lúc trang /xem/ còn gọi API mà chưa gắn token — tiếng ồn của chính mình, không phải sự cố xưởng.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "legendFormat": "bridge warn/error",
+          "expr": "sum(count_over_time({job=\"bridge\"} | json | level =~ `warn|error` [$__auto]))"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "range",
+          "legendFormat": "API bị từ chối",
+          "expr": "sum(count_over_time({job=\"bridge-kiem-toan\", ket_qua=\"denied\"}[$__auto]))"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Nhật ký broker — đã bỏ khung trạng thái (0,5 dòng/giây/máy nên không đọc nổi)",
+      "description": "Chỉ còn các dòng đáng đọc: kết nối/ngắt, nạp mẫu, catalog. Muốn xem khung trạng thái thô thì sửa truy vấn thành {job=\"broker\", loai=\"trang-thai\"}.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "expr": "{job=\"broker\", loai!=\"trang-thai\"}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+# Tầng quan sát — Loki + Grafana
+
+Bộ này **không thay** trang xem của thợ. Nó là màn hình cho người trông hệ thống.
+
+| | Trang xem (`test.phonh.io.vn`) | Grafana (bộ này) |
+|---|---|---|
+| Cho ai | Thợ đứng máy, quản lý xưởng | Người trông tuyến kỹ thuật |
+| Trả lời | "Máy đang chạy hay dừng?" | "Vì sao lúc 3 giờ sáng máy ngừng nói?" |
+| Đường vào | Internet, không đăng nhập | **Chỉ tailnet** `http://100.107.219.95:3000` |
+| Thấy gì | Con số đã xử lý | Log thô — nên **không đưa ra Internet** |
+
+## Đang chạy bằng gì (26/08)
+
+**Bản native, cài bằng brew, launchd trông.** OrbStack không khởi động nổi trên Mini
+không màn hình (xem cuối file), nên bỏ hẳn đường container. Ba dịch vụ:
+
+| Job launchd | Tiến trình | Nghe ở | Cấu hình |
+|---|---|---|---|
+| `com.dahao.loki` | `loki` 3.7.6 | `127.0.0.1:3100` | `native/loki.yml` |
+| `com.dahao.alloy` | `alloy` 1.19.1 | `127.0.0.1:12345` | `native/config.alloy` |
+| `com.dahao.grafana` | `grafana` 13.2.0 | `100.107.219.95:3000` | `native/grafana.ini` |
+
+Cả ba đều `KeepAlive` — giết tiến trình thì launchd dựng lại (đã thử thật: giết PID
+Grafana, 25 giây sau có PID mới, `runs = 2`).
+
+```bash
+# xem trạng thái
+launchctl print gui/501/com.dahao.grafana | grep -E "state = |pid = |runs = "
+# khởi động lại
+launchctl kickstart -k gui/501/com.dahao.alloy
+# tắt hẳn một dịch vụ
+launchctl bootout gui/501/com.dahao.loki
+```
+
+Mật khẩu admin Grafana nằm ở `quan-sat/grafana-admin.env` (chmod 600), do
+`native/chay-grafana.sh` nạp vào — **không** chép vào plist, vì plist ai cũng liệt kê được.
+Xem bảng thì không cần đăng nhập (`auth.anonymous` = Viewer); sửa thì phải.
+
+**Thư mục `native/` khác thư mục gốc đúng hai chỗ:** đường dẫn `/nhat-ky/…` (điểm gắn
+của container) thành đường thật `/Users/phong/dahao-gateway/…`, và `http://loki:3100`
+(tên dịch vụ trong mạng compose) thành `http://127.0.0.1:3100`. Mọi thứ khác — regex,
+nhãn, chính sách giữ log — dùng chung. File JSON của bảng cũng dùng chung
+(`grafana/dashboards/dahao-tuyen.json`), sửa một chỗ hai bản cùng thấy.
+
+`docker-compose.yml` và các file cạnh nó **giữ lại nguyên vẹn** để sau này muốn quay
+về container thì có sẵn — chưa xoá, chưa sửa ngoài phần vá regex chung.
+
+## Thứ tầng quan sát vừa cho thấy ngay hôm bật lên
+
+Xưởng **không chỉ có một máy**. Trong 3 phút đầu tiên có dữ liệu, Loki đã tách ra
+**13 định danh máy khác nhau** cùng đẩy vào broker, nhiều máy đang thêu thật
+(`state=-1`, số mũi tăng, tên file `.DST` thật). Nhưng `may.json` mới khai đúng một máy
+(`602602704E7B` → `mch-a15-mqtt`), nên bridge **từ chối** khung của những máy còn lại
+với lý do `machine_id_missing`.
+
+Đó là hành vi đúng của bản vá "nhiều máy": thà báo lỗi to còn hơn cộng dồn số mũi của
+mười mấy máy vào một máy.
+
+**Đã khai xong cùng ngày.** Chủ xưởng xác nhận đó là máy vừa lắp thêm. Cả 13 máy giờ có
+bản ghi trong fleet và một dòng trong `may.json`; bộ đếm từ chối `machine_id_missing`
+về **0**, và trang thợ hiện đủ 13 thẻ với mẫu + số mũi riêng từng máy.
+
+Tên máy là tên TẠM (`Máy C54F54` — sáu ký tự cuối mã máy), vì đã giải mã kiểm và **cả 13
+máy đều để `machineName` rỗng** trên HMI. Cố ý không đánh số `Máy 1…13`: thứ tự mã máy
+không liên quan tới vị trí ngoài xưởng, số sai còn tệ hơn không số. Sửa tên là sửa trường
+`name`, định danh không đổi.
+
+## Ba điều bộ này cố ý KHÔNG làm
+
+1. **Không ghi vào thư mục gateway.** Bản container gắn `~/dahao-gateway` kiểu `:ro` để
+   chặn hộ. Bản native **không có cái chặn đó** — Alloy chạy dưới người dùng `phong` nên
+   về nguyên tắc ghi được. Vậy nên: đừng bao giờ thêm component nào của Alloy có ghi file
+   vào thư mục ấy. Một bộ quan sát làm hỏng thứ nó quan sát là bộ quan sát tệ nhất.
+2. **Không gom `state.log`.** File ấy 46 MB và mỗi dòng là base64 đã mã hoá. Đẩy vào Loki thì tốn đĩa mà tra cứu không ra gì — muốn đọc được phải mang khoá vào tầng quan sát, và đó là chỗ khoá không nên có mặt. Mọi thứ cần biết đã có ở dạng đọc được trong `broker.log`.
+3. **Không đặt tên cho mã trạng thái chưa từng gặp.** Bảng hiện số trần chứ không dịch sang chữ. Ô "Giá trị trạng thái đã gặp" nhảy lên một bậc là tín hiệu mở sổ ghi, không phải chỗ để đoán tên.
+
+## Chỗ hở đã biết, nói trước
+
+**`broker.log` không có dấu giờ trên phần lớn các dòng.** Hàm `log()` trong `broker.py` ghi thẳng chuỗi, không thêm mốc thời gian; chỉ dòng `*** STATE` tự mang `@<ISO8601>` ở cuối. Nên:
+
+- dòng `STATE` vào Loki với **giờ thật của máy**;
+- dòng `CONNECT` / `[ENUM]` / `[CTRL]` vào với **giờ lúc Alloy đọc được**.
+
+Khi tuyến đang chạy thì hai giờ lệch nhau chưa tới một giây, không sao. Nhưng **lúc gom lại một file log cũ** thì mọi dòng không phải STATE sẽ đóng dấu giờ "hôm nay" — sai. Muốn sửa tận gốc thì thêm dấu giờ vào `log()` của `broker.py`, mà đó là sửa file production nên phải hỏi chủ máy trước.
+
+## Cái bẫy regex đã cắn thật (26/08)
+
+Biểu thức tách dòng STATE lúc đầu viết `pat=(?P<mau>\S*)`. Tên file mẫu thật **có dấu cách**:
+
+```
+*** STATE dev=3CE4B0C54F54 cur=35854 tot=35854 state=15 pat=4153725796 front(1).DST @2026-08-26T09:34:09Z
+```
+
+`\S*` dừng ở dấu cách → `@(?P<thoi_diem>…)` hết khớp → **cả biểu thức trượt** → dòng ấy
+vào Loki **không có nhãn nào**. Máy biến mất khỏi bảng mà không có lỗi nào để đọc.
+Đúng kiểu hỏng im lặng. Đã sửa thành `(?P<mau>.*?)` ở cả bản native lẫn bản container.
+
+Bài học chung: mọi nhóm bắt trong regex này bám định dạng THẬT đã xem tận mắt. Ai sửa
+`broker.py` phần in log thì phải kiểm lại đúng câu truy vấn ở cuối file này.
+
+## Vì sao máy dừng — luồng `va-mau` (27/08)
+
+Đây là chỗ DUY NHẤT trả lời được câu "máy đang gặp lỗi gì". Hai luồng kia không trả lời được:
+`broker` là máy tự khai mà **giao thức A15 không có trường lỗi**, `tinh-trang` là kết luận của
+bridge nên biết máy DỪNG chứ không biết VÌ SAO.
+
+**Đã chốt là máy không báo lỗi, từ hai phía độc lập.** Phía trường: 224.016 khung thật, luôn đúng
+8 trường, chỉ 4 giá trị `state` (`-1/0/2/15`), không trường nào là lý do. Phía topic: `catalog.json`
+gom được 51 topic, chia đúng 4 họ — `auth/encode`, `auth/login`, `pattern/data/ack`, `state` —
+không họ nào là alarm/error/fault. Đừng đi tìm lại.
+
+**Nhưng đứt chỉ vẫn nhìn thấy được, gián tiếp.** Sổ tay BECS-A15 §2.6: đứt chỉ / hết suốt thì
+**máy tự dừng**. §2.4: thợ bấm nút **lùi khung** để vá — *"The purpose of returning is for
+patching"*, một nhát là lùi một mũi, giữ 2 giây thì khung bò ngược liên tục theo đúng đường đã
+thêu, rồi bấm chạy tiếp. Lùi khung = `curStitch` **GIẢM giữa một mẫu** — chuyện không bao giờ xảy
+ra khi thêu bình thường, cũng không khi thợ chỉ bấm dừng.
+
+Đo thật 15,2 giờ / 64.301 khung: 13 lần lùi, độ lùi **luôn** là bội của một bước cố định theo từng
+máy (30 mũi ở 3 máy, 50 ở 1 máy) — đúng kiểu "giữ nút 2 giây" chứ không phải nhiễu.
+
+⚠ **Là SUY ĐOÁN, không phải máy báo.** Phân biệt được "có người đang vá" với "dừng bình thường";
+KHÔNG phân biệt được đứt chỉ trên / hết suốt dưới / gãy kim. Muốn biết chính xác thì thợ nhập tay
+(`ManualReadingForm`) hoặc đọc HMI. Nhãn nào cũng mở đầu bằng `nghi-` là vì thế.
+
+### Đường đi
+
+    broker.log --(quan-sat/soi-lan-dung.py, launchd com.dahao.landung)--> logs/va-mau.out
+               --(Alloy loki.process.va_mau)--> Loki job="va-mau" --> bảng dahao-tinh-trang (ô 12..16)
+
+Bộ dò tự kiểm: `python3 -B quan-sat/soi-lan-dung.py --tu-kiem` (20 ca). Soi lại lịch sử mà không
+ghi gì: `--lich-su 400000 --tom-tat`.
+
+### Bảy nhãn
+
+| nhãn | `ma_nghi` | nghĩa |
+|---|---|---|
+| `nghi-dut-chi` | 0 | có lùi mũi rồi chạy tiếp = có người đang vá |
+| `dung-han` | 1 | dừng giữa mẫu rồi thôi, chưa chạy lại |
+| `dung-lau` | 2 | dừng > 60 giây rồi chạy tiếp, KHÔNG lùi mũi — chờ việc, chỉnh khung, thợ rời máy |
+| `dung-ngan` | 3 | dừng thoáng rồi chạy tiếp — đổi màu, cắt chỉ, chỉnh nhanh |
+| `doi-mau` | 4 | bỏ dở mẫu này, nhảy sang mẫu khác |
+| `mat-ket-noi` | 5 | máy ngưng gửi tin giữa lúc đang dở mẫu |
+| `khoi-dong-lai` | 6 | thêu lại chính mẫu ấy từ đầu — tấm tiếp theo, không phải sự cố |
+
+### Hai chỗ đã cắn thật, đừng bỏ
+
+**Thêu xong tấm rồi làm tấm mới trông y hệt lùi khung.** Máy `B83DF60B3FB8` lúc 02:38 nhảy từ
+3788/3788 về 1, bị đọc thành *"lùi 3787 mũi"* = nghi đứt chỉ. Vá bằng hai ngưỡng trong
+`soi-lan-dung.py`: tụt hơn `LUI_TOI_DA` (1000) mũi trong một nhịp, hoặc mẫu vừa xong mà mũi rơi
+xuống dưới `VE_DAU` (5%) của mẫu — cả hai đều là nhảy về đầu, không phải vá. Ca thử 11b giữ cho
+ngưỡng không nuốt luôn lần vá đúng ở mũi cuối.
+
+**Loki lặng lẽ vứt phần lịch sử bù vào.** Cửa sổ nhận ghi lệch thứ tự là `max_chunk_age / 2`, mặc
+định 2h nên chỉ nhận lệch 1 tiếng. Bù 19 lần vá thì 4 lần của máy `602602A6F22B` bị vứt → bảng
+"máy nào hay phải vá nhất" **xếp sai hạng mà không báo gì**, Grafana vẫn vẽ đẹp. Chỗ vứt chỉ nằm
+trong `logs/loki.err` (`entry too far behind`). Đã đặt `ingester.max_chunk_age: 48h` (cửa sổ 24h).
+Đối chứng đã làm: Loki **có** bỏ dòng trùng hệt (cùng luồng + cùng dấu giờ + cùng nội dung), nên
+nối lại phần lịch sử không sợ đếm đôi — `quan-sat/bu-lich-su-va-mau.py` dựa vào đúng tính chất ấy.
+
+## Nhãn dùng để lọc
+
+| Nhãn | Giá trị | Dùng để |
+|---|---|---|
+| `job` | `broker`, `bridge`, `bridge-kiem-toan`, `tunnel`, `xoay-log` | chọn nguồn |
+| `may` | định danh máy, vd `602602704E7B` | **tách từng máy thêu** |
+| `trang_thai` | `-1`, `15` (tính tới nay) | lọc theo trạng thái |
+| `loai` | `trang-thai`, `ket-noi`, `ngat-ket-noi`, `enum`, `mau-thieu`, `day-file` | bỏ nhiễu |
+
+Số mũi (`mui_hien_tai`, `mui_tong`, `mau`) **cố ý không làm nhãn** — chúng chạy từ 0 tới hàng chục nghìn, làm nhãn là đẻ hàng vạn luồng và giết Loki. Chúng nằm ở structured metadata, vẫn tra được. Đã kiểm bằng `/loki/api/v1/labels`: danh sách nhãn thật không có chúng.
+
+## Vài câu truy vấn hay dùng
+
+```logql
+# Server đang giữ mấy máy?
+count(count by (may) (count_over_time({job="broker", loai="trang-thai"}[5m])))
+
+# Máy nào vừa im?
+sum by (may) (rate({job="broker", loai="trang-thai"}[1m]))
+
+# Kiểm nhanh sau khi ai đó sửa broker: có dòng STATE nào MẤT nhãn `may` không?
+# Nhìn danh sách nhóm trả về — HIỆN RA MỘT NHÓM KHÔNG CÓ NHÃN `may` là regex đã trượt
+# (xem mục "cái bẫy regex" ở trên).
+sum by (may) (count_over_time({job="broker", loai="trang-thai"} [15m]))
+
+# ĐỪNG dùng `| may = ""` để đếm dòng mất nhãn: trong truy vấn metric nó trả về
+# một con số khác 0 ngay cả khi mọi dòng đều có nhãn. Đã đo thật 26/08:
+# `| may = ""` báo 45, còn `sum by (may)` cho thấy 13 nhóm và không nhóm nào rỗng.
+
+# Đã có lần đẩy file nào chưa?
+{job="broker", loai="day-file"}
+
+# Bỏ 99% dòng lặp để còn nhìn thấy phần có tin
+{job="broker"} != "*** STATE"
+```
+
+## Vì sao không dùng OrbStack
+
+Đã gặp ngày 26/08 trên macOS 26.4 (25E246), OrbStack 2.2.3: `orb start` báo *"start VM: timed out waiting for VM to start"*, `vmgr.log` dừng ở `phase=create_vm` và không đi tiếp. Đã loại trừ:
+
+- chữ ký app hỏng — `codesign --verify --deep --strict` sạch, `spctl` báo *Notarized Developer ID*;
+- Gatekeeper chặn — `accepted`;
+- thiếu tài nguyên — 16 GB RAM, 404 GB đĩa trống.
+
+Stack của `vmgr` cho thấy luồng chính nằm im trong `_dispatch_semaphore_wait_slow`, và `lsof` cho thấy nó **chưa mở file đĩa VM nào** — tức là chưa từng tạo được máy ảo, chứ không phải tạo rồi treo. Phần cài đặt lần đầu của OrbStack cần màn hình và mật khẩu quản trị, mà Mini chạy không màn hình (`screencapture` báo *could not create image from display*).
+
+Nên đã chọn đường brew — không máy ảo, không Docker, ít thứ hỏng hơn một tầng. Muốn quay lại container thì `docker-compose.yml` vẫn nằm nguyên trong thư mục này.

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.dahao.landung</string>
+
+  <!-- Suy ra VÌ SAO máy dừng, từ số mũi. Giao thức A15 không có trường lỗi (đã chốt trên
+       224.016 khung: luôn 8 trường, 4 giá trị `state`, không trường nào là lý do; và 51 topic
+       chia đúng 4 họ, không họ nào là alarm). Nhưng sổ tay §2.4/§2.6 cho một dấu vết gián tiếp:
+       đứt chỉ -> máy tự dừng -> thợ bấm LÙI KHUNG để vá -> `curStitch` GIẢM giữa mẫu.
+       Mũi giảm giữa mẫu không xảy ra khi thêu bình thường, cũng không khi chỉ bấm dừng.
+
+       ⚠ SUY ĐOÁN, KHÔNG PHẢI MÁY BÁO. Mọi nhãn mở đầu bằng "nghi-" là vì thế.
+
+       Không cần token: chỉ đọc broker.log, không gọi API nào. Ghi ra stdout -> launchd hứng
+       vào logs/va-mau.out -> Alloy tail -> Loki job="va-mau".
+       Đuôi `.out` là CỐ Ý: `com.dahao.xoaylog` xoay sẵn mọi `logs/*.out|*.err`. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>-B</string>
+    <string>-u</string>
+    <string>/Users/phong/dahao-gateway/quan-sat/soi-lan-dung.py</string>
+  </array>
+
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+
+  <key>WorkingDirectory</key><string>/Users/phong/dahao-gateway</string>
+  <key>StandardOutPath</key><string>/Users/phong/dahao-gateway/logs/va-mau.out</string>
+  <key>StandardErrorPath</key><string>/Users/phong/dahao-gateway/logs/va-mau.err</string>
+</dict></plist>

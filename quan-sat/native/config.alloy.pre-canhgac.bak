@@ -1,0 +1,394 @@
+// Alloy đọc log trên máy chủ rồi đẩy vào Loki — BẢN NATIVE (brew, không container).
+//
+// Khác duy nhất so với ../alloy/config.alloy: đường dẫn `/nhat-ky/...` (điểm gắn
+// của container) đổi thành đường thật `/Users/phong/dahao-gateway/...`, và
+// `http://loki:3100` (tên dịch vụ trong mạng compose) đổi thành `http://127.0.0.1:3100`.
+// Mọi biểu thức regex giữ NGUYÊN — chúng bám định dạng thật của broker.log.
+//
+// Mọi biểu thức trong file này bám ĐỊNH DẠNG THẬT đã xem tận mắt ngày 26/08,
+// không phải định dạng phỏng đoán. Dòng mẫu để đối chiếu khi ai đó sửa broker:
+//
+//   *** STATE dev=602602704E7B cur=0 tot=0 state=15 pat= @2026-08-26T08:27:17Z Δ2.001s
+//     [ENUM] report: 4 topic, 2 state, 17 field (+0 field mới chu kỳ này)
+//   CONNECT proto=MQTT lvl=4 cid=<id> keepalive=60 cleanSession=1 cflags=0x02
+//
+// CỐ Ý KHÔNG GOM `state.log`. File ấy 46 MB và mỗi dòng là base64 đã mã hoá:
+// đẩy vào Loki thì tốn đĩa mà không tra cứu được gì, vì nội dung không đọc được
+// nếu không giải mã — và giải mã ở tầng quan sát nghĩa là đem khoá vào đây.
+// Mọi thứ cần biết từ dòng ấy đã có sẵn ở dạng đọc được trong `broker.log`.
+//
+// CHỈ ĐỌC: Alloy chạy dưới người dùng `phong` nên về nguyên tắc nó GHI được vào
+// ~/dahao-gateway. Không có `:ro` như bản container để chặn hộ nữa — nên đừng
+// bao giờ thêm component nào của Alloy có ghi file vào thư mục ấy.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+loki.write "mac" {
+  endpoint {
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    xuong  = "a15",
+    may_gom = "mini",
+  }
+}
+
+// ===================================================================== broker
+// Nguồn quan trọng nhất: đây là chỗ duy nhất trạng thái máy nằm ở dạng người đọc được.
+local.file_match "broker" {
+  path_targets = [{
+    __path__ = "/Users/phong/dahao-gateway/broker.log",
+    job      = "broker",
+    tep      = "broker.log",
+  }]
+}
+
+loki.source.file "broker" {
+  targets    = local.file_match.broker.targets
+  forward_to = [loki.process.broker.receiver]
+  // Job `com.dahao.xoaylog` xoay log kiểu CHÉP-RỒI-CẮT (không đổi tên).
+  // Alloy thấy file tụt kích thước thì tự đọc lại từ đầu, nên cách xoay ấy an toàn.
+  tail_from_end = false
+}
+
+loki.process "broker" {
+  forward_to = [loki.write.mac.receiver]
+
+  // --- Dòng STATE: tách định danh máy + trạng thái + số mũi ---------------
+  // `may` là mấu chốt của phần "nhiều máy thêu": mỗi máy một nhãn riêng, nên
+  // thêm máy thứ hai vào xưởng là Grafana tự hiện thêm một đường, không phải sửa gì.
+  //
+  // `mau` phải là `.*?` chứ KHÔNG phải `\S*`. Tên file mẫu thật có DẤU CÁCH:
+  //   *** STATE dev=3CE4B0C54F54 cur=35854 tot=35854 state=15 pat=4153725796 front(1).DST @2026-08-26T09:34:09Z
+  // `\S*` dừng ở dấu cách, `@(?P<thoi_diem>...)` hết khớp, cả biểu thức trượt,
+  // và dòng ấy MẤT SẠCH nhãn — máy biến mất khỏi Grafana mà không báo lỗi gì.
+  // Đã cắn thật ngày 26/08: 2 trên 6 máy vô hình vì đúng lỗi này.
+  stage.regex {
+    expression = `^\*\*\* STATE dev=(?P<may>[0-9A-Fa-f]+) cur=(?P<mui_hien_tai>\d+) tot=(?P<mui_tong>\d+) state=(?P<trang_thai>-?\d+) pat=(?P<mau>.*?) @(?P<thoi_diem>\S+)`
+  }
+
+  // --- Dòng CONNECT: cũng mang định danh, nhưng ở dạng client-id ----------
+  stage.regex {
+    expression = `^CONNECT proto=\S+ lvl=\d+ cid=(?P<cid>\S+) keepalive=(?P<keepalive>\d+)`
+  }
+
+  // Nhãn: chỉ những trường có ÍT giá trị. `mui_hien_tai` không được làm nhãn —
+  // nó chạy từ 0 tới hàng chục nghìn, làm nhãn là đẻ ra hàng vạn luồng và giết Loki.
+  stage.labels {
+    values = {
+      may        = "",
+      trang_thai = "",
+    }
+  }
+
+  // Số mũi đi vào metadata có cấu trúc: tra cứu được mà không sinh luồng mới.
+  stage.structured_metadata {
+    values = {
+      mui_hien_tai = "",
+      mui_tong     = "",
+      mau          = "",
+    }
+  }
+
+  // Chỉ dòng STATE mới có dấu giờ thật. Dòng khác không có -> dùng giờ lúc đọc.
+  // `skip` là cố ý: thà ghi nhận sai vài giây còn hơn vứt cả dòng.
+  stage.timestamp {
+    source            = "thoi_diem"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+
+  // --- Phân loại dòng để lọc nhanh trên Grafana ---------------------------
+  stage.match {
+    selector = `{job="broker"} |= "*** STATE"`
+    stage.static_labels {
+      values = { loai = "trang-thai" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "CONNECT"`
+    stage.static_labels {
+      values = { loai = "ket-noi" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "DISCONNECT"`
+    stage.static_labels {
+      values = { loai = "ngat-ket-noi" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "[ENUM]"`
+    stage.static_labels {
+      values = { loai = "enum" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "[PATTERNS]"`
+    stage.static_labels {
+      values = { loai = "mau-thieu" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |~ "query REQ|download REQ|\\[CTRL\\]"`
+    stage.static_labels {
+      values = { loai = "day-file" }
+    }
+  }
+}
+
+// ================================================== nhật ký kiểm toán bridge
+// JSON sẵn, nên tách thẳng được. Dùng để trả lời "ai gọi vào API, bị từ chối không".
+local.file_match "kiem_toan" {
+  path_targets = [{
+    __path__ = "/Users/phong/dahao-gateway/bridge-data/audit-*.jsonl",
+    job      = "bridge-kiem-toan",
+  }]
+}
+
+loki.source.file "kiem_toan" {
+  targets       = local.file_match.kiem_toan.targets
+  forward_to    = [loki.process.kiem_toan.receiver]
+  tail_from_end = false
+}
+
+loki.process "kiem_toan" {
+  forward_to = [loki.write.mac.receiver]
+
+  stage.json {
+    expressions = {
+      at      = "at",
+      actor   = "actor",
+      vai     = "role",
+      hanh_vi = "action",
+      ket_qua = "result",
+      tu_dau  = "remote",
+    }
+  }
+
+  // `tu_dau` (địa chỉ gọi vào) CỐ Ý không làm nhãn: mỗi địa chỉ mới là một luồng mới.
+  // Nó nằm trong nội dung dòng, vẫn tìm được bằng `|= "100.107"`.
+  stage.labels {
+    values = {
+      ket_qua = "",
+      vai     = "",
+    }
+  }
+  stage.structured_metadata {
+    values = {
+      actor   = "",
+      hanh_vi = "",
+      tu_dau  = "",
+    }
+  }
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+}
+
+// ============================================== stdout/stderr các dịch vụ
+// KHÔNG gom `logs/broker.out`: broker vừa ghi `broker.log` vừa `print()` ra stdout,
+// nên hai file là một nội dung. Gom cả hai là nhân đôi đĩa để đọc cùng một thứ.
+local.file_match "dich_vu" {
+  path_targets = [
+    { __path__ = "/Users/phong/dahao-gateway/logs/bridge.out", job = "bridge", dong = "out" },
+    { __path__ = "/Users/phong/dahao-gateway/logs/bridge.err", job = "bridge", dong = "err" },
+    { __path__ = "/Users/phong/dahao-gateway/logs/broker.err", job = "broker-loi", dong = "err" },
+    { __path__ = "/Users/phong/dahao-gateway/logs/tunnel.err", job = "tunnel", dong = "err" },
+    { __path__ = "/Users/phong/dahao-gateway/logs/xoaylog.out", job = "xoay-log", dong = "out" },
+    { __path__ = "/Users/phong/dahao-gateway/logs/xoaylog.err", job = "xoay-log", dong = "err" },
+  ]
+}
+
+loki.source.file "dich_vu" {
+  targets       = local.file_match.dich_vu.targets
+  forward_to    = [loki.write.mac.receiver]
+  tail_from_end = false
+}
+
+// ================================================================ tình trạng máy
+// Nguồn thứ hai, khác hẳn broker.log về BẢN CHẤT: đây không phải máy tự khai, mà là KẾT LUẬN
+// của bridge sau khi ghép kết nối + đo lường + ngưỡng + cảnh báo. Cùng đúng thứ trang `xem/`
+// (test.phonh.io.vn) vẽ ra, nên Grafana và trang ấy đọc chung một nguồn thay vì mỗi bên tự
+// phân loại một kiểu rồi lệch nhau sau vài tuần.
+//
+// Vì sao không tính thẳng trong LogQL: `broker.log` KHÔNG chứa "máy còn kết nối không",
+// "bridge đọc nổi máy không", "có cảnh báo nặng nào không", "mẫu xong hay còn dở". Thiếu dữ
+// liệu thì truy vấn khéo tới đâu cũng chịu.
+//
+// Dòng mẫu (một dòng JSON mỗi máy, chỉ ghi khi ĐỔI tình trạng + nhịp tim 20 giây):
+//   {"at":"2026-08-27T02:12:21Z","may":"3CE4B0C54F54","ten":"Máy C54F54","tinh_trang":"chay",
+//    "tho":"running","ket_noi":"online","mui":9433,"tong":35816,"mau":"...DST","giay":139.5,
+//    "muc":1,"muc_ten":"canh-bao","loi_do":"connection","loi_nguon":"bridge",
+//    "loi_text":"Máy C54F54: đã dừng 26 phút. — Quá ngưỡng 5 phút của xưởng."}
+//
+// `muc` tách hẳn khỏi `tinh_trang`: máy đang thêu ngon vẫn có thể đang có cảnh báo. `loi_nguon`
+// nói AI phát ra câu đó (`controller` = máy tự khai, `bridge` = bridge suy ra) — đừng gộp, in
+// nhãn "máy báo" lên một phán đoán là bảo thợ đi tìm cái lỗi mà máy chưa hề báo.
+local.file_match "tinh_trang" {
+  path_targets = [{
+    __path__ = "/Users/phong/dahao-gateway/logs/tinh-trang.out",
+    job      = "tinh-trang",
+    tep      = "tinh-trang.out",
+  }]
+}
+
+loki.source.file "tinh_trang" {
+  targets    = local.file_match.tinh_trang.targets
+  forward_to = [loki.process.tinh_trang.receiver]
+  // Cùng lý do như broker: `com.dahao.xoaylog` xoay kiểu chép-rồi-cắt (nó quét `logs/*.out`,
+  // nên file này được xoay sẵn — đặt đuôi `.out` là cố ý).
+  tail_from_end = false
+}
+
+loki.process "tinh_trang" {
+  forward_to = [loki.write.mac.receiver]
+
+  stage.json {
+    expressions = {
+      at         = "",
+      may        = "",
+      ten        = "",
+      khu        = "",
+      tinh_trang = "",
+      tho        = "",
+      ket_noi    = "",
+      mui        = "",
+      tong       = "",
+      mau        = "",
+      giay       = "",
+      // Báo lỗi (27/08). `muc_ten` lên nhãn để lọc rẻ; `loi_text` là NGUYÊN VĂN câu bridge nói,
+      // bắt buộc phải là structured metadata chứ không phải nhãn — câu chữ có bao nhiêu máy ×
+      // bao nhiêu tình huống thì bấy nhiêu giá trị, làm nhãn là nổ số luồng của Loki.
+      muc        = "",
+      muc_ten    = "",
+      loi_do     = "",
+      loi_text   = "",
+      loi_nguon  = "",
+      loi_so     = "",
+    }
+  }
+
+  // Nhãn: chỉ thứ ÍT giá trị. `tinh_trang` có 8 giá trị, `may` có 13, `muc_ten` có 3 -> tối đa
+  // 312 luồng, vẫn thoải mái. `mui` và `loi_text` tuyệt đối không được làm nhãn.
+  stage.labels {
+    values = {
+      may        = "",
+      tinh_trang = "",
+      muc_ten    = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      ten       = "",
+      khu       = "",
+      tho       = "",
+      ket_noi   = "",
+      mui       = "",
+      tong      = "",
+      mau       = "",
+      giay      = "",
+      loi_do    = "",
+      loi_text  = "",
+      loi_nguon = "",
+      loi_so    = "",
+    }
+  }
+
+  // `at` là giờ của PHÉP ĐO (đồng hồ của bộ đẩy), không phải giờ máy tự khai — máy mất kết nối
+  // thì giờ nó khai đứng im, lấy làm dấu giờ là dòng "máy off" rơi tụt về quá khứ.
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+}
+
+// ==================================================== lý do dừng (suy ra từ mũi)
+// Nguồn thứ ba, và là nguồn DUY NHẤT trả lời được "máy đang gặp lỗi gì". Hai nguồn kia không
+// trả lời được: `broker.log` là máy tự khai mà giao thức A15 KHÔNG có trường lỗi (224.016
+// khung, luôn 8 trường, 4 giá trị `state`, không trường nào là lý do; 51 topic chia đúng 4 họ,
+// không họ nào là alarm). `tinh-trang` là kết luận của bridge, biết máy DỪNG chứ không biết
+// VÌ SAO.
+//
+// Chỗ này suy từ dấu vết sổ tay §2.4/§2.6: đứt chỉ -> máy tự dừng -> thợ bấm lùi khung để vá
+// -> mũi GIẢM giữa mẫu. Mũi giảm giữa mẫu không bao giờ xảy ra khi thêu bình thường.
+//
+// ⚠ Là SUY ĐOÁN. Phân biệt được "có người đang vá" với "dừng bình thường", KHÔNG phân biệt
+// được đứt chỉ trên / hết suốt dưới / gãy kim. Nhãn nào cũng mở đầu "nghi-" là vì thế.
+//
+// Dòng mẫu:
+//   {"at":"2026-08-27T02:55:41Z","viec":"dong","may":"60260298B4C7","nghi":"nghi-dut-chi",
+//    "ma_nghi":0,"giay":34.0,"lui":380,"mui":4256,"tong":8825,"mau":"#FLW~.DST",
+//    "ket":"chay-tiep","tu_luc":"...","y_nghia":"..."}
+local.file_match "va_mau" {
+  path_targets = [{
+    __path__ = "/Users/phong/dahao-gateway/logs/va-mau.out",
+    job      = "va-mau",
+    tep      = "va-mau.out",
+  }]
+}
+
+loki.source.file "va_mau" {
+  targets    = local.file_match.va_mau.targets
+  forward_to = [loki.process.va_mau.receiver]
+  tail_from_end = false
+}
+
+loki.process "va_mau" {
+  forward_to = [loki.write.mac.receiver]
+
+  stage.json {
+    expressions = {
+      at      = "",
+      viec    = "",
+      may     = "",
+      nghi    = "",
+      ma_nghi = "",
+      giay    = "",
+      lui     = "",
+      mui     = "",
+      tong    = "",
+      mau     = "",
+      ket     = "",
+      y_nghia = "",
+    }
+  }
+
+  // Nhãn: `nghi` có 7 giá trị, `viec` có 3, `may` có 14 -> tối đa 294 luồng. `lui`/`mui` tuyệt
+  // đối không được làm nhãn (chạy tới hàng chục nghìn).
+  stage.labels {
+    values = {
+      may  = "",
+      nghi = "",
+      viec = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      ma_nghi = "",
+      giay    = "",
+      lui     = "",
+      mui     = "",
+      tong    = "",
+      mau     = "",
+      ket     = "",
+      y_nghia = "",
+    }
+  }
+
+  // `at` là giờ của KHUNG cuối cùng thấy được, lấy từ chính broker.log — không phải giờ đọc file.
+  // Đọc lại log cũ (khởi động lại dịch vụ chẳng hạn) thì sự kiện vẫn rơi đúng chỗ trên trục thời gian.
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+}

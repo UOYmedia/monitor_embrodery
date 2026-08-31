@@ -1,0 +1,199 @@
+// Alloy đọc log trên máy chủ rồi đẩy vào Loki.
+//
+// Mọi biểu thức trong file này bám ĐỊNH DẠNG THẬT đã xem tận mắt ngày 26/08,
+// không phải định dạng phỏng đoán. Dòng mẫu để đối chiếu khi ai đó sửa broker:
+//
+//   *** STATE dev=602602704E7B cur=0 tot=0 state=15 pat= @2026-08-26T08:27:17Z Δ2.001s
+//     [ENUM] report: 4 topic, 2 state, 17 field (+0 field mới chu kỳ này)
+//   CONNECT proto=MQTT lvl=4 cid=<id> keepalive=60 cleanSession=1 cflags=0x02
+//
+// CỐ Ý KHÔNG GOM `state.log`. File ấy 46 MB và mỗi dòng là base64 đã mã hoá:
+// đẩy vào Loki thì tốn đĩa mà không tra cứu được gì, vì nội dung không đọc được
+// nếu không giải mã — và giải mã ở tầng quan sát nghĩa là đem khoá vào đây.
+// Mọi thứ cần biết từ dòng ấy đã có sẵn ở dạng đọc được trong `broker.log`.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+loki.write "mac" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    xuong  = "a15",
+    may_gom = "mini",
+  }
+}
+
+// ===================================================================== broker
+// Nguồn quan trọng nhất: đây là chỗ duy nhất trạng thái máy nằm ở dạng người đọc được.
+local.file_match "broker" {
+  path_targets = [{
+    __path__ = "/nhat-ky/broker.log",
+    job      = "broker",
+    tep      = "broker.log",
+  }]
+}
+
+loki.source.file "broker" {
+  targets    = local.file_match.broker.targets
+  forward_to = [loki.process.broker.receiver]
+  // Job `com.dahao.xoaylog` xoay log kiểu CHÉP-RỒI-CẮT (không đổi tên).
+  // Alloy thấy file tụt kích thước thì tự đọc lại từ đầu, nên cách xoay ấy an toàn.
+  tail_from_end = false
+}
+
+loki.process "broker" {
+  forward_to = [loki.write.mac.receiver]
+
+  // --- Dòng STATE: tách định danh máy + trạng thái + số mũi ---------------
+  // `mau` dùng `.*?` chứ không `\S*`: tên file mẫu thật CÓ DẤU CÁCH
+  // (pat=4153725796 front(1).DST). `\S*` làm cả biểu thức trượt -> dòng mất sạch nhãn.
+  // `may` là mấu chốt của phần "nhiều máy thêu": mỗi máy một nhãn riêng, nên
+  // thêm máy thứ hai vào xưởng là Grafana tự hiện thêm một đường, không phải sửa gì.
+  stage.regex {
+    expression = `^\*\*\* STATE dev=(?P<may>[0-9A-Fa-f]+) cur=(?P<mui_hien_tai>\d+) tot=(?P<mui_tong>\d+) state=(?P<trang_thai>-?\d+) pat=(?P<mau>.*?) @(?P<thoi_diem>\S+)`
+  }
+
+  // --- Dòng CONNECT: cũng mang định danh, nhưng ở dạng client-id ----------
+  stage.regex {
+    expression = `^CONNECT proto=\S+ lvl=\d+ cid=(?P<cid>\S+) keepalive=(?P<keepalive>\d+)`
+  }
+
+  // Nhãn: chỉ những trường có ÍT giá trị. `mui_hien_tai` không được làm nhãn —
+  // nó chạy từ 0 tới hàng chục nghìn, làm nhãn là đẻ ra hàng vạn luồng và giết Loki.
+  stage.labels {
+    values = {
+      may        = "",
+      trang_thai = "",
+    }
+  }
+
+  // Số mũi đi vào metadata có cấu trúc: tra cứu được mà không sinh luồng mới.
+  stage.structured_metadata {
+    values = {
+      mui_hien_tai = "",
+      mui_tong     = "",
+      mau          = "",
+    }
+  }
+
+  // Chỉ dòng STATE mới có dấu giờ thật. Dòng khác không có -> dùng giờ lúc đọc.
+  // `skip` là cố ý: thà ghi nhận sai vài giây còn hơn vứt cả dòng.
+  stage.timestamp {
+    source            = "thoi_diem"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+
+  // --- Phân loại dòng để lọc nhanh trên Grafana ---------------------------
+  stage.match {
+    selector = `{job="broker"} |= "*** STATE"`
+    stage.static_labels {
+      values = { loai = "trang-thai" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "CONNECT"`
+    stage.static_labels {
+      values = { loai = "ket-noi" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "DISCONNECT"`
+    stage.static_labels {
+      values = { loai = "ngat-ket-noi" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "[ENUM]"`
+    stage.static_labels {
+      values = { loai = "enum" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |= "[PATTERNS]"`
+    stage.static_labels {
+      values = { loai = "mau-thieu" }
+    }
+  }
+  stage.match {
+    selector = `{job="broker"} |~ "query REQ|download REQ|\\[CTRL\\]"`
+    stage.static_labels {
+      values = { loai = "day-file" }
+    }
+  }
+}
+
+// ================================================== nhật ký kiểm toán bridge
+// JSON sẵn, nên tách thẳng được. Dùng để trả lời "ai gọi vào API, bị từ chối không".
+local.file_match "kiem_toan" {
+  path_targets = [{
+    __path__ = "/nhat-ky/bridge-data/audit-*.jsonl",
+    job      = "bridge-kiem-toan",
+  }]
+}
+
+loki.source.file "kiem_toan" {
+  targets       = local.file_match.kiem_toan.targets
+  forward_to    = [loki.process.kiem_toan.receiver]
+  tail_from_end = false
+}
+
+loki.process "kiem_toan" {
+  forward_to = [loki.write.mac.receiver]
+
+  stage.json {
+    expressions = {
+      at      = "at",
+      actor   = "actor",
+      vai     = "role",
+      hanh_vi = "action",
+      ket_qua = "result",
+      tu_dau  = "remote",
+    }
+  }
+
+  // `tu_dau` (địa chỉ gọi vào) CỐ Ý không làm nhãn: mỗi địa chỉ mới là một luồng mới.
+  // Nó nằm trong nội dung dòng, vẫn tìm được bằng `|= "100.107"`.
+  stage.labels {
+    values = {
+      ket_qua = "",
+      vai     = "",
+    }
+  }
+  stage.structured_metadata {
+    values = {
+      actor   = "",
+      hanh_vi = "",
+      tu_dau  = "",
+    }
+  }
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+}
+
+// ============================================== stdout/stderr các dịch vụ
+// KHÔNG gom `logs/broker.out`: broker vừa ghi `broker.log` vừa `print()` ra stdout,
+// nên hai file là một nội dung. Gom cả hai là nhân đôi đĩa để đọc cùng một thứ.
+local.file_match "dich_vu" {
+  path_targets = [
+    { __path__ = "/nhat-ky/logs/bridge.out", job = "bridge", dong = "out" },
+    { __path__ = "/nhat-ky/logs/bridge.err", job = "bridge", dong = "err" },
+    { __path__ = "/nhat-ky/logs/broker.err", job = "broker-loi", dong = "err" },
+    { __path__ = "/nhat-ky/logs/tunnel.err", job = "tunnel", dong = "err" },
+    { __path__ = "/nhat-ky/logs/xoaylog.out", job = "xoay-log", dong = "out" },
+    { __path__ = "/nhat-ky/logs/xoaylog.err", job = "xoay-log", dong = "err" },
+  ]
+}
+
+loki.source.file "dich_vu" {
+  targets       = local.file_match.dich_vu.targets
+  forward_to    = [loki.write.mac.receiver]
+  tail_from_end = false
+}

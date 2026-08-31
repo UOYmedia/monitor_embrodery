@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.dahao.xoaylog</string>
+
+  <!-- Xoay vòng log launchd tự ghi (broker.out phình ~1,6 MB/ngày và không bao giờ tự xoay).
+       Ngưỡng 8 MiB ~ 5 ngày broker.out; giữ 60 bản ~ 10 tháng lịch sử. Đo thật 25/08/2026:
+       6.848.930 byte log nén còn 36.294 byte = 0,53 % (dòng STATE lặp gần như y hệt nhau),
+       nên 60 bản chỉ tốn khoảng 2,5 MB đĩa. Cách xoay là chép-rồi-cắt-tại-chỗ:
+       đã chứng minh 25/08/2026 rằng launchd giữ fd kiểu O_APPEND nên cắt về 0 là an toàn,
+       không để lại lỗ rỗng, mất 0 dòng. Đổi tên file thì KHÔNG được — launchd sẽ ghi tiếp
+       vào inode cũ và file mới mãi mãi rỗng. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/phong/dashboarddahao/deploy-mini/xoay_log_he_thong.py</string>
+    <string>--nguong</string><string>8388608</string>
+    <string>--giu</string><string>60</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>17</integer></dict>
+
+  <key>WorkingDirectory</key><string>/Users/phong/dahao-gateway</string>
+  <key>StandardOutPath</key><string>/Users/phong/dahao-gateway/logs/xoaylog.out</string>
+  <key>StandardErrorPath</key><string>/Users/phong/dahao-gateway/logs/xoaylog.err</string>
+</dict></plist>

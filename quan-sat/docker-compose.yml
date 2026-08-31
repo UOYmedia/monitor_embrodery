@@ -1,0 +1,93 @@
+# Tầng quan sát cho tuyến Dahao — Loki (gom log) + Alloy (đọc log) + Grafana (xem).
+#
+# Ba nguyên tắc của bộ này, viết ra để người sau đừng vô tình phá:
+#
+#  1. CHỈ ĐỌC. Alloy gắn thư mục ~/dahao-gateway vào kiểu `:ro`. Nó không được
+#     phép ghi đè log của broker/bridge. Một bộ quan sát làm hỏng thứ nó quan sát
+#     là bộ quan sát tệ nhất.
+#  2. KHÔNG RA INTERNET. Grafana chỉ nghe trên địa chỉ tailnet, không thêm
+#     hostname nào vào Cloudflare Tunnel. Grafana đọc được log thô — mà log thô
+#     chứa nội dung bản tin máy, khác hẳn trang xem vốn chỉ hiện con số.
+#  3. KHÔNG ĐỤNG TUYẾN ĐANG CHẠY. Bộ này không chiếm cổng 1600/8790, không sửa
+#     file nào của broker/bridge. Tắt cả bộ này đi thì tuyến A15 vẫn chạy y nguyên.
+#
+# Chạy:  cd ~/dahao-gateway/quan-sat && docker compose up -d
+# Tắt :  docker compose down          (thêm -v nếu muốn xoá luôn dữ liệu đã gom)
+
+name: dahao-quan-sat
+
+services:
+  # ---------------------------------------------------------------- Loki
+  # Kho log. Chỉ nghe trên loopback: không ai ngoài máy này gọi thẳng vào được,
+  # Grafana đi qua mạng nội bộ của compose chứ không qua cổng máy chủ.
+  loki:
+    image: grafana/loki:${LOKI_TAG}
+    container_name: dahao-loki
+    command: -config.file=/etc/loki/loki.yml
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3100/ready | grep -q ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # ---------------------------------------------------------------- Alloy
+  # Đọc log trên máy chủ rồi đẩy vào Loki. Thay cho Promtail (đã hết vòng đời).
+  alloy:
+    image: grafana/alloy:${ALLOY_TAG}
+    container_name: dahao-alloy
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # CHỈ ĐỌC. Đây là chỗ quan trọng nhất của cả file này.
+      - ${THU_MUC_GATEWAY}:/nhat-ky:ro
+      - alloy-data:/var/lib/alloy/data
+    ports:
+      - "127.0.0.1:12345:12345"   # trang tự chẩn đoán của Alloy, chỉ loopback
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- Grafana
+  grafana:
+    image: grafana/grafana:${GRAFANA_TAG}
+    container_name: dahao-grafana
+    ports:
+      # Chỉ tailnet. Đổi sang 0.0.0.0 là mở ra cả LAN xưởng — cân nhắc trước khi đổi.
+      - "${DIA_CHI_TAILNET}:3000:3000"
+    environment:
+      # Xem thì không cần đăng nhập (giống trang xem), nhưng SỬA thì phải đăng nhập.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_MAT_KHAU}"
+      # Không gọi về nhà, không hỏi bản mới — máy này là máy sản xuất.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  loki-data:
+  alloy-data:
+  grafana-data:
