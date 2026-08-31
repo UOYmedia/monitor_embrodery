@@ -252,3 +252,127 @@ describe('DialInListener callers', () => {
     expect(callers.map((caller) => caller.remote)).toEqual(['192.168.7.10', '192.168.7.11'])
   })
 })
+
+/**
+ * Cổng tin cậy: nhiều máy đi chung MỘT kết nối.
+ *
+ * Đây là ca sinh ra cả tính năng này. Trước bản vá, hai máy thêu đẩy telemetry qua chung
+ * một socket từ 127.0.0.1 sẽ được bridge — vốn định danh theo địa chỉ nguồn — gộp vào một
+ * bản ghi máy. Không lỗi, không cảnh báo, chỉ có số mũi của hai máy nhảy qua lại trong cùng
+ * một ô. Hỏng kiểu im lặng là hỏng khó thấy nhất, nên nó phải có test riêng.
+ */
+describe('DialInListener qua cổng tin cậy', () => {
+  const mayA = { id: 'mch-a15-01', ipAddress: '127.0.0.1' }
+  const mayB = { id: 'mch-a15-02', ipAddress: '127.0.0.1' }
+  const cong = {
+    gateway: {
+      address: '127.0.0.1',
+      resolve: (id) => [mayA, mayB].find((m) => m.id === id) ?? null,
+    },
+  }
+
+  it('tách đúng hai máy khai tên khác nhau trên cùng một kết nối', async () => {
+    const { listener, accepted } = makeListener({}, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    await dial(port, [
+      `${JSON.stringify({ machineId: 'mch-a15-01', status: 'running', job: { currentStitch: 11 } })}\n`,
+      `${JSON.stringify({ machineId: 'mch-a15-02', status: 'stopped', job: { currentStitch: 22 } })}\n`,
+      `${JSON.stringify({ machineId: 'mch-a15-01', status: 'running', job: { currentStitch: 12 } })}\n`,
+    ])
+
+    expect(accepted.map((f) => f.target.id)).toEqual(['mch-a15-01', 'mch-a15-02', 'mch-a15-01'])
+    // Số của máy nào phải ở lại với máy đó — đây chính là chỗ bản cũ trộn lẫn.
+    expect(accepted.map((f) => f.payload.job.currentStitch)).toEqual([11, 22, 12])
+    expect(listener.stats.framesAccepted).toBe(3)
+  })
+
+  it('từ chối khung không khai machineId thay vì gán bừa cho một máy', async () => {
+    const { listener, accepted } = makeListener({}, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    await dial(port, [`${JSON.stringify({ status: 'running' })}\n`])
+
+    expect(accepted).toHaveLength(0)
+    expect(listener.stats.rejections.machine_id_missing).toBe(1)
+    expect(listener.stats.framesAccepted).toBe(0)
+  })
+
+  it('từ chối machineId chưa ghép máy nào tại cổng đó', async () => {
+    const { listener, accepted } = makeListener({}, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    await dial(port, [`${JSON.stringify({ machineId: 'mch-may-la', status: 'running' })}\n`])
+
+    expect(accepted).toHaveLength(0)
+    expect(listener.stats.rejections.unknown_machine_id).toBe(1)
+  })
+
+  it('không dựng byte chưa giải mã được thành lỗi của một máy được chọn đại', async () => {
+    const { listener, undecoded } = makeListener({}, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    await dial(port, [Buffer.from([0x02, 0x41, 0xff]), Buffer.from('\n')])
+
+    // Vẫn ĐẾM, vẫn hiện trên bảng địa chỉ gọi vào — nhưng không quy cho máy nào, vì lúc
+    // chưa đọc ra machineId thì thật sự không biết là của máy nào.
+    expect(listener.stats.framesUndecoded).toBe(1)
+    expect(undecoded).toHaveLength(0)
+    expect([...listener.callers.values()][0].machineId).toBeNull()
+  })
+
+  it('một máy vượt nhịp không làm rụng telemetry của máy đi chung cổng', async () => {
+    const { listener, accepted } = makeListener({ maxFramesPerMinute: 2 }, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    await dial(port, [
+      `${JSON.stringify({ machineId: 'mch-a15-01', status: 'running' })}\n`,
+      `${JSON.stringify({ machineId: 'mch-a15-01', status: 'running' })}\n`,
+      `${JSON.stringify({ machineId: 'mch-a15-01', status: 'running' })}\n`, // máy 01 hết ngân sách
+      `${JSON.stringify({ machineId: 'mch-a15-02', status: 'running' })}\n`, // máy 02 vẫn phải qua
+    ])
+
+    expect(accepted.map((f) => f.target.id)).toEqual(['mch-a15-01', 'mch-a15-01', 'mch-a15-02'])
+    expect(listener.stats.rejections.rate_limited).toBe(1)
+  })
+
+  it('vẫn cắt kết nối khi chính cổng bơm rác không gán được máy nào', async () => {
+    const { listener } = makeListener({ maxFramesPerMinute: 2 }, { identify: () => cong })
+    const { port } = await listener.listen()
+
+    const result = await dial(port, [
+      `${JSON.stringify({ status: 'running' })}\n`,
+      `${JSON.stringify({ status: 'running' })}\n`,
+      `${JSON.stringify({ status: 'running' })}\n`,
+    ])
+
+    expect(result.closed).toBe(true)
+    expect(listener.stats.rejections.rate_limited).toBe(1)
+  })
+})
+
+/**
+ * Đường trực tiếp KHÔNG được đổi. Cổng tin cậy là ngoại lệ hẹp và phải khai đích danh;
+ * một địa chỉ không khai vẫn định danh theo IP nguồn, và vẫn không được tự xưng máy khác.
+ */
+describe('DialInListener đường trực tiếp sau khi thêm cổng tin cậy', () => {
+  it('vẫn từ chối khung khai machineId khác với máy đã ghép ở địa chỉ đó', async () => {
+    const { listener, accepted } = makeListener()
+    const { port } = await listener.listen()
+
+    await dial(port, [`${JSON.stringify({ machineId: 'mch-may-khac', status: 'running' })}\n`])
+
+    expect(accepted).toHaveLength(0)
+    expect(listener.stats.rejections.machine_id_mismatch).toBe(1)
+  })
+
+  it('vẫn nhận khung không khai machineId, vì địa chỉ nguồn đã quyết định danh tính', async () => {
+    const { listener, accepted } = makeListener()
+    const { port } = await listener.listen()
+
+    await dial(port, [`${JSON.stringify({ status: 'running' })}\n`])
+
+    expect(accepted).toHaveLength(1)
+    expect(accepted[0].target.id).toBe('mch-hn-001')
+  })
+})

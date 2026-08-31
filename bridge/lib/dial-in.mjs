@@ -23,9 +23,16 @@ import { appendFile } from 'node:fs/promises'
  *    optionally captured to a file for later protocol work, and surfaced as an error on the
  *    machine. It is never merged into a snapshot.
  *
- * Identification is by source IP only. A frame may carry `machineId`, but it is checked
- * against the machine paired at that address rather than trusted: whoever can open a TCP
- * connection must not be able to claim to be another machine.
+ * Identification is by source IP. A frame may carry `machineId`, but it is checked against
+ * the machine paired at that address rather than trusted: whoever can open a TCP connection
+ * must not be able to claim to be another machine.
+ *
+ * The one exception is deliberate, narrow, and off by default: an address listed in
+ * `ingest.gateways` is a trusted local gateway through which several machines share one
+ * connection, so there `machineId` selects which paired machine a frame belongs to. It is
+ * still not taken on trust — the id only resolves against machines already paired at that
+ * same address. The rule the exception preserves is unchanged: an unlisted caller can never
+ * claim to be another machine.
  */
 
 const cooldownMs = 30_000
@@ -65,12 +72,30 @@ export const defaultIngestConfig = {
   // Capture is for decoding an unknown protocol, so it is off until someone asks for it.
   capture: false,
   captureMaxBytes: 262_144,
+  /**
+   * Địa chỉ được phép TỰ KHAI máy nào đang nói — mặc định rỗng, và phải rỗng ở mọi nơi
+   * chưa cố ý mở.
+   *
+   * Một máy thêu tự gọi vào thì địa chỉ nguồn quyết định danh tính, chấm hết. Nhưng có một
+   * trường hợp địa chỉ nguồn KHÔNG thể quyết định: khi nhiều máy đi chung qua một cổng nội
+   * bộ (ở đây là broker MQTT ở `127.0.0.1`), mọi kết nối ra đều mang cùng một địa chỉ.
+   * Nhìn theo IP thì hai máy hoá một, và số mũi của chúng trộn vào nhau mà không có lấy
+   * một dòng lỗi — chỉ có con số sai trông như thật.
+   *
+   * Nên chỗ này khai đích danh: ĐÚNG những địa chỉ này, và chỉ chúng, được dùng
+   * `machineId` trong khung để phân luồng. Kể cả vậy vẫn không phải là tin lời khai —
+   * `machineId` chỉ phân giải được sang những máy ĐÃ GHÉP SẴN tại chính địa chỉ đó. Máy lạ
+   * gọi vào từ một IP bất kỳ vẫn không có cách nào tự xưng là máy khác.
+   */
+  gateways: [],
 }
 
 export class DialInListener {
   /**
-   * @param handlers.identify (ip) => { machine } | { reason }  — resolves a source address to
-   *   exactly one paired machine. Ambiguity must be an error, never a guess.
+   * @param handlers.identify (ip) => { machine } | { gateway } | { reason }  — resolves a
+   *   source address to exactly one paired machine, or to a trusted gateway that carries
+   *   several. Ambiguity must be an error, never a guess.
+   *   `gateway.resolve(machineId)` returns the paired machine for that id, or null.
    * @param handlers.accept (machine, payload, meta) => void — a decoded JSON frame.
    * @param handlers.undecoded (machine, description, meta) => void — bytes nobody could parse.
    */
@@ -184,15 +209,23 @@ export class DialInListener {
     if (cooldownUntil > this.now()) { close('cooldown'); return }
 
     const resolved = this.identify(remote)
-    if (!resolved?.machine) { close(resolved?.reason ?? 'unknown_source'); return }
-    const machine = resolved.machine
+    // Hai kiểu nguồn, cố ý tách bạch:
+    //  - `machine`: một máy tự gọi vào từ địa chỉ đã ghép. Danh tính chốt NGAY lúc mở kết
+    //    nối, và mọi khung trên socket đó thuộc về máy ấy. Đây là đường cũ, không đổi.
+    //  - `gateway`: một cổng nội bộ đã khai đích danh, nơi NHIỀU máy đi chung một kết nối.
+    //    Chỉ ở đây danh tính mới xác định theo từng khung.
+    const gateway = resolved?.gateway ?? null
+    const machine = resolved?.machine ?? null
+    if (!gateway && !machine) { close(resolved?.reason ?? 'unknown_source'); return }
+    const route = gateway ? { kind: 'gateway', gateway, machine: null } : { kind: 'direct', gateway: null, machine }
 
     this.stats.connections += 1
     this.stats.openConnections += 1
-    const caller = this.touchCaller(remote, { accepted: true, machineId: machine.id, lastReason: null })
+    const caller = this.touchCaller(remote, { accepted: true, machineId: machine?.id ?? null, gateway: Boolean(gateway), lastReason: null })
     if (caller) caller.connections += 1
     this.sockets.add(socket)
-    this.logger?.info?.('Máy gọi vào bridge.', { machineId: machine.id, remote })
+    if (gateway) this.logger?.info?.('Cổng tin cậy gọi vào bridge.', { remote })
+    else this.logger?.info?.('Máy gọi vào bridge.', { machineId: machine.id, remote })
 
     let buffer = Buffer.alloc(0)
     socket.setTimeout(this.config.idleTimeoutMs, () => {
@@ -207,7 +240,7 @@ export class DialInListener {
       while (newline >= 0) {
         const frame = buffer.subarray(0, newline)
         buffer = buffer.subarray(newline + 1)
-        this.handleFrame(machine, frame, remote, socket)
+        this.handleFrame(route, frame, remote, socket)
         // handleFrame may have dropped the connection. destroy() does not interrupt this
         // synchronous loop, so the rest of the chunk has to be abandoned explicitly —
         // otherwise a single burst keeps being processed after its sender was cut off.
@@ -219,7 +252,7 @@ export class DialInListener {
       // which is precisely the traffic capture mode exists for. Flush it as one undecoded
       // chunk rather than growing memory or pretending it was telemetry.
       if (buffer.length > this.config.maxFrameBytes) {
-        this.handleUndecoded(machine, buffer, remote, 'no_newline')
+        this.handleUndecoded(route.machine, buffer, remote, 'no_newline')
         buffer = Buffer.alloc(0)
       }
     })
@@ -227,12 +260,32 @@ export class DialInListener {
     socket.on('close', () => {
       this.sockets.delete(socket)
       this.stats.openConnections -= 1
-      if (buffer.length > 0) this.handleUndecoded(machine, buffer, remote, 'partial_frame')
+      if (buffer.length > 0) this.handleUndecoded(route.machine, buffer, remote, 'partial_frame')
     })
-    socket.on('error', (error) => this.logger?.warn?.('Socket dial-in lỗi.', { machineId: machine.id, remote, reason: error.message }))
+    socket.on('error', (error) => this.logger?.warn?.('Socket dial-in lỗi.', { machineId: machine?.id ?? null, remote, reason: error.message }))
   }
 
-  handleFrame(machine, frame, remote, socket) {
+  /**
+   * Trừ một khung vào ngân sách nhịp của `key`; hết ngân sách thì cắt kết nối và bắt nghỉ.
+   *
+   * Tách riêng vì có hai loại khoá cùng dùng chung luật này: từng máy (ngân sách thật) và
+   * từng cổng tin cậy (chỉ dùng cho khung KHÔNG gán được máy nào — nếu không thì rác sẽ đi
+   * vòng qua hàng rào nhịp, và một broker lỗi quay tít sẽ không có gì chặn).
+   */
+  rateGuard(key, remote, socket, { cut = true } = {}) {
+    if (this.withinRate(key)) return true
+    this.countRejection('rate_limited')
+    this.touchCaller(remote, { lastReason: 'rate_limited' })
+    // `cut:false` dùng cho một máy vượt nhịp TRÊN cổng dùng chung: cắt socket ở đó là phạt
+    // luôn những máy khác đang đi nhờ cùng kết nối, mà chúng không làm gì sai. Bỏ khung của
+    // riêng máy vượt là đủ, và cổng vẫn còn để các máy kia nói tiếp.
+    if (!cut) return false
+    this.cooldowns.set(remote, this.now() + cooldownMs)
+    socket.destroy()
+    return false
+  }
+
+  handleFrame(route, frame, remote, socket) {
     if (frame.length === 0) return
     if (frame.length > this.config.maxFrameBytes) {
       this.countRejection('frame_too_large')
@@ -241,31 +294,57 @@ export class DialInListener {
       socket.destroy()
       return
     }
-    if (!this.withinRate(machine.id)) {
-      this.countRejection('rate_limited')
-      this.touchCaller(remote, { lastReason: 'rate_limited' })
-      this.cooldowns.set(remote, this.now() + cooldownMs)
-      socket.destroy()
-      return
-    }
+    // Ngân sách nhịp tính theo TỪNG MÁY, để một máy nói nhiều không ăn hết phần của máy
+    // khác. Ở đường trực tiếp danh tính đã biết từ lúc mở kết nối nên trừ được ngay; ở cổng
+    // tin cậy phải đọc xong `machineId` mới biết, nên trừ sau khi phân giải.
+    if (route.kind === 'direct' && !this.rateGuard(route.machine.id, remote, socket)) return
 
     let payload
     try {
       payload = JSON.parse(frame.toString('utf8'))
     } catch {
-      this.handleUndecoded(machine, frame, remote, 'not_json')
+      this.handleUndecoded(route.machine, frame, remote, 'not_json')
+      if (route.kind === 'gateway') this.rateGuard(`gateway:${remote}`, remote, socket)
       return
     }
     if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
-      this.handleUndecoded(machine, frame, remote, 'not_object')
+      this.handleUndecoded(route.machine, frame, remote, 'not_object')
+      if (route.kind === 'gateway') this.rateGuard(`gateway:${remote}`, remote, socket)
       return
     }
-    // A claimed id is checked, never trusted: the source address already decided who this is.
-    if (payload.machineId !== undefined && payload.machineId !== machine.id) {
-      this.countRejection('machine_id_mismatch')
-      this.touchCaller(remote, { lastReason: 'machine_id_mismatch' })
-      this.logger?.warn?.('Khung dial-in khai sai machineId.', { machineId: machine.id, claimed: String(payload.machineId).slice(0, 64), remote })
-      return
+
+    let machine
+    if (route.kind === 'gateway') {
+      // Qua cổng tin cậy, `machineId` là BẮT BUỘC. Thiếu nó thì không biết khung này của máy
+      // nào, và gán bừa cho một máy là cách chắc chắn nhất để trộn số của hai máy vào một
+      // chỗ — hỏng kiểu im lặng, bảng vẫn đẹp mà con số thì sai.
+      const claimed = typeof payload.machineId === 'string' ? payload.machineId : null
+      if (!claimed) {
+        this.countRejection('machine_id_missing')
+        this.touchCaller(remote, { lastReason: 'machine_id_missing' })
+        this.logger?.warn?.('Khung qua cổng tin cậy không khai machineId.', { remote })
+        this.rateGuard(`gateway:${remote}`, remote, socket)
+        return
+      }
+      // Không phải tin lời khai: id chỉ phân giải được sang máy ĐÃ GHÉP tại chính địa chỉ này.
+      machine = route.gateway.resolve(claimed)
+      if (!machine) {
+        this.countRejection('unknown_machine_id')
+        this.touchCaller(remote, { lastReason: 'unknown_machine_id' })
+        this.logger?.warn?.('Cổng tin cậy khai machineId chưa ghép máy.', { claimed: claimed.slice(0, 64), remote })
+        this.rateGuard(`gateway:${remote}`, remote, socket)
+        return
+      }
+      if (!this.rateGuard(machine.id, remote, socket, { cut: false })) return
+    } else {
+      machine = route.machine
+      // A claimed id is checked, never trusted: the source address already decided who this is.
+      if (payload.machineId !== undefined && payload.machineId !== machine.id) {
+        this.countRejection('machine_id_mismatch')
+        this.touchCaller(remote, { lastReason: 'machine_id_mismatch' })
+        this.logger?.warn?.('Khung dial-in khai sai machineId.', { machineId: machine.id, claimed: String(payload.machineId).slice(0, 64), remote })
+        return
+      }
     }
 
     this.stats.framesAccepted += 1
@@ -275,6 +354,11 @@ export class DialInListener {
     this.accept(machine, payload, { remote })
   }
 
+  /**
+   * `machine` có thể là null khi byte đến qua một cổng tin cậy: lúc chưa đọc ra `machineId`
+   * thì rác ấy KHÔNG thuộc về máy nào cả. Vẫn đếm và vẫn hiện lên bảng địa chỉ gọi vào —
+   * nhưng không dựng nó thành lỗi của một máy được chọn đại, vì đó là bịa dữ liệu.
+   */
   handleUndecoded(machine, bytes, remote, reason) {
     const description = { ...describeBytes(bytes), reason }
     this.stats.framesUndecoded += 1
@@ -282,8 +366,9 @@ export class DialInListener {
     this.countRejection(reason)
     // Byte đầu tiên hiện thẳng trên dashboard: đó là bằng chứng "máy có nói, chỉ là chưa
     // giải mã được", khác hẳn với "máy không gọi vào".
-    const caller = this.touchCaller(remote, { machineId: machine.id, lastReason: reason, lastBytes: description })
+    const caller = this.touchCaller(remote, { machineId: machine?.id ?? null, lastReason: reason, lastBytes: description })
     if (caller) caller.framesUndecoded += 1
+    if (!machine) return
     this.undecoded(machine, description, { remote })
     void this.capture(machine, bytes, description, remote)
   }

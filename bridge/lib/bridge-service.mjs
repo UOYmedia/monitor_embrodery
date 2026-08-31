@@ -292,7 +292,13 @@ export class BridgeService {
     // vụ yêu cầu, để riêng khỏi `alerts`. Hai nhóm có vòng đời khác nhau: `alerts` do bridge giữ
     // và XÁC NHẬN ĐƯỢC; nhóm này tự tắt khi máy trở lại, nên không có nút "đã xem" và bridge sẽ
     // trả 400 nếu ai đó thử acknowledge id của nó. Trộn hai nhóm là làm hỏng cả hai.
-    view.derivedAlerts = derivedAlerts(view, Date.parse(this.now()))
+    // `this.now()` trả về SỐ mili-giây (mặc định `() => Date.now()`, và các bài thử thay bằng
+    // `() => base + 10_000`). `Date.parse` của một con số sẽ ép nó về chuỗi "1787743974360" rồi
+    // chịu thua -> NaN. Mọi so sánh với NaN đều false, nên `state:idle-long` — dòng duy nhất có
+    // cửa chặn theo thời lượng — CHƯA BAO GIỜ nổ trên production, im lặng suốt, không lỗi nào.
+    // Các bài thử cũ không bắt được vì chúng gọi thẳng `derivedAlerts(may, mocDung)`; chỗ hỏng
+    // nằm ở khúc nối, nên bài thử hồi quy phải đi qua `machineView`.
+    view.derivedAlerts = derivedAlerts(view, this.now())
     return view
   }
 
@@ -729,7 +735,10 @@ export class BridgeService {
         since: previous.at, clearedAt, durationSeconds: seconds, approximate: previous.approximate ?? false,
       },
     })
-    if (!wasFault) return
+    // Không còn `if (!wasFault) return`: từ khi dừng-lâu cũng được mở trong sổ, bỏ qua ở đây
+    // là để lại một lần mở treo vĩnh viễn, và mọi bản hợp nhất về sau đều đọc ra "máy đang
+    // dừng" kể cả khi nó đã chạy lại từ tuần trước.
+    //
     // `unknown` KHÔNG phải "đã hết lỗi". Nó là "ta mất dấu con máy". Đóng nó như một lần lỗi
     // kết thúc bình thường sẽ in ra "máy lỗi 12 phút" trong khi sự thật là "ta nhìn được tới
     // phút thứ 12 thì mất tín hiệu" — máy có thể vẫn đang đứng đó với cùng cái lỗi.
@@ -749,17 +758,54 @@ export class BridgeService {
    * Ambiguity is refused rather than guessed at: two machines recorded at one address means
    * the registry is wrong, and attributing telemetry to the first match would silently write
    * one machine's production onto another's ledger.
+   *
+   * Unless that address is a declared gateway — then several machines there is the intended
+   * setup, and each frame's `machineId` says which one is speaking.
    */
-  /** Máy dial-in đang nhận telemetry tại một địa chỉ. Nhiều hơn một là lỗi khai báo. */
+  /** Máy dial-in đang nhận telemetry tại một địa chỉ. */
   dialInMachinesAt(address) {
     return this.store.machines.filter(
       (machine) => machine.adapter === 'dial-in' && machine.enabled && !machine.archived && machine.ipAddress === address,
     )
   }
 
+  /** Địa chỉ này có được khai là cổng tin cậy trong cấu hình không. */
+  isGatewayAddress(address) {
+    const gateways = this.config.ingest?.gateways ?? []
+    return gateways.includes(address)
+  }
+
+  /**
+   * Phân giải `machineId` một khung khai, trong phạm vi những máy đã ghép tại cổng đó.
+   *
+   * Đây là chỗ giữ lời hứa "không tin lời khai": id không tra được trong sổ máy TẠI ĐỊA CHỈ
+   * NÀY thì trả null, chứ không tạo máy mới và cũng không rơi về máy nào khác.
+   */
+  resolveGatewayMachine(address, machineId) {
+    if (typeof machineId !== 'string' || machineId === '') return null
+    const machine = this.dialInMachinesAt(address).find((candidate) => candidate.id === machineId)
+    if (!machine) return null
+    // Cùng lý do như đường trực tiếp: allowlist có thể đã bị siết lại sau khi ghép máy.
+    try {
+      assertAllowedTarget(address, { sites: this.config.sites, siteId: machine.siteId, safety: this.safety() })
+    } catch (error) {
+      this.telemetryErrors.set(machine.id, { message: error.message, at: new Date().toISOString(), kind: 'policy', field: 'ipAddress' })
+      this.publishMachine(machine)
+      return null
+    }
+    return machine
+  }
+
   identifyDialIn(remote) {
     const address = normalizeRemoteAddress(remote)
     if (!address) return { reason: 'unknown_source' }
+    // Cổng tin cậy được xét TRƯỚC phép đếm bên dưới. Ở một cổng, "nhiều máy cùng một địa
+    // chỉ" chính là cấu hình đúng chứ không phải lỗi khai báo — đó là lý do nó tồn tại.
+    if (this.isGatewayAddress(address)) {
+      const machines = this.dialInMachinesAt(address)
+      if (machines.length === 0) return { reason: 'unknown_source' }
+      return { gateway: { address, resolve: (machineId) => this.resolveGatewayMachine(address, machineId) } }
+    }
     const matches = this.dialInMachinesAt(address)
     if (matches.length === 0) return { reason: 'unknown_source' }
     if (matches.length > 1) {

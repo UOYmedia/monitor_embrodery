@@ -384,3 +384,39 @@ describe('câu lỗi phải chỉ đúng file đang nạp', () => {
     await expect(loadConfig(khac)).rejects.toThrow(/bridge\.config\.xuong2\.json/)
   })
 })
+
+/**
+ * `ingest.gateways` nới một quy tắc an toàn, nên nó phải bị soi kỹ hơn mọi khoá khác.
+ *
+ * Địa chỉ trong danh sách này được phép TỰ KHAI máy nào đang nói, thay vì bridge suy ra từ
+ * địa chỉ nguồn. Gõ sai một ký tự thì hoặc cổng thật không được nhận (mất telemetry im
+ * lặng), hoặc một địa chỉ ngoài ý muốn có quyền tự xưng. Cả hai đều phải nổ lúc khởi động.
+ */
+describe('ingest.gateways', () => {
+  it('mặc định là rỗng, nên không nơi nào tự dưng được quyền tự khai', async () => {
+    const config = await load(oneSite())
+    expect(config.ingest.gateways).toEqual([])
+  })
+
+  it('nhận danh sách địa chỉ và bỏ khoảng trắng thừa', async () => {
+    const config = await load(oneSite({}, { ingest: { enabled: true, gateways: ['127.0.0.1', ' 192.168.10.9 '] } }))
+    expect(config.ingest.gateways).toEqual(['127.0.0.1', '192.168.10.9'])
+  })
+
+  it('từ chối dải CIDR: cấp quyền tự khai cho cả subnet là mở đúng cái cửa vừa đóng', async () => {
+    await expect(load(oneSite({}, { ingest: { gateways: ['192.168.10.0/24'] } }))).rejects.toThrow(/không nhận dải CIDR/)
+  })
+
+  it('từ chối kiểu dữ liệu sai và địa chỉ lặp thay vì lặng lẽ dọn hộ', async () => {
+    await expect(load(oneSite({}, { ingest: { gateways: '127.0.0.1' } }))).rejects.toThrow(/phải là mảng/)
+    await expect(load(oneSite({}, { ingest: { gateways: [''] } }))).rejects.toThrow(/không rỗng/)
+    await expect(load(oneSite({}, { ingest: { gateways: [123] } }))).rejects.toThrow(/dạng chuỗi/)
+    await expect(load(oneSite({}, { ingest: { gateways: ['127.0.0.1', '127.0.0.1'] } }))).rejects.toThrow(/lặp/)
+  })
+
+  it('kêu thành cảnh báo khởi động, vì đây là nới quyền chứ không phải chỉnh thông số', async () => {
+    const config = await load(oneSite({}, { ingest: { enabled: true, gateways: ['127.0.0.1'] } }))
+    const warnings = configWarnings(config)
+    expect(warnings.some((line) => line.includes('ingest.gateways') && line.includes('127.0.0.1'))).toBe(true)
+  })
+})
