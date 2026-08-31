@@ -207,6 +207,10 @@ const routes = [
       from: ctx.url.searchParams.get('from'),
       to: ctx.url.searchParams.get('to'),
       limit: clampLimit(ctx.url.searchParams.get('limit')),
+      // `?nguon=may-day` / `suy-luan` / `duong-do` / `nhap-tay`, phân cách bằng dấu phẩy.
+      // Không khai thì trả HẾT — nhưng mỗi dòng luôn kèm `nguon` + `cauNguon`, và cả gói
+      // kèm `theoNguon`, nên đội đọc không bao giờ phải đoán dòng nào là máy tự khai.
+      nguon: ctx.url.searchParams.get('nguon')?.split(',').map((s) => s.trim()).filter(Boolean) ?? null,
     }),
   },
   /**

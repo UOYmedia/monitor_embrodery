@@ -202,6 +202,12 @@ controller hay node cảm biến). Repo cố tình không có bảng tra
 "EC12 = đứt chỉ": bảng đó cần tài liệu firmware. Khi có tài liệu, thêm bảng tra ở tầng hiển
 thị và ghi rõ nguồn tài liệu, phiên bản firmware áp dụng.
 
+Với máy Dahao A15 thì bảng tra đó **sẽ không bao giờ dùng tới trên đường dây**: đo trên khung
+telemetry thật, catalog broker và nhật ký kiểm toán đều cho cùng một kết quả — máy không gửi
+mã lỗi. Mã `EC` chỉ nằm trên màn hình HMI tại máy. Những lần máy ngừng chạy được ghi ở một
+bảng riêng, kèm nguồn gốc và độ chắc chắn của từng mốc thời gian: xem
+[`so-lan-loi.md`](./so-lan-loi.md).
+
 ## 3.1. Số đọc do người gõ (`quality: "manual"`)
 
 Máy BECS-A15 ở xưởng này **không có giao thức nào bridge đọc được** (xem §1). Nên lựa chọn thật

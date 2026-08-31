@@ -2,7 +2,7 @@ import { pollMachine } from './adapters.mjs'
 import { deriveAlerts, maintenanceForMachine } from './alerts.mjs'
 import { derivedAlerts } from './derived-alerts.mjs'
 import { AuditLog } from './audit.mjs'
-import { FaultEpisodeLog, CHUA_BIET_VI } from './fault-episodes.mjs'
+import { FaultEpisodeLog, CHUA_BIET_VI, NGUON, HE_MA } from './fault-episodes.mjs'
 import { durationSeconds, formatSpokenDuration, latestSignificantEvent } from './downtime.mjs'
 import { SCHEMA_VERSION, adapterHasProtocol, adapterIsPolled, normalizeTelemetry } from './contract.mjs'
 import { DialInListener, normalizeRemoteAddress } from './dial-in.mjs'
@@ -171,10 +171,10 @@ export class BridgeService {
    * hỏng lần nào trong tuần rồi" là một câu trả lời hoàn toàn bình thường, và nếu nó nổ
    * thành 500 thì màn hình sẽ hiện "lỗi hệ thống" đúng vào lúc mọi thứ đang tốt nhất.
    */
-  async docLichSuLoi(id, { from = null, to = null, limit = 100 } = {}) {
+  async docLichSuLoi(id, { from = null, to = null, limit = 100, nguon = null } = {}) {
     const machine = this.findMachine(id)
     const ket = await this.soLanLoi(machine.siteId).docHopNhat({
-      machineId: machine.id, from, to, limit,
+      machineId: machine.id, from, to, limit, nguon,
     })
     return { machineId: machine.id, ...ket }
   }
@@ -362,7 +362,7 @@ export class BridgeService {
       for (const record of records) merged.set(record.id, record)
       const next = [...merged.values()]
       if (next.length > this.config.limits.maxMachines) throw badRequest(`Bridge chỉ được cấu hình tối đa ${this.config.limits.maxMachines} máy.`)
-      assertNoDuplicates(next)
+      assertNoDuplicates(next, { sharedAddresses: this.config.ingest?.gateways ?? [] })
 
       await this.store.save(next)
       for (const record of records) {
@@ -545,15 +545,29 @@ export class BridgeService {
    *   *since* a moment. One person sampling one instant cannot establish a since, and overwriting
    *   a real clock with a sample would shorten every stop it touched.
    */
-  ingestManualSnapshot(machine, snapshot) {
-    // Ngoại lệ duy nhất của đoạn trên: nếu máy đang có một lần lỗi mở, con số gõ tay là bằng
-    // chứng cuối cùng ta có về nó, và sổ lần lỗi phải đóng lại ở đây bằng lý do `nhap-tay` —
-    // KHÔNG kèm thời lượng. Người gõ số biết máy đang chạy lúc họ đứng đó; họ không biết máy
-    // hết lỗi từ lúc nào. Đây là ghi vào sổ lần lỗi, không phải `trackStatusChange`: cái đồng
-    // hồ "đang ở trạng thái này từ …" vẫn không bị một mẫu đơn lẻ ghi đè.
-    if (this.downtimeRecorded.has(machine.id) && this.statusSince.get(machine.id)?.status === 'fault') {
-      this.soLanLoi(machine.siteId).dongLanLoi(machine.id, {
-        ketThuc: snapshot.observedAt, trangThaiSau: null, chuaBietVi: CHUA_BIET_VI.NHAP_TAY,
+  ingestManualSnapshot(machine, snapshot, nguoi = null) {
+    // Ngoại lệ duy nhất của đoạn trên: sổ lần lỗi. Với máy A15 — thứ CHƯA TỪNG gửi một mã lỗi
+    // nào trên dây — người đứng tại máy là nguồn tin duy nhất còn lại về việc nó có hỏng hay
+    // không, nên lời khai đó phải vào sổ. Nó vào sổ với nhãn `nhap-tay` và tên người khai, để
+    // không một ai về sau đọc nhầm nó thành số liệu máy tự báo.
+    //
+    // Vẫn KHÔNG gọi `trackStatusChange`: cái đồng hồ "đang ở trạng thái này từ …" không bị một
+    // mẫu đơn lẻ ghi đè. Vì thế mọi dòng mở ở đây đều `uocChung: true` — người gõ biết máy
+    // đang lỗi lúc họ đứng đó, họ không biết nó lỗi từ lúc nào.
+    const so = this.soLanLoi(machine.siteId)
+    const trangThai = snapshot.status?.value ?? null
+    const ai = (nguoi ?? String(snapshot.source ?? '').replace(/^manual:/, '')).trim()
+    if (trangThai === 'fault') {
+      so.moLanLoi(machine.id, {
+        siteId: machine.siteId ?? null, batDau: snapshot.observedAt, uocChung: true,
+        nguon: NGUON.NHAP_TAY, heMa: HE_MA.BRIDGE, ma: 'nguoi-bao-loi',
+        moTa: 'Người đứng tại máy khai máy đang lỗi.', kieu: 'fault', nguoi: ai || 'khong-ro',
+      })
+    } else if (trangThai === 'running') {
+      // CHỈ `running` mới đóng sổ. `stopped`/`paused`/`unknown` nghĩa là máy vẫn chưa chạy —
+      // đóng lần lỗi ở đó là tự tay khai máy đã hết hỏng trong khi không ai nói thế.
+      so.dongLanLoi(machine.id, {
+        ketThuc: snapshot.observedAt, trangThaiSau: trangThai, chuaBietVi: CHUA_BIET_VI.NHAP_TAY,
       })
     }
     this.telemetry.set(machine.id, snapshot)
@@ -593,7 +607,7 @@ export class BridgeService {
     // `manual:<người gõ>` chứ không phải `manual`: nguồn của một số đọc phải chỉ về được một
     // người, vì đó là toàn bộ khả năng đối chứng còn lại khi con số bị tranh chấp.
     const snapshot = normalizeTelemetry(entry.payload, { machine, source: `manual:${session.actor}`, quality: 'manual' })
-    const counted = this.ingestManualSnapshot(machine, snapshot)
+    const counted = this.ingestManualSnapshot(machine, snapshot, session.actor)
     const persisted = await this.production.flush(new Date(this.now()))
 
     this.audit.record({
@@ -650,11 +664,34 @@ export class BridgeService {
    *    "ít nhất từ …" for those.
    *  - the timestamp is the controller's `observedAt`, not the bridge clock, and it is never
    *    persisted across a restart. Inventing a pre-restart moment would be inventing history.
+   *
+   * Luật thứ ba, học được từ dữ liệu thật ngày 27/08: `unknown` KHÔNG phải một trạng thái của
+   * máy, nó là "adapter không đọc được" (xem `operationalStatuses` trong contract). Ra khỏi
+   * `unknown` thì mốc mới cũng chỉ là lúc ta NHÌN THẤY LẠI, y hệt lần đầu tiên nhìn thấy.
+   *
+   * Vì sao phải viết ra: bản cũ chỉ đánh `approximate` khi `previous === undefined`, nên một
+   * nhịp mất tín hiệu 4 giây là đủ để xoá trí nhớ rồi đóng dấu "chính xác" lên mốc mới. Đo
+   * được trên máy 3ce4b0c54f54: 08:20:03 bridge biết máy dừng từ 03:11:21; 08:20:22 mất tín
+   * hiệu; 08:20:26 thấy lại và ghi "dừng từ 08:20:26, chính xác". Hơn 5 tiếng ngừng máy đọc
+   * ra thành 6 phút, không một dấu hiệu nào báo cho người đọc biết. Trên production 74/84 lần
+   * đóng là mất tín hiệu, nên gần như MỌI thời lượng trong sổ đều dính lỗi này.
    */
   trackStatusChange(machineId, snapshot) {
     const status = snapshot.status.value
     const previous = this.statusSince.get(machineId)
     if (previous?.status === status) return
+
+    // Mù = chưa từng thấy, hoặc lần thấy gần nhất là "không đọc được". Cả hai đều có nghĩa:
+    // máy có thể đã ở trạng thái này từ trước đó, mốc dưới đây chỉ là cận dưới.
+    const dangMu = previous === undefined || previous.status === 'unknown'
+
+    // Trước khoảng mù ta đã biết gì chưa? Nếu trạng thái hai bên khoảng mù GIỐNG nhau thì mốc
+    // cũ vẫn là một quan sát có thật (bridge đã tận mắt thấy máy dừng từ 03:11:21), chỉ là
+    // không còn chắc chắn nữa vì giữa chừng máy có thể đã chạy rồi dừng lại. Giữ nó làm cận
+    // TRÊN của thời lượng thay vì vứt đi — vứt đi là mất một phép đo thật.
+    const somNhat = dangMu && previous?.status === 'unknown' && previous.truocKhiMu?.status === status
+      ? previous.truocKhiMu.at
+      : null
 
     // Rời một trạng thái đang mở episode ngừng (lỗi hoặc dừng-lâu đã ghi): đóng nó lại kèm thời
     // lượng, tính từ mốc controller vào trạng thái đó tới mốc nó thoát ra.
@@ -666,12 +703,23 @@ export class BridgeService {
     // mỗi lần thay chỉ vài chục giây lại đẻ một dòng ngừng máy vô nghĩa.
     if (status === 'fault') {
       this.recordDowntimeOpen(machineId, {
-        status, since: snapshot.observedAt, approximate: previous === undefined, reason: 'fault', events: snapshot.events,
+        status, since: snapshot.observedAt, approximate: dangMu, somNhat, reason: 'fault', events: snapshot.events,
       })
       this.downtimeRecorded.add(machineId)
     }
 
-    this.statusSince.set(machineId, { status, at: snapshot.observedAt, approximate: previous === undefined })
+    this.statusSince.set(machineId, {
+      status,
+      at: snapshot.observedAt,
+      approximate: dangMu,
+      somNhat,
+      // Đi vào `unknown` thì nhớ lại trạng thái cuối cùng ĐỌC ĐƯỢC, để lúc ra khỏi khoảng mù
+      // còn biết mình đã biết gì. Không nhớ chồng qua nhiều khoảng mù liên tiếp: `unknown` nối
+      // `unknown` thì giữ nguyên bản ghi cũ chứ không lấy `unknown` làm mốc.
+      truocKhiMu: status === 'unknown'
+        ? (previous && previous.status !== 'unknown' ? { status: previous.status, at: previous.at } : previous?.truocKhiMu ?? null)
+        : null,
+    })
   }
 
   /**
@@ -690,14 +738,15 @@ export class BridgeService {
       const thresholdMinutes = this.site(machine.siteId).stopEscalationMinutes ?? 5
       if ((now - startMs) / 60_000 < thresholdMinutes) continue
       this.recordDowntimeOpen(machine.id, {
-        status: since.status, since: since.at, approximate: since.approximate, reason: 'long-stop', thresholdMinutes,
+        status: since.status, since: since.at, approximate: since.approximate, somNhat: since.somNhat ?? null,
+        reason: 'long-stop', thresholdMinutes,
       })
       this.downtimeRecorded.add(machine.id)
     }
   }
 
   /** Dòng "máy vào ngừng" trong sổ audit. `fault` kèm mã lỗi controller gửi (nếu có). */
-  recordDowntimeOpen(machineId, { status, since, approximate, reason, events = [], thresholdMinutes = null }) {
+  recordDowntimeOpen(machineId, { status, since, approximate, somNhat = null, reason, events = [], thresholdMinutes = null }) {
     const event = reason === 'fault' ? latestSignificantEvent(events) : null
     const message = reason === 'fault'
       ? `Controller báo máy lỗi${event ? ` · mã ${event.code}${event.message ? `: ${event.message}` : ''}` : ''}${approximate ? ' (máy đã ở trạng thái lỗi khi bridge bắt đầu quan sát)' : ''}.`
@@ -705,17 +754,29 @@ export class BridgeService {
     this.audit.record({
       actor: 'bridge', role: 'system', action: 'machine.downtime.open',
       targetType: 'machine', targetId: machineId, message,
-      after: { status, reason, since, approximate: approximate ?? false, code: event?.code ?? null, eventMessage: event?.message ?? null, thresholdMinutes },
+      after: { status, reason, since, approximate: approximate ?? false, somNhat, code: event?.code ?? null, eventMessage: event?.message ?? null, thresholdMinutes },
     })
-    // Chỉ `fault` mới vào sổ lần lỗi. Dừng-lâu là một câu chuyện khác — nó nói về sản lượng,
-    // không nói về hỏng hóc — và trộn hai loại vào một quyển sẽ làm mọi con số "máy hỏng bao
-    // nhiêu lâu" phồng lên bằng những lần công nhân đi ăn trưa.
-    if (reason === 'fault') {
-      const machine = this.store.machines.find((entry) => entry.id === machineId)
-      this.soLanLoi(machine?.siteId).moLanLoi(machineId, {
-        siteId: machine?.siteId ?? null, batDau: since, events, uocChung: approximate ?? false,
-      })
-    }
+    // Trước đây chỉ `fault` mới vào sổ lần lỗi, vì trộn dừng-lâu vào sẽ làm mọi con số "máy
+    // hỏng bao nhiêu lâu" phồng lên bằng những lần công nhân đi ăn trưa. Lo ngại đó đúng, và
+    // nó đã được chữa ở chỗ khác chứ không phải bằng cách vứt dữ liệu: mỗi dòng nay bắt buộc
+    // khai `nguon`, và `docHopNhat` trả kèm `theoNguon` để đội đọc sổ tự tách hai loại.
+    //
+    // Giữ nguyên bộ lọc cũ thì quyển sổ này RỖNG VĨNH VIỄN, vì máy A15 chưa từng gửi một mã
+    // lỗi nào trên dây (326.342 khung, đúng 4 giá trị trạng thái, không trường lỗi nào) — tức
+    // `/faults` trả `[]` và đội sau đọc ra "máy này chưa hỏng lần nào" thay vì "chỗ này chưa
+    // từng chạy". Ghi cả hai loại kèm nhãn nguồn là câu trả lời trung thực duy nhất.
+    const machine = this.store.machines.find((entry) => entry.id === machineId)
+    const laLoiMayBao = reason === 'fault'
+    this.soLanLoi(machine?.siteId).moLanLoi(machineId, {
+      siteId: machine?.siteId ?? null, batDau: since, events, uocChung: approximate ?? false, batDauSomNhat: somNhat,
+      // `fault` là máy tự khai trạng thái lỗi. `long-stop` là ĐỒNG HỒ CỦA BRIDGE kêu, máy
+      // không hề nói gì — đó là suy luận, và nó phải mang nhãn suy luận suốt đời.
+      nguon: laLoiMayBao ? NGUON.MAY_DAY : NGUON.SUY_LUAN,
+      heMa: laLoiMayBao ? HE_MA.A15_STATE : HE_MA.BRIDGE,
+      ma: laLoiMayBao ? null : 'dung-lau',
+      moTa: laLoiMayBao ? null : `Dừng liên tục quá ${thresholdMinutes} phút — máy KHÔNG báo lý do.`,
+      kieu: reason,
+    })
   }
 
   /** Dòng "máy ra khỏi ngừng" kèm thời lượng. `approximate` = không chắc mốc bắt đầu (in "ít nhất"). */
@@ -883,6 +944,9 @@ export class BridgeService {
           pairedMachineId: paired?.id ?? null,
           pairedMachineName: paired?.name ?? null,
           pairedCount: matches.length,
+          // Không có cờ này thì `pairedCount > 1` ở một cổng tin cậy trông y hệt lỗi khai
+          // trùng địa chỉ, và người đọc bảng sẽ đi sửa một thứ đang đúng.
+          pairedGateway: this.isGatewayAddress(caller.remote),
         }
       }),
     }
