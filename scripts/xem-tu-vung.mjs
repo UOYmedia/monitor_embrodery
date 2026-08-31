@@ -1,0 +1,434 @@
+/**
+ * Thử phần logic ngưỡng dừng — chạy trên CHÍNH mã nguồn đang phục vụ, không phải bản chép.
+ *
+ * Cách làm: rút khối <script> ra khỏi xem/index.html, cắt đúng đoạn khởi động cuối cùng (thứ
+ * cần trình duyệt thật) rồi thay bằng một khối xuất hàm, và chạy trong Node với vài cái giả lập
+ * DOM tối thiểu. Chép hàm sang tệp thử thì tệp thử sẽ trôi khỏi trang lúc nào không biết; rút
+ * thẳng từ tệp đang chạy thì không trôi được.
+ */
+import fs from 'node:fs'
+import vm from 'node:vm'
+import { fileURLToPath } from 'node:url'
+
+// Mặc định soi bản trong REPO. Truyền đường dẫn khác ở argv để soi bản đang phục vụ:
+//   node scripts/xem-tu-vung.mjs ~/dahao-gateway/xem/index.html
+const P = process.argv[2] || fileURLToPath(new URL('../deploy-mini/xem/index.html', import.meta.url))
+const html = fs.readFileSync(P, 'utf8')
+const m = html.match(/<script>([\s\S]*)<\/script>/)
+if (!m) { console.error('khong tim thay khoi <script>'); process.exit(1) }
+let js = m[1]
+
+// Cắt từ chỗ gắn sự kiện cho form token tới hết `batDau()`, thay bằng khối xuất.
+const moc = js.indexOf("  el('cong-form').addEventListener")
+const het = js.lastIndexOf('  batDau()')
+if (moc < 0 || het < 0 || het < moc) { console.error('khong khop moc cat'); process.exit(1) }
+js = js.slice(0, moc) + `
+  globalThis.API = {
+    TEN_MA: TEN_MA, DUNG_DE_Y: DUNG_DE_Y, DUNG_DI_XEM: DUNG_DI_XEM,
+    trangThai: trangThai, dungGiuaMau: dungGiuaMau, lauDungGiuaMau: lauDungGiuaMau,
+    mucDung: mucDung, chuItNhat: chuItNhat, soatDungLau: soatDungLau, veTong: veTong,
+    nhatKy: nhatKy, datMay: function (v) { may = v },
+    canhTuTinh: canhTuTinh, chuNgan: chuNgan, CANH_TU_TINH_BO_QUA: CANH_TU_TINH_BO_QUA,
+    theMay: theMay, ghiThayDoi: ghiThayDoi,
+    tinhTrang: tinhTrang, chuLau: chuLau, NHAN_TT: NHAN_TT, TT_IM: TT_IM,
+    // Ghim dong ho: moi ket luan ve may IM deu phu thuoc gio VN (trong gio lam ra tat-han,
+    // ngoai gio ra ngoai-gio). Khoi cham dau ngoac nguoc o day: ca khoi nay nam trong mot chuoi
+    // template, dau ngoac nguoc se cat doi no.
+    datLech: function (x) { lechDongHo = x },
+    coCanhNang: coCanhNang, coCanhChuaXem: coCanhChuaXem,
+  }
+` + js.slice(het + '  batDau()'.length)
+
+// ---- giả lập DOM tối thiểu: đủ để mã chạy, không đủ để giả vờ là trình duyệt
+function nut() {
+  const n = {
+    children: [], style: {}, className: '', hidden: false, textContent: '', innerHTML: '',
+    appendChild(c) { n.children.push(c); return c },
+    removeChild(c) { const i = n.children.indexOf(c); if (i >= 0) n.children.splice(i, 1); return c },
+    attrs: {},
+    setAttribute(k, v) { n.attrs[k] = String(v) },
+    getAttribute(k) { return Object.prototype.hasOwnProperty.call(n.attrs, k) ? n.attrs[k] : null },
+    addEventListener() {},
+    querySelector() { return null }, querySelectorAll() { return [] },
+    get firstChild() { return n.children[0] || null },
+    scrollTop: 0, scrollHeight: 0, checked: false, value: '',
+  }
+  return n
+}
+const kho = {}
+const ctx = {
+  console,
+  Date, Math, JSON, Intl, String, Number, Array, Object, isFinite, parseInt, parseFloat,
+  setTimeout, clearTimeout, setInterval, clearInterval,
+  document: {
+    getElementById(id) { return (kho[id] = kho[id] || nut()) },
+    createElement: nut, createDocumentFragment: nut,
+    querySelectorAll() { return [] }, addEventListener() {},
+  },
+  localStorage: { getItem() { return null }, setItem() {}, removeItem() {} },
+  location: { origin: 'http://x', pathname: '/xem/', protocol: 'http:', host: 'x' },
+  navigator: { clipboard: null },
+  fetch: () => Promise.reject(new Error('khong goi mang trong bai thu')),
+  WebSocket: function () { throw new Error('khong mo WebSocket trong bai thu') },
+}
+ctx.globalThis = ctx
+ctx.window = ctx
+vm.createContext(ctx)
+vm.runInContext(js, ctx, { filename: 'xem/index.html:<script>' })
+const A = ctx.API
+
+// ---- khung dựng sẵn
+const GIAY = 1000
+function may(o) {
+  o = o || {}
+  return {
+    identity: { id: o.id || 'mch-thu', name: o.ten || 'Máy thử', zone: null, model: null },
+    // `im` = đã im bao nhiêu giây. `tuoiGiay()` đọc ĐÚNG trường này (không phải
+    // `telemetry.observedAt`, không phải `statusSince`), nên mọi con số của máy im đi ra từ đây.
+    connection: { state: o.kn === undefined ? 'online' : o.kn,
+                  lastTelemetryAt: new Date(Date.now() - (o.im || 0) * GIAY).toISOString() },
+    telemetry: {
+      status: { value: o.tt === undefined ? 'stopped' : o.tt },
+      job: { value: { currentStitch: o.cur === undefined ? 500 : o.cur,
+                      totalStitches: o.tot === undefined ? 1000 : o.tot,
+                      fileName: o.mau === undefined ? 'thu.DST' : o.mau } },
+    },
+    // Bridge thật trả `statusSince` KÈM `status` — mốc ấy nói về trạng thái nào. Thiếu trường
+    // đó thì không thể biết con số đang đếm cho chuyện gì, nên khung dựng phải có đủ.
+    statusSince: o.tu === undefined ? null
+      : { status: o.tt === undefined ? 'stopped' : o.tt,
+          at: new Date(Date.now() - o.tu * GIAY).toISOString(), approximate: !!o.uocluong },
+    alerts: [], telemetryError: null,
+    derivedAlerts: o.tt2 || [],
+  }
+}
+
+/** Một cảnh báo tự tính đúng hình dạng bridge trả về (title có tiền tố tên máy). */
+function ct(id, muc, chu, ten) {
+  return { id: id, severity: muc || 'warning', title: (ten || 'Máy thử') + ': ' + chu + '.', description: '' }
+}
+
+/** Gom mọi nút có class `chip` trong một thẻ máy đã vẽ. */
+function chipCua(the) {
+  const ra = []
+  ;(function di(n) {
+    if (!n || !n.children) return
+    for (const c of n.children) {
+      if (String(c.className || '').indexOf('chip') === 0) ra.push(c.textContent)
+      di(c)
+    }
+  })(the)
+  return ra
+}
+
+let dat = 0, hong = 0
+function la(ten, thuc, mong) {
+  const ok = JSON.stringify(thuc) === JSON.stringify(mong)
+  if (ok) { dat++; console.log('  DAT  ' + ten) }
+  else { hong++; console.log('  HONG ' + ten + '\n         nhan  = ' + JSON.stringify(thuc) + '\n         mong doi = ' + JSON.stringify(mong)) }
+}
+
+console.log('\n=== A. mucDung: chi leo thang theo THOI GIAN, khong theo ma ===')
+la('may dang chay -> 0', A.mucDung(may({ tt: 'running', tu: 9999 })), 0)
+la('dung nhung mui = 0 (chua bat dau) -> 0', A.mucDung(may({ cur: 0, tu: 9999 })), 0)
+la('dung nhung da het mau -> 0', A.mucDung(may({ cur: 1000, tu: 9999 })), 0)
+la('dung giua mau 10 giay -> 0 (nhip thuong)', A.mucDung(may({ tu: 10 })), 0)
+la('dung giua mau 59 giay -> 0', A.mucDung(may({ tu: 59 })), 0)
+la('dung giua mau 60 giay -> 1', A.mucDung(may({ tu: 60 })), 1)
+la('dung giua mau 299 giay -> 1', A.mucDung(may({ tu: 299 })), 1)
+la('dung giua mau 300 giay -> 2', A.mucDung(may({ tu: 300 })), 2)
+la('dung giua mau 3608 giay (dot dai nhat da do) -> 2', A.mucDung(may({ tu: 3608 })), 2)
+la('KHONG co statusSince -> 0 (khong biet thi khong bao)', A.mucDung(may({ tu: undefined })), 0)
+la('statusSince o tuong lai -> 0 (lech dong ho, khong bao bua)',
+   A.mucDung({ ...may({ tu: 60 }), statusSince: { at: new Date(Date.now() + 60 * GIAY).toISOString() } }), 0)
+
+console.log('\n=== B. May TAT khong duoc bien thanh bao dong ===')
+la('mat ket noi, so mui cu la giua mau -> 0', A.mucDung(may({ kn: 'offline', tu: 9999 })), 0)
+la('ket noi cu (stale) van tinh -> 2', A.mucDung(may({ kn: 'stale', tu: 9999 })), 2)
+la('trangThai cua may offline la unknown', A.trangThai(may({ kn: 'offline' })), 'unknown')
+
+console.log('\n=== C. "it nhat" khi moc chi la can duoi ===')
+la('approximate -> "it nhat "', A.chuItNhat(may({ tu: 400, uocluong: true })), 'ít nhất ')
+la('moc chac -> chuoi rong', A.chuItNhat(may({ tu: 400 })), '')
+la('can duoi vuot nguong van la vuot', A.mucDung(may({ tu: 400, uocluong: true })), 2)
+
+console.log('\n=== D. TEN_MA: dung 3 ma da do chac, khong hon ===')
+la('dung 3 ma', Object.keys(A.TEN_MA).sort(), ['0', '15', '2'])
+la('ma -1 KHONG duoc dat ten', A.TEN_MA['-1'] === undefined, true)
+la('ma la (7) KHONG duoc dat ten', A.TEN_MA['7'] === undefined, true)
+la('ma 0', A.TEN_MA['0'], 'đang thêu')
+la('ma 2', A.TEN_MA['2'], 'dừng giữa mẫu')
+la('ma 15', A.TEN_MA['15'], 'không thêu')
+
+console.log('\n=== E. soatDungLau: moi nac dung MOT dong, khong lap ===')
+const n0 = A.nhatKy.length
+function dem() { return A.nhatKy.length - n0 }
+function dong(i) { return A.nhatKy[n0 + i] }
+
+A.soatDungLau(may({ id: 'm1', tu: 10 }))
+la('10 giay: chua ghi gi', dem(), 0)
+A.soatDungLau(may({ id: 'm1', tu: 70 }))
+la('70 giay: ghi 1 dong', dem(), 1)
+la('  dong ay o muc "tin"', dong(0).muc, 'tin')
+for (const t of [75, 80, 120, 250, 299]) A.soatDungLau(may({ id: 'm1', tu: t }))
+la('van dung giua nac 1: KHONG ghi them', dem(), 1)
+A.soatDungLau(may({ id: 'm1', tu: 310 }))
+la('310 giay: ghi them 1 dong', dem(), 2)
+la('  dong ay o muc "canh"', dong(1).muc, 'canh')
+for (const t of [400, 900, 3600]) A.soatDungLau(may({ id: 'm1', tu: t }))
+la('da len nac cao nhat: KHONG ghi them', dem(), 2)
+A.soatDungLau(may({ id: 'm1', tt: 'running', tu: 5 }))
+la('may chay lai: khong ghi them', dem(), 2)
+A.soatDungLau(may({ id: 'm1', tu: 70 }))
+la('dot dung MOI sau khi chay lai: ghi lai tu dau', dem(), 3)
+la('  va lai la muc "tin"', dong(2).muc, 'tin')
+la('loi nhan co ca thoi gian lan so mui',
+   /dừng giữa mẫu đã .*phút.*500\/1\.000 mũi \(giữa mẫu\)/.test(dong(2).chu), true)
+
+console.log('\n=== F. Hai may dem rieng nhau ===')
+const n1 = A.nhatKy.length
+A.soatDungLau(may({ id: 'm2', ten: 'Máy hai', tu: 70 }))
+A.soatDungLau(may({ id: 'm3', ten: 'Máy ba', tu: 70 }))
+la('moi may mot dong', A.nhatKy.length - n1, 2)
+la('ghi dung ten may', [A.nhatKy[n1].loai, A.nhatKy[n1 + 1].loai], ['Máy hai', 'Máy ba'])
+
+console.log('\n=== G. Ba o tong: dang chay / loi / may off ===')
+A.datMay([
+  may({ id: 'a', tu: 10 }),      // dung giua mau
+  may({ id: 'b', tu: 30 }),      // nt
+  may({ id: 'c', tu: 400 }),     // nt, da lau
+  may({ id: 'd', tt: 'running', tu: 999 }),
+  may({ id: 'e', kn: 'offline', tu: 999 }),
+])
+A.veTong()
+const tong = kho['tong'].innerHTML
+const oSo = (cls) => (tong.match(new RegExp('class="o-tong ' + cls + '"[^>]*><b>(\\d+)<')) || [])[1]
+la('o "Dang chay" dem dung 1', oSo('chay'), '1')
+la('o "May off" dem dung 1', oSo('off'), '1')
+// Giao thức máy này không có trường báo lỗi nào (`state_to_status` không bao giờ trả `fault`),
+// nên ô LỖI đứng ở 0 là ĐÚNG khi không có gì hỏng — chứ không phải ô chết.
+la('o "Loi" = 0 khi khong co gi hong', oSo('loi'), '0')
+la('KHONG con o "Dung" — no gop ba chuyen khac han nhau lam mot', oSo('dung'), undefined)
+la('KHONG con o "Can xem"', tong.indexOf('Cần xem'), -1)
+// Ba ô không chia hết đội máy: 3 máy dừng dở mẫu không thuộc ô nào. Chúng phải được nói rõ ở
+// chỗ có chỗ mà nói — trên thẻ.
+la('3 may dung do mau: the ghi ro tung cai',
+   ['a', 'b', 'c'].map((id) => A.tinhTrang(may({ id: id, tu: 10 }))), ['dung', 'dung', 'dung'])
+
+// Đẩy đồng hồ của trang tới đúng giờ VN muốn thử. Trang tính giờ VN bằng `Date.now() +
+// lechDongHo + 7h`, nên chỉ cần bù phần chênh giữa giờ VN hiện tại và giờ muốn tới.
+function gioVN(g) {
+  const nay = new Date(Date.now() + 7 * 3600 * 1000).getUTCHours()
+  A.datLech((g - nay) * 3600 * 1000)
+}
+
+console.log('\n=== N. tinhTrang: mot bo tu vung cho ca trang ===')
+const tt = (o) => A.tinhTrang(may(o))
+la('mui dang tang -> chay', tt({ tt: 'running' }), 'chay')
+la('mui CHAM tong -> hoanthanh (12,0% khung that, 10/13 may)', tt({ cur: 1000, tot: 1000 }), 'hoanthanh')
+la('mui vuot tong (may dem lo mot nhip) -> van hoanthanh', tt({ cur: 1001, tot: 1000 }), 'hoanthanh')
+la('mui do dang -> dung', tt({ cur: 500, tot: 1000 }), 'dung')
+la('chua co mau (tot=0) -> cho, KHONG phai dung (75,8% khung that nam o day)', tt({ cur: 0, tot: 0 }), 'cho')
+la('co mau ma chua dat mui nao -> cho', tt({ cur: 0, tot: 1000 }), 'cho')
+la('may bao hong -> loi', tt({ tt: 'fault' }), 'loi')
+la('bridge khong doc duoc may -> loi', A.tinhTrang((() => { const m = may({}); m.telemetryError = 'timeout'; return m })()), 'loi')
+la('canh bao tu tinh muc NANG -> loi', tt({ tt2: [ct('x:y', 'critical', 'hong')] }), 'loi')
+la('  muc nhac nho thi KHONG', tt({ cur: 500, tot: 1000, tt2: [ct('x:y', 'warning', 'nhac')] }), 'dung')
+// Máy im KHÔNG còn ra một mã duy nhất. Bridge nói `offline` + đang trong giờ làm = `tat-han`;
+// cùng máy ấy sau 19h = `ngoai-gio`. Cả hai đều nằm trong `TT_IM`, nên vẫn là "máy im", chỉ
+// khác ở chỗ nói ĐƯỢC vì sao. Ghim giờ VN rồi mới hỏi.
+gioVN(12)
+la('mat ket noi trong gio lam -> tat-han, du so mui cu la do mau', tt({ kn: 'offline', cur: 500, tot: 1000 }), 'tat-han')
+la('  van thang ca trang thai hong: so cu thi khong duoc ket luan gi', tt({ kn: 'offline', tt: 'fault' }), 'tat-han')
+gioVN(22)
+la('  cung may ay sau gio lam -> ngoai-gio, khong ho "mat tin hieu"', tt({ kn: 'offline', cur: 500, tot: 1000 }), 'ngoai-gio')
+gioVN(12)
+la('  moi ma im deu nam trong TT_IM', ['off', 'tat-han', 'ngoai-gio', 'cum-im', 'tat-may'].every(function (k) { return !!A.TT_IM[k] }), true)
+A.datLech(0)   // TRẢ LẠI. Mọi bài đo tuổi phía dưới dựng máy theo Date.now() thật.
+la('du lieu cu (stale) van doc duoc -> khong phai off', tt({ kn: 'stale', cur: 500, tot: 1000 }), 'dung')
+la('unknown KHONG duoc suy thanh dung', tt({ tt: 'unknown', cur: 500, tot: 1000 }), 'chuaro')
+// 11 mã, không phải 7: bốn mã cuối là bốn lý do KHÁC NHAU khiến máy im, tách ra hồi 28/08.
+// Bảng này ghim cứng để không ai thêm mã mà quên đặt tên tiếng Việt cho nó.
+la('moi tinh trang deu co nhan tieng Viet', Object.keys(A.NHAN_TT).sort(),
+   ['chay', 'cho', 'chuaro', 'cum-im', 'dung', 'hoanthanh', 'loi', 'ngoai-gio', 'off', 'tat-han', 'tat-may'])
+
+console.log('\n=== O. Dong ho: moi tinh trang mot cai, doc mot minh van hieu ===')
+la('dung giua mau', A.chuLau(may({ cur: 500, tot: 1000, tu: 400 })), 'dừng 6 phút 40 giây')
+la('hoan thanh', A.chuLau(may({ cur: 1000, tot: 1000, tu: 400 })), 'xong 6 phút 40 giây')
+la('dang chay', A.chuLau(may({ tt: 'running', tu: 400 })), 'chạy được 6 phút 40 giây')
+la('may hong', A.chuLau(may({ tt: 'fault', tu: 400 })), 'lỗi 6 phút 40 giây')
+la('chua co mau', A.chuLau(may({ cur: 0, tot: 0, tu: 400 })), 'rỗi 6 phút 40 giây')
+la('moc uoc luong thi phai noi "it nhat"',
+   A.chuLau(may({ cur: 500, tot: 1000, tu: 400, uocluong: true })), 'dừng ít nhất 6 phút 40 giây')
+la('KHONG co moc -> chuoi rong, khong bia so', A.chuLau(may({ cur: 500, tot: 1000 })), '')
+// Mốc của bridge nói về `status` THÔ. Máy `stopped` nhưng đã thêu xong mẫu thì mốc ấy vẫn dùng
+// được (cùng gốc `stopped`); còn mốc `running` mà thẻ đang ghi DỪNG thì là đồng hồ của chuyện khác.
+la('moc lech tinh trang thi KHONG muon bua',
+   A.chuLau((() => { const m = may({ cur: 500, tot: 1000, tu: 400 }); m.statusSince.status = 'running'; return m })()), '')
+// Chuyện được ghim ở đây là NGUỒN của con số, không phải chữ đứng trước nó: máy im thì đồng hồ
+// đếm từ bản tin cuối cùng máy gửi (`tu: 400`), chứ không từ `statusSince` của bridge.
+// KHÔNG ghim giờ ở đây: ghim giờ là đẩy chính cái đồng hồ dùng để đo tuổi. Mã im nào đang hiện
+// (tat-han hay ngoai-gio) tùy giờ chạy bài thử, nhưng CON SỐ thì phải luôn đếm từ bản tin cuối.
+la('may im: dong ho dem tu ban tin CUOI CUNG, khong tu statusSince',
+   /6 phút 40 giây$/.test(A.chuLau(may({ kn: 'offline', im: 400, tu: 99999 }))), true)
+// `tu: 99999` cố tình đặt lệch hẳn: nếu đồng hồ lỡ đếm theo `statusSince` thì con số sẽ ra
+// hơn một ngày chứ không phải 6 phút 40 — bài thử đỏ ngay thay vì im lặng đo nhầm nguồn.
+// 26/08 tren production: 12/13 may co `lastTelemetryAt: null` — bridge chua tung nghe thay tieng
+// nao tu luc khoi dong lai. De trong thi 12 the canh nhau cung thieu mot dong, trong nhu loi.
+la('may off ma chua tung noi gi -> noi thang, khong de trong',
+   A.chuLau((() => { const m = may({ kn: 'unknown' }); m.connection.lastTelemetryAt = null; return m })()),
+   'chưa nói lần nào')
+
+console.log('\n=== P. The may: mau dang lam + chu HOAN THANH ===')
+function chuThe(m) {
+  const ra = []
+  ;(function di(n) { if (!n || !n.children) return; for (const c of n.children) { if (c.textContent) ra.push(c.textContent); di(c) } })(A.theMay(m))
+  return ra
+}
+const theXong = chuThe(may({ cur: 1000, tot: 1000, tu: 60 }))
+la('mau xong thi the ghi HOAN THANH', theXong.indexOf('HOÀN THÀNH') >= 0, true)
+la('  va KHONG con ghi "DA DUNG"', theXong.some((c) => /ĐÃ DỪNG/.test(c)), false)
+la('  kem dong ho "xong bao lau"', theXong.some((c) => /^xong 1 phút/.test(c)), true)
+la('the in ten mau dang lam', theXong.indexOf('thu.DST') >= 0, true)
+la('  co nhan "Mẫu" di kem, khong de ten tro tro mot minh', theXong.indexOf('Mẫu') >= 0, true)
+la('chua nap mau thi noi that, khong de trong',
+   chuThe(may({ cur: 0, tot: 0, mau: null })).indexOf('chưa nạp mẫu nào') >= 0, true)
+la('may off van in ten mau (so cu) — the co dong "Mat ket noi" rieng de canh bao',
+   chuThe(may({ kn: 'offline' })).indexOf('thu.DST') >= 0, true)
+const theDung = chuThe(may({ cur: 500, tot: 1000, tu: 60 }))
+la('do mau thi ghi DUNG GIUA MAU', theDung.indexOf('DỪNG GIỮA MẪU') >= 0, true)
+la('  kem phan tram da chay', theDung.indexOf('50%') >= 0, true)
+la('  kem dong ho "dung bao lau"', theDung.some((c) => /^dừng 1 phút/.test(c)), true)
+la('the ghi data-tinhtrang de CSS to mau',
+   A.theMay(may({ cur: 1000, tot: 1000 })).getAttribute('data-tinhtrang'), 'hoanthanh')
+la('  van giu data-trangthai cu (CSS nen + bai thu cu con doc)',
+   A.theMay(may({ cur: 1000, tot: 1000 })).getAttribute('data-trangthai'), 'stopped')
+
+console.log('\n=== H. canhTuTinh: bo cai the DA NOI, giu cai the CHUA NOI ===')
+const idBoQua = ['state:fault', 'connection:offline', 'connection:unknown', 'connection:stale', 'telemetry:error']
+for (const id of idBoQua) {
+  la(`bo "${id}" (the da co dong rieng)`,
+     A.canhTuTinh(may({ tt2: [ct(id, 'critical', 'chuyen gi do')] })).length, 0)
+}
+la('giu "state:idle-long" khi may dung ma KHONG do mau',
+   A.canhTuTinh(may({ cur: 0, tot: 0, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] }))
+     .map((a) => a.id), ['state:idle-long'])
+la('bo "state:idle-long" khi the DA co chip "Dung giua mau"',
+   A.canhTuTinh(may({ cur: 500, tot: 1000, tu: 400, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] })).length, 0)
+la('canh bao LA cua bridge sau nay van lot qua (chan tung cai, khong phai cho tung cai)',
+   A.canhTuTinh(may({ tt2: [ct('mot:thu-moi-tinh', 'critical', 'chưa ai biết là gì')] })).map((a) => a.id),
+   ['mot:thu-moi-tinh'])
+la('khong co derivedAlerts -> mang rong, khong no',
+   A.canhTuTinh({ identity: { id: 'x', name: 'x' }, connection: {}, telemetry: {} }).length, 0)
+la('moi id bi chan deu co ghi LY DO', idBoQua.every((id) => typeof A.CANH_TU_TINH_BO_QUA[id] === 'string'), true)
+
+console.log('\n=== I. chuNgan: bo ten may lap lai o dau ===')
+la('bo tien to ten may va dau cham cuoi',
+   A.chuNgan(may({}), 'Máy thử: đã dừng 7 phút.'), 'đã dừng 7 phút')
+la('ten may khong khop thi giu nguyen',
+   A.chuNgan(may({}), 'Máy khác: đã dừng 7 phút.'), 'Máy khác: đã dừng 7 phút')
+la('khong co gi thi tra chuoi rong, khong tra "undefined"', A.chuNgan(may({}), undefined), '')
+
+console.log('\n=== J. Chip tren the may ===')
+la('chip lay chu da rut gon, khong lap ten may',
+   chipCua(A.theMay(may({ cur: 0, tot: 0, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] }))),
+   ['đã dừng 7 phút'])
+la('canh bao bi chan KHONG len chip',
+   chipCua(A.theMay(may({ cur: 0, tot: 0, tt2: [ct('connection:unknown', 'warning', 'chưa kết luận được')] }))), [])
+la('dung giua mau: chi mot chip cua minh, khong kem chip bridge',
+   chipCua(A.theMay(may({ tu: 400, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] })))
+     .filter((c) => /dừng/i.test(c)).length, 1)
+
+console.log('\n=== K. Nhat ky: ghi ca luc BAT lan luc TAT ===')
+const n2 = A.nhatKy.length
+const im = may({ id: 'k1', cur: 0, tot: 0 })
+const keu = may({ id: 'k1', cur: 0, tot: 0, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] })
+A.ghiThayDoi(im, keu)
+la('bat -> 1 dong', A.nhatKy.length - n2, 1)
+la('  noi ro la bridge tu tinh', /bridge tự tính · đã dừng 7 phút/.test(A.nhatKy[n2].chu), true)
+A.ghiThayDoi(keu, keu)
+la('van keu -> KHONG ghi lai', A.nhatKy.length - n2, 1)
+A.ghiThayDoi(keu, im)
+la('tat -> ghi them 1 dong', A.nhatKy.length - n2, 2)
+la('  dong ay noi la HET', /hết cảnh báo "đã dừng 7 phút"/.test(A.nhatKy[n2 + 1].chu), true)
+A.ghiThayDoi(im, may({ id: 'k1', cur: 0, tot: 0, tt2: [ct('connection:unknown', 'warning', 'chưa kết luận được')] }))
+la('canh bao bi chan KHONG vao nhat ky (dong ket noi da lo roi)', A.nhatKy.length - n2, 2)
+
+console.log('\n=== L. O "Can xem": canh bao tu tinh MUC NANG keo may vao ===')
+A.datMay([may({ id: 'p', cur: 0, tot: 0, tt2: [ct('state:idle-long', 'warning', 'đã dừng 7 phút')] })])
+A.veTong()
+la('muc "warning" KHONG keo vao o (khong thi ca xuong sang len 13)',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '0')
+A.datMay([may({ id: 'p', cur: 0, tot: 0, tt2: [ct('connection:offline', 'critical', 'máy mất kết nối')] })])
+A.veTong()
+la('muc "critical" thi CO, ke ca khi bi chan khong len chip',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '1')
+A.datMay([may({ id: 'p', cur: 500, tot: 1000, tu: 400, tt2: [ct('state:fault', 'critical', 'máy báo hỏng')] })])
+A.veTong()
+la('mot may vua dung lau vua co canh nang van chi dem MOT lan',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '1')
+
+console.log('\n=== M. Duong BAO LOI tren man hinh (chua co ca may hong that de do) ===')
+// Máy giả KHÔNG được khai vào `may.json`, nên đường lỗi không thể thử qua production. Chỗ này
+// dựng đúng hình dạng bridge sinh ra cho một sự kiện lỗi: `telemetry.events` (sống 1-2 giây) và
+// `alerts` (còn cho tới khi có người bấm "đã xem") — cùng MỘT lời máy nói, đi vào hai đường khác nhau.
+function mayLoi(o) {
+  o = o || {}
+  const m = may({ id: o.id || 'loi1', cur: 4242, tot: 9999, tt: 'fault' })
+  const at = new Date(Date.now() - 30 * GIAY).toISOString()
+  m.telemetry.events = o.hetSuKien ? [] : [{
+    id: 'state-99', code: '99', source: 'controller', severity: 'critical',
+    message: 'Đứt chỉ kim số 7', occurredAt: at,
+  }]
+  m.alerts = [{
+    id: 'event:state-99', severity: 'critical', kind: 'controller-event',
+    title: 'Đứt chỉ kim số 7', detail: 'Mã 99', source: 'controller', since: at,
+    acknowledged: !!o.daXem,
+  }]
+  return m
+}
+
+la('the may in chip loi bang nguyen van loi may',
+   chipCua(A.theMay(mayLoi())).indexOf('Đứt chỉ kim số 7') >= 0, true)
+A.datMay([mayLoi()])
+A.veTong()
+la('o "Can xem" dem may loi',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '1')
+A.datMay([mayLoi({ daXem: true })])
+A.veTong()
+// Bấm "đã xem" là xác nhận ĐÃ ĐỌC cảnh báo, không phải đã sửa xong máy. Máy còn ở trạng thái
+// `fault` thì vẫn phải nằm trong ô — nếu không, một cái bấm nhầm sẽ xoá cái máy hỏng khỏi tầm mắt.
+la('may VAN o trang thai hong -> "da xem" khong dua no ra khoi o',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '1')
+const chaySach = mayLoi({ daXem: false }); chaySach.telemetry.status.value = 'running'; chaySach.telemetry.events = []
+A.datMay([chaySach])
+A.veTong()
+// Máy chạy lại rồi thì THẺ phải ghi ĐANG CHẠY (đó là sự thật của bây giờ), nhưng cái đứt chỉ
+// chưa ai bấm "đã xem" thì vẫn phải đếm ở ô LỖI — nếu không nó biến khỏi tầm mắt.
+la('may da chay lai: the noi that la dang chay', A.tinhTrang(chaySach), 'chay')
+la('may da chay lai nhung canh bao chua ai xac nhan -> van trong o',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '1')
+chaySach.alerts[0].acknowledged = true
+A.veTong()
+la('may chay lai VA da xac nhan -> ra khoi o',
+   (kho['tong'].innerHTML.match(/class="o-tong loi"[^>]*><b>(\d+)</) || [])[1], '0')
+
+const n3 = A.nhatKy.length
+A.ghiThayDoi(may({ id: 'loi2', tt: 'running' }), mayLoi({ id: 'loi2' }))
+const chuMoi = A.nhatKy.slice(n3).map((d) => d.chu)
+la('co ghi nguyen van loi may noi', chuMoi.some((c) => /Đứt chỉ kim số 7/.test(c)), true)
+la('co ghi doi tinh trang sang LOI',
+   chuMoi.some((c) => /tình trạng .* → LỖI/.test(c)), true)
+// Cùng một lời máy nói đi vào hai đường (events + alerts). Ghi hai lần là đúng cái "nhảy log" cần tránh.
+la('KHONG ghi hai dong cho cung mot loi',
+   chuMoi.filter((c) => /Đứt chỉ kim số 7/.test(c)).length, 1)
+
+// Sự kiện chỉ sống 1-2 giây rồi biến mất, nhưng cảnh báo còn. Lúc ấy KHÔNG được im.
+const n4 = A.nhatKy.length
+A.ghiThayDoi(may({ id: 'loi3', tt: 'running' }), mayLoi({ id: 'loi3', hetSuKien: true }))
+la('su kien da bay mat thi van con dong cho canh bao',
+   A.nhatKy.slice(n4).some((d) => /Đứt chỉ kim số 7/.test(d.chu)), true)
+
+console.log('\n----------------------------------------')
+console.log(hong === 0 ? `TAT CA ${dat} PHEP THU DAT` : `${dat} dat, ${hong} HONG`)
+process.exit(hong === 0 ? 0 : 1)
