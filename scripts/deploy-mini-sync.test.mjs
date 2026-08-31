@@ -92,10 +92,31 @@ describe('dahao-gateway.tar.gz (gói cài lên Mini)', () => {
     expect({ thieu, lech }).toEqual({ thieu: [], lech: [] })
   })
 
-  it.skipIf(!coGoi)('KHÔNG kèm giao diện — đây là dịch vụ thuần API', () => {
+  it.skipIf(!coGoi)('KHÔNG kèm bản build React cũ', () => {
     // Bất biến này thay cho "dist/ phải khớp bản build" của thời còn dashboard. Ship kèm một
     // bản build cũ lên Mini là mời người ta mở một màn hình không còn ai bảo trì.
+    // `xem/` KHÔNG nằm trong danh sách này — nó là màn hình vận hành đang chạy, xem hai bài dưới.
     const coUi = ['dist', 'index.html'].filter((x) => existsSync(join(giaiNen, 'deploy-mini', x)))
     expect(coUi).toEqual([])
+  })
+
+  // Gói này từng tự mâu thuẫn: ghi chú trong `dong_goi.sh` nói "dịch vụ thuần API" nên cố ý bỏ
+  // giao diện, trong khi `bridge.config.dahao-mqtt.json` ĐI KÈM lại đặt `uiPath: "./xem"`. Cài
+  // từ gói ấy thì bridge trả 404 "Chưa build giao diện" ở đúng cái trang cả xưởng đang nhìn —
+  // và không có gì kêu lên, vì bridge vẫn chạy, API vẫn xanh, chỉ màn hình là trống.
+  it.skipIf(!coGoi)('có đủ thứ mà uiPath trong cấu hình trỏ tới', () => {
+    const thuMuc = join(giaiNen, 'deploy-mini')
+    const cauHinh = JSON.parse(readFileSync(join(thuMuc, 'bridge.config.dahao-mqtt.json'), 'utf8'))
+    if (cauHinh.uiPath === null || cauHinh.uiPath === undefined) return   // thuần API thì không cần gì
+    const trang = join(thuMuc, cauHinh.uiPath, 'index.html')
+    expect(existsSync(trang), `Cấu hình trỏ uiPath tới ${cauHinh.uiPath} nhưng gói không có ${cauHinh.uiPath}/index.html — cài xong sẽ 404 ở trang vận hành. Thêm vào deploy-mini/dong_goi.sh.`)
+      .toBe(true)
+  })
+
+  it.skipIf(!coGoi)('màn hình vận hành trong gói khớp bản trong repo', () => {
+    const trongGoi = readFileSync(join(giaiNen, 'deploy-mini', 'xem', 'index.html'))
+    const trongRepo = readFileSync(join(repo, 'deploy-mini', 'xem', 'index.html'))
+    expect(trongGoi.equals(trongRepo), 'Gói lạc hậu — đóng gói lại: sh deploy-mini/dong_goi.sh')
+      .toBe(true)
   })
 })
