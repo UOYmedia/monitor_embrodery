@@ -1,0 +1,1775 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trạng thái máy thêu — trực tiếp</title>
+<!--
+  Màn hình TRỰC TIẾP, một file, không build, không phụ thuộc mạng ngoài.
+
+  Vì sao tách khỏi dashboard chính thay vì thêm một trang vào nó: cái này để **đưa cho người khác
+  xem trong vài phút**. Nó phải mở lên là chạy, không đăng nhập nhiều bước, không menu, không lọc,
+  và phải đọc được từ xa. Dashboard chính là công cụ làm việc hằng ngày — hai mục đích khác nhau
+  thì hai màn hình, gộp lại thì cái nào cũng dở.
+
+  Không dùng font hay thư viện ngoài: bridge chạy ngay trong xưởng, có lúc không có Internet, và
+  một màn hình treo tường mà chờ tải font từ Google là một màn hình trắng.
+
+  Nguồn dữ liệu duy nhất: WebSocket `/ws` của bridge. Bridge gửi `hello` rồi `fleet_state` ngay khi
+  nối, sau đó `machine_update` mỗi lần một máy đổi. Trang này KHÔNG gửi gì xuống máy — không có
+  đường lệnh nào ở đây cả.
+-->
+<style>
+:root {
+  /* Nền tối là chọn có chủ ý, không phải theo hệ điều hành: đây là màn hình treo ở xưởng, nhìn từ
+     xa, dưới đèn cao áp. Nền sáng ở khoảng cách đó là một mảng chói. */
+  --nen: #0e1317;
+  --the: #161e25;
+  --the-chim: #111920;
+  --vien: #27333d;
+  --chu: #e9eff5;
+  --chu-mo: #8697a5;
+
+  --chay: #3ddc84;
+  --dung: #f2b134;
+  --loi: #ff5f52;
+  --mat: #6d7d8b;
+  --xong: #4aa8ff;   /* HOÀN THÀNH: phải khác hẳn màu DỪNG, vì hai chuyện ngược nhau */
+  --nhan: #4cc2ff;
+
+  --chay-nen: #12291d;
+  --dung-nen: #2a2210;
+  --loi-nen: #2e1613;
+  --mat-nen: #1a2229;
+  --xong-nen: #10222f;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--nen);
+  color: var(--chu);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 20px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--vien);
+  background: var(--the-chim);
+}
+
+.bar h1 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; }
+.bar .xuong { color: var(--chu-mo); font-size: 0.9rem; }
+.bar .day { flex: 1 1 auto; }
+
+/* Nhịp sống: chấm này nhấp mỗi lần bridge đẩy một bản tin xuống. Nó là bằng chứng nhìn được rằng
+   trang đang nhận dữ liệu THẬT chứ không phải đang hiện lại một ảnh chụp đã đứng từ lâu. */
+.nhip { display: inline-flex; align-items: center; gap: 7px; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.nhip .cham { width: 9px; height: 9px; border-radius: 50%; background: var(--mat); flex: none; }
+.nhip.song .cham { background: var(--chay); }
+.nhip.song .cham.dap { animation: dap 620ms ease-out; }
+.nhip.dut .cham { background: var(--loi); }
+
+@keyframes dap {
+  0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.55); }
+  100% { transform: scale(1);   box-shadow: 0 0 0 11px rgba(61, 220, 132, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .nhip .cham.dap { animation: none; } }
+
+.dong-ho { font-variant-numeric: tabular-nums; font-size: 0.95rem; color: var(--chu-mo); }
+
+/* ---- dải tổng ---- */
+
+.tong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 20px 0;
+}
+
+.o-tong {
+  flex: 1 1 120px;
+  padding: 10px 14px;
+  border: 1px solid var(--vien);
+  border-radius: 10px;
+  background: var(--the);
+}
+.o-tong b { display: block; font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.o-tong span { font-size: 0.78rem; color: var(--chu-mo); text-transform: uppercase; letter-spacing: 0.06em; }
+.o-tong .ngan { display: none; }   /* nhãn rút gọn, chỉ dùng khi màn hình hẹp */
+.o-tong.chay b { color: var(--chay); }
+.o-tong.dung b { color: var(--dung); }
+.o-tong.loi b { color: var(--loi); }
+.o-tong.mat b { color: var(--mat); }
+.o-tong.off b { color: var(--mat); }
+
+/* ---- lưới máy ---- */
+
+.luoi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  padding: 14px 20px 28px;
+}
+
+.the {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--vien);
+  border-radius: 12px;
+  background: var(--the);
+  /* Dải màu bên trái: trạng thái đọc được từ mép màn hình, trước cả khi đọc chữ. */
+  border-left: 5px solid var(--mat);
+}
+.the[data-trangthai="running"] { border-left-color: var(--chay); }
+.the[data-trangthai="paused"],
+.the[data-trangthai="stopped"] { border-left-color: var(--dung); }
+.the[data-trangthai="fault"]   { border-left-color: var(--loi); }
+
+/* Viền trái đi theo TÌNH TRẠNG (từ vựng mới, xem `tinhTrang`) chứ không theo `status` thô của
+   bridge nữa: `stopped` gộp cả "thêu xong mẫu", "đứng dở mẫu" và "chưa nạp mẫu" vào một màu,
+   mà ba chuyện ấy cần ba phản ứng khác nhau. Đặt SAU khối trên để thắng (cùng độ ưu tiên thì
+   luật sau thắng); khối cũ giữ lại làm nền cho thẻ nào thiếu thuộc tính mới. */
+.the[data-tinhtrang="chay"]      { border-left-color: var(--chay); }
+.the[data-tinhtrang="hoanthanh"] { border-left-color: var(--xong); }
+.the[data-tinhtrang="dung"]      { border-left-color: var(--dung); }
+.the[data-tinhtrang="loi"]       { border-left-color: var(--loi); }
+.the[data-tinhtrang="off"]       { border-left-color: var(--mat); }
+.the[data-tinhtrang="cho"]       { border-left-color: var(--mat); }
+.the[data-tinhtrang="chuaro"]    { border-left-color: var(--mat); }
+
+.dau { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dau .ten { font-size: 1.02rem; font-weight: 650; }
+.dau .khu { font-size: 0.78rem; color: var(--chu-mo); white-space: nowrap; }
+
+/* Chữ trạng thái to: đọc từ xa được, và luôn đi kèm một KÝ HIỆU chứ không chỉ có màu — người
+   không phân biệt được màu vẫn phải đọc ra máy nào đang chạy. */
+.lon { display: flex; align-items: center; gap: 10px; }
+.lon .ky { font-size: 1.5rem; line-height: 1; }
+.lon .chu { font-size: 1.55rem; font-weight: 750; letter-spacing: 0.01em; }
+.lon .lau { margin-left: auto; text-align: right; font-size: 0.8rem; color: var(--chu-mo); font-variant-numeric: tabular-nums; }
+
+.the[data-trangthai="running"] .lon .chu, .the[data-trangthai="running"] .lon .ky { color: var(--chay); }
+.the[data-trangthai="paused"] .lon .chu, .the[data-trangthai="paused"] .lon .ky,
+.the[data-trangthai="stopped"] .lon .chu, .the[data-trangthai="stopped"] .lon .ky { color: var(--dung); }
+.the[data-trangthai="fault"] .lon .chu, .the[data-trangthai="fault"] .lon .ky { color: var(--loi); }
+.the[data-trangthai="unknown"] .lon .chu, .the[data-trangthai="unknown"] .lon .ky { color: var(--mat); }
+
+.the[data-tinhtrang="chay"] .lon .chu,      .the[data-tinhtrang="chay"] .lon .ky      { color: var(--chay); }
+.the[data-tinhtrang="hoanthanh"] .lon .chu, .the[data-tinhtrang="hoanthanh"] .lon .ky { color: var(--xong); }
+.the[data-tinhtrang="dung"] .lon .chu,      .the[data-tinhtrang="dung"] .lon .ky      { color: var(--dung); }
+.the[data-tinhtrang="loi"] .lon .chu,       .the[data-tinhtrang="loi"] .lon .ky       { color: var(--loi); }
+.the[data-tinhtrang="off"] .lon .chu,       .the[data-tinhtrang="off"] .lon .ky       { color: var(--mat); }
+.the[data-tinhtrang="cho"] .lon .chu,       .the[data-tinhtrang="cho"] .lon .ky       { color: var(--mat); }
+.the[data-tinhtrang="chuaro"] .lon .chu,    .the[data-tinhtrang="chuaro"] .lon .ky    { color: var(--mat); }
+
+.ket {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--the-chim);
+  font-size: 0.83rem;
+  font-variant-numeric: tabular-nums;
+}
+.ket .vien-cham { width: 8px; height: 8px; border-radius: 50%; background: var(--mat); flex: none; }
+.ket[data-ket="online"] .vien-cham { background: var(--chay); }
+.ket[data-ket="stale"]  .vien-cham { background: var(--dung); }
+.ket[data-ket="offline"] .vien-cham { background: var(--loi); }
+.ket .tuoi { margin-left: auto; color: var(--chu-mo); }
+
+/* ---- mũi thêu ---- */
+
+.mui { display: flex; flex-direction: column; gap: 6px; }
+.mui .hang { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 0.83rem; }
+.mui .so { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* `min-width: 0` để tên mẫu dài được cắt bằng dấu … thay vì bung rộng thẻ ra ngoài màn hình. */
+.mui .mau { min-width: 0; color: var(--chu-mo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Mẫu đang làm — hàng RIÊNG, không nhét vào góc phải dòng số mũi nữa. Đây là câu hỏi đầu tiên
+   người đứng máy hỏi khi nhìn một cái thẻ: "cái máy này đang chạy mẫu nào?" */
+.mau-hang { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.mau-hang .nhan { flex: none; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--chu-mo); }
+.mau-hang .ten-mau { min-width: 0; font-size: 0.95rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mau-hang.trong-mau .ten-mau { font-weight: 400; font-style: italic; color: var(--chu-mo); }
+.thanh { height: 7px; border-radius: 999px; background: var(--the-chim); overflow: hidden; }
+.thanh i { display: block; height: 100%; background: var(--nhan); border-radius: 999px; transition: width 400ms ease; }
+
+/* Máy mất kết nối: số vẫn còn đó nhưng là số CŨ. Làm mờ hẳn để đứng xa
+   không ai đọc nhầm thành số đang chạy, và ghi thẳng một dòng cho chắc. */
+.mui.cu .so, .mui.cu .mau { color: var(--chu-mo); }
+.mui.cu .thanh i { background: var(--mat); }
+.mui .cu-ghi { color: var(--chu-mo); font-size: 0.76rem; font-style: italic; }
+
+.trong { color: var(--chu-mo); font-size: 0.85rem; font-style: italic; }
+
+/* ---- cảnh báo ---- */
+
+.canh { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 3px 9px;
+  border: 1px solid var(--vien);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--mat-nen);
+}
+.chip.critical { background: var(--loi-nen); border-color: var(--loi); color: #ffb3ab; }
+.chip.warning  { background: var(--dung-nen); border-color: var(--dung); color: #ffd98a; }
+.chip.do-mau   { background: var(--dung-nen); border-color: var(--dung); color: #ffd98a; }
+
+/* Lỗi bridge không đọc được máy. Trường `telemetryError` có từ đầu trong dữ liệu mà chưa bao
+   giờ được vẽ ra — máy hỏng đường đọc thì thẻ vẫn trông y như máy bình thường đang rỗi. */
+.loi-doc {
+  border: 1px solid var(--loi); background: var(--loi-nen); color: #ffb3ab;
+  border-radius: 8px; padding: 7px 9px; font-size: 0.78rem; line-height: 1.35;
+}
+.ma-may { color: var(--chu-mo); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.ma-may b { color: var(--chu); font-weight: 700; }
+
+.chan { padding: 0 20px 28px; color: var(--chu-mo); font-size: 0.78rem; max-width: 78ch; }
+.chan code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ---- nhật ký gỡ rối ----
+   Mặc định đóng: màn hình này treo tường cho cả xưởng nhìn, không phải cửa sổ terminal.
+   Mở ra khi cần chứng minh "số này từ máy đẩy lên" chứ không phải trang tự vẽ. */
+
+.nut-log {
+  padding: 5px 11px; border: 1px solid var(--vien); border-radius: 999px;
+  background: transparent; color: var(--chu-mo);
+  font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.nut-log:hover { color: var(--chu); border-color: var(--chu-mo); }
+.nut-log[aria-expanded="true"] { color: var(--nhan); border-color: var(--nhan); }
+.nut-log:focus-visible { outline: 2px solid var(--nhan); outline-offset: 2px; }
+
+.log { margin: 0 20px 22px; border: 1px solid var(--vien); border-radius: 12px; background: var(--the); overflow: hidden; }
+.log-dau {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; border-bottom: 1px solid var(--vien); background: var(--the-chim);
+  font-size: 0.78rem; color: var(--chu-mo);
+}
+.log-dau .day { flex: 1 1 auto; }
+.log-dau button {
+  padding: 4px 10px; border: 1px solid var(--vien); border-radius: 6px;
+  background: transparent; color: var(--chu-mo); font: inherit; font-size: 0.76rem; cursor: pointer;
+}
+.log-dau button:hover { color: var(--chu); border-color: var(--chu-mo); }
+.log-dau button:focus-visible { outline: 2px solid var(--nhan); outline-offset: 2px; }
+.log-dau label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.log-dau input[type="checkbox"] { accent-color: var(--nhan); }
+
+.log-than {
+  max-height: 300px; overflow-y: auto; overflow-x: auto;
+  padding: 8px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem; line-height: 1.55;
+}
+.log-than .d { display: flex; gap: 10px; padding: 1px 14px; white-space: pre; }
+.log-than .d:hover { background: var(--the-chim); }
+.log-than .gio { color: var(--mat); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.log-than .loai { flex: 0 0 13ch; font-weight: 650; }
+.log-than .chu { flex: 1 1 auto; color: var(--chu); white-space: pre-wrap; word-break: break-word; }
+.log-than .tho { padding: 2px 14px 8px 14px; color: var(--chu-mo); white-space: pre-wrap; word-break: break-all; }
+
+/* Màu theo loại việc, để lướt mắt bắt được chỗ gãy mà không phải đọc từng dòng. */
+.log-than .d[data-muc="noi"]  .loai { color: var(--chay); }
+.log-than .d[data-muc="dut"]  .loai { color: var(--loi); }
+.log-than .d[data-muc="tin"]  .loai { color: var(--nhan); }
+.log-than .d[data-muc="canh"] .loai { color: var(--dung); }
+.log-than .d[data-muc="thuong"] .loai { color: var(--chu-mo); }
+
+.log-trong { padding: 10px 14px; color: var(--chu-mo); font-style: italic; }
+
+/* Ô chép tay: chỉ hiện khi trình duyệt không cho chép bằng lệnh. */
+.log-tay {
+  display: block; width: calc(100% - 28px); margin: 10px 14px 0; height: 110px;
+  border: 1px solid var(--nhan); border-radius: 8px; padding: 8px 10px;
+  background: var(--nen); color: var(--chu);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem;
+  resize: vertical;
+}
+
+/* ---- cổng nhập token ---- */
+
+.cong { max-width: 480px; margin: 12vh auto; padding: 22px; border: 1px solid var(--vien); border-radius: 12px; background: var(--the); }
+.cong h2 { margin: 0 0 8px; font-size: 1.05rem; }
+.cong p { margin: 0 0 14px; color: var(--chu-mo); font-size: 0.87rem; }
+.cong form { display: flex; gap: 8px; }
+.cong input {
+  flex: 1 1 auto; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--vien); border-radius: 8px;
+  background: var(--nen); color: var(--chu); font-size: 0.95rem;
+}
+.cong input:focus-visible, .cong button:focus-visible { outline: 2px solid var(--nhan); outline-offset: 2px; }
+.cong button {
+  padding: 10px 16px; border: 1px solid var(--nhan); border-radius: 8px;
+  background: var(--nhan); color: #06222f; font-size: 0.95rem; font-weight: 650; cursor: pointer;
+}
+.loi-cong { margin-top: 12px; color: #ffb3ab; font-size: 0.85rem; }
+
+/* ---- điện thoại ----------------------------------------------------------
+   Cùng một trang nhưng hai kiểu đọc. Treo tường thì người ta đứng xa nhìn cả lưới máy;
+   cầm điện thoại thì nhìn sát và mỗi lúc chỉ quan tâm một máy. Nên ở bề ngang hẹp:
+   dải đếm co lại thành một hàng mỏng (nhãn rút gọn, màu vẫn là thứ bắt mắt trước),
+   thẻ máy chiếm trọn bề ngang, chữ trạng thái vẫn to, nút bấm nới cho vừa đầu ngón tay,
+   và nhật ký bỏ cột cố định để không phải kéo ngang. */
+
+@media (max-width: 640px) {
+  .bar { padding: 10px 14px; gap: 3px 12px; }
+  .bar h1 { font-size: 1.02rem; }
+  .bar .xuong { font-size: 0.8rem; }
+  /* Ngắt dòng có chủ đích: tên xưởng ở hàng trên, tình trạng đường truyền ở hàng dưới.
+     Để mặc flex tự xuống dòng thì header nhảy loạn mỗi lần chữ "đang nối lại…" dài ra. */
+  .bar .day { flex: 1 0 100%; height: 0; }
+  .nhip { flex: 1 1 auto; min-width: 0; font-size: 0.8rem; }
+  .dong-ho { font-size: 0.88rem; }
+  .nut-log { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; font-size: 0.8rem; }
+
+  .tong { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px 14px 0; }
+  .o-tong { padding: 8px 3px; border-radius: 8px; text-align: center; }
+  .o-tong b { font-size: 1.3rem; }
+  .o-tong span { font-size: 0.6rem; letter-spacing: 0.02em; }
+  .o-tong .dai { display: none; }
+  .o-tong .ngan { display: inline; }
+
+  /* Bỏ `minmax(320px, …)`: máy 320px thì cột 320px không lọt nổi vào chỗ còn lại
+     sau khi trừ lề, và cả trang bị kéo ngang. */
+  .luoi { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px 22px; }
+  .the { padding: 14px; gap: 10px; border-left-width: 4px; }
+
+  /* Tên máy được xuống dòng, khu vực + đời máy nằm hẳn dòng dưới thay vì bị ép chung một dòng. */
+  .dau { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .dau .khu { white-space: normal; }
+
+  .lon { flex-wrap: wrap; row-gap: 2px; }
+  .lon .ky { font-size: 1.3rem; }
+  .lon .chu { font-size: 1.35rem; }
+  .lon .lau { font-size: 0.78rem; }
+
+  .ket { padding: 8px 10px; font-size: 0.8rem; }
+  .mui .so { font-size: 1.05rem; }
+
+  .log { margin: 0 14px 18px; }
+  /* Số dòng đứng riêng một hàng; bỏ khoảng đệm giãn để bốn cái điều khiển
+     còn đủ chỗ nằm chung một hàng thay vì đẩy nút "Xoá" xuống một mình. */
+  .log-dau { padding: 8px 10px; gap: 6px 10px; }
+  .log-dau #log-dem { flex: 1 0 100%; }
+  .log-dau .day { display: none; }
+  .log-dau button { padding: 0 12px; min-height: 34px; }
+  .log-dau label { min-height: 34px; }
+  .log-than { max-height: 50vh; overflow-x: hidden; font-size: 0.7rem; }
+  .log-than .d { flex-wrap: wrap; row-gap: 1px; padding: 4px 12px 5px; }
+  .log-than .loai { flex: 0 0 auto; }
+  /* Nội dung tụt xuống dòng riêng, thụt vào một chút, và mỗi mục có vạch ngăn —
+     không có hai thứ đó thì mấy dòng gấp khúc dính vào nhau, nhìn không ra đâu là đầu mục. */
+  .log-than .chu { flex: 1 1 100%; padding-left: 12px; }
+  .log-than .muc + .muc { border-top: 1px solid var(--vien); }
+  .log-than .tho { padding: 0 12px 8px; }
+  .log-trong { padding: 10px 12px; }
+  .log-tay { width: calc(100% - 20px); margin: 10px 10px 0; }
+
+  .chan { padding: 0 14px calc(24px + env(safe-area-inset-bottom, 0px)); font-size: 0.75rem; }
+
+  .cong { margin: 8vh 14px; padding: 18px; }
+  .cong form { flex-wrap: wrap; }
+  .cong input, .cong button { flex: 1 1 100%; }
+}
+
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="cong" id="cong" hidden>
+  <h2>Bridge này cần token để xem</h2>
+  <p>Dán token quyền <strong>xem</strong> vào đây. Token được giữ trong trình duyệt này, không gửi đi đâu khác ngoài chính bridge.</p>
+  <form id="cong-form">
+    <input id="cong-o" type="password" autocomplete="off" spellcheck="false" placeholder="Token" aria-label="Token quyền xem">
+    <button type="submit">Xem</button>
+  </form>
+  <p class="loi-cong" id="cong-loi" hidden role="alert"></p>
+</div>
+
+<div id="man" hidden>
+  <header class="bar">
+    <h1>Trạng thái máy thêu</h1>
+    <span class="xuong" id="ten-xuong">—</span>
+    <span class="day"></span>
+    <span class="nhip" id="nhip"><span class="cham" id="cham"></span><span id="nhip-chu">Đang nối…</span></span>
+    <span class="dong-ho" id="dong-ho">--:--:--</span>
+    <button type="button" class="nut-log" id="nut-log" aria-expanded="false" aria-controls="log">Nhật ký</button>
+  </header>
+
+  <div class="tong" id="tong"></div>
+  <main class="luoi" id="luoi"></main>
+
+  <section class="log" id="log" hidden aria-label="Nhật ký gỡ rối">
+    <div class="log-dau">
+      <span id="log-dem">0 dòng</span>
+      <span class="day"></span>
+      <label title="Mặc định nhật ký chỉ ghi việc ĐỔI. Bật cái này thì ghi nguyên văn từng bản tin — dùng lúc gỡ rối, và nó chảy rất nhanh."><input type="checkbox" id="log-tat-ca"> Ghi mọi bản tin</label>
+      <label><input type="checkbox" id="log-tho"> Kèm JSON thô</label>
+      <label><input type="checkbox" id="log-theo" checked> Tự cuộn</label>
+      <button type="button" id="log-chep">Chép</button>
+      <button type="button" id="log-xoa">Xoá</button>
+    </div>
+    <div class="log-than" id="log-than"><p class="log-trong">Chưa có gì. Nhật ký chỉ ghi việc đáng chú ý: máy đổi trạng thái, mất hoặc nối lại, bridge không đọc được máy, cảnh báo mới. Máy chạy đều thì chỗ này im.</p></div>
+  </section>
+
+  <footer class="chan">
+    Số liệu do chính máy đẩy lên bridge theo thời gian thực (Dahao BECS &rarr; gateway &rarr; cổng dial-in),
+    không phải người gõ vào. Ô nào máy không khai thì trang này để trống và nói là để trống —
+    không suy đoán hộ máy. Màn hình chỉ đọc: không có đường ra lệnh xuống máy từ đây.
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  // ---------------------------------------------------------------- chữ nghĩa
+  // Chép đúng nhãn của dashboard chính (`src/lib/format.ts`). Hai màn hình cùng một xưởng mà gọi
+  // một trạng thái bằng hai cái tên là cách nhanh nhất để hai người cãi nhau về cùng một cái máy.
+  var NHAN_TRANG_THAI = {
+    running: 'ĐANG CHẠY',
+    paused: 'TẠM DỪNG',
+    stopped: 'ĐÃ DỪNG',
+    fault: 'LỖI MÁY',
+    unknown: 'CHƯA RÕ',
+  }
+  var KY_HIEU = { running: '▶', paused: '❙❙', stopped: '■', fault: '✕', unknown: '?' }
+  var NHAN_KET_NOI = {
+    online: 'Đang kết nối',
+    stale: 'Dữ liệu cũ',
+    offline: 'Mất kết nối',
+    unknown: 'Không xác định',
+  }
+
+  /**
+   * TÌNH TRẠNG — từ vựng riêng của màn hình này, dùng chung cho ô tổng, thẻ máy, thứ tự sắp xếp
+   * và nhật ký. Nó KHÔNG phải `status` của bridge, và đó là chủ ý.
+   *
+   * `status` của bridge chỉ có 5 giá trị (running/paused/stopped/fault/unknown), nên `stopped`
+   * phải gánh cả ba chuyện khác hẳn nhau: máy thêu XONG mẫu, máy ĐỨNG DỞ mẫu, và máy CHƯA NẠP
+   * mẫu nào. Người xem không có cách nào phân biệt — cả ba đều hiện chữ "ĐÃ DỪNG".
+   *
+   * Đo trên 80.915 dòng STATE thật (8 tệp log, 13 máy) cho thấy cả ba đều có thật, không cái nào
+   * hiếm, và tỷ lệ rất khác nhau:
+   *
+   *   chưa/không có mẫu (tot=0)     61.316 lượt (75,8%)  ← máy bật mà rỗi nằm hết ở đây
+   *   HOÀN THÀNH (mũi chạm tổng)     9.712 lượt (12,0%)  ← 10/13 máy từng vào trạng thái này
+   *   đang dở mẫu (0 < mũi < tổng)   9.039 lượt (11,2%)
+   *
+   * Và 68,8% các đợt dở mẫu kết thúc bằng cách mũi CHẠM tổng — tức "hoàn thành" là kết cục
+   * THƯỜNG GẶP NHẤT của một mẫu, không phải một nhánh hiếm đáng bỏ qua.
+   */
+  var NHAN_TT = {
+    chay: 'ĐANG CHẠY',
+    hoanthanh: 'HOÀN THÀNH',
+    dung: 'DỪNG GIỮA MẪU',
+    loi: 'LỖI',
+    off: 'MÁY OFF',
+    cho: 'CHƯA CÓ MẪU',
+    chuaro: 'CHƯA RÕ',
+  }
+  var KY_HIEU_TT = { chay: '▶', hoanthanh: '✔', dung: '❙❙', loi: '✕', off: '⏻', cho: '·', chuaro: '?' }
+  /** Chữ đứng trước đồng hồ, để con số đọc một mình vẫn hiểu (ảnh chụp màn hình chẳng hạn). */
+  var CHU_LAU = {
+    chay: 'chạy được ', hoanthanh: 'xong ', dung: 'dừng ', loi: 'lỗi ',
+    off: 'off ', cho: 'rỗi ', chuaro: '',
+  }
+  /**
+   * `statusSince` của bridge nói về `status` THÔ. Chỉ được mượn nó làm mốc khi nó đang nói về
+   * đúng cái tình trạng thẻ đang hiện — nếu không thì con số là đồng hồ của một chuyện khác.
+   */
+  var KHOP_MOC = {
+    chay: ['running'],
+    dung: ['stopped', 'paused'],
+    hoanthanh: ['stopped', 'paused'],
+    cho: ['stopped', 'paused'],
+    loi: ['fault'],
+    chuaro: ['unknown'],
+  }
+
+  // ---------------------------------------------------------------- tiện ích
+
+  function el(id) { return document.getElementById(id) }
+
+  function so(n) {
+    return typeof n === 'number' && isFinite(n) ? n.toLocaleString('vi-VN') : '—'
+  }
+
+  /** Khoảng thời gian đọc được bằng mắt. `null` ra chữ, KHÔNG ra `0 giây`. */
+  function khoang(giay) {
+    if (giay === null || giay === undefined || !isFinite(giay)) return null
+    var t = Math.max(0, Math.round(giay))
+    if (t < 60) return t + ' giây'
+    var p = Math.floor(t / 60)
+    if (p < 60) return p + ' phút ' + (t % 60) + ' giây'
+    var g = Math.floor(p / 60)
+    if (g < 24) return g + ' giờ ' + (p % 60) + ' phút'
+    return Math.floor(g / 24) + ' ngày ' + (g % 24) + ' giờ'
+  }
+
+  function gio(d) {
+    return String(d.getHours()).padStart(2, '0') + ':' +
+           String(d.getMinutes()).padStart(2, '0') + ':' +
+           String(d.getSeconds()).padStart(2, '0')
+  }
+
+  // ---------------------------------------------------------------- trạng thái trang
+
+  var token = null
+  var may = []                 // MachineView[] mới nhất
+  var tenXuong = '—'
+  /**
+   * Chênh lệch đồng hồ máy chủ − đồng hồ máy đang xem, tính từ bản tin `hello`.
+   *
+   * Không có nó thì một máy tính lệch giờ 40 giây sẽ hiện "dữ liệu mới 40 giây trước" ngay lúc
+   * bản tin vừa tới, hoặc tệ hơn là một con số âm. Tuổi dữ liệu là thứ cả trang này dùng để nói
+   * "còn sống hay không", nên nó phải đo bằng đồng hồ của bridge.
+   */
+  var lechDongHo = 0
+  var lucNhanCuoi = null
+  var soBanTin = 0
+
+  function bayGio() { return Date.now() + lechDongHo }
+
+  // ---------------------------------------------------------------- vẽ
+
+  function trangThai(m) {
+    // Cùng luật với `effectiveStatus` của dashboard chính: mất kết nối thì trạng thái cũ KHÔNG
+    // còn là câu trả lời cho "bây giờ máy thế nào". Giữ nguyên chữ "ĐANG CHẠY" trên một máy đã
+    // im 3 tiếng là lời nói dối dễ chịu nhất trong cả cái nghề này.
+    var k = m.connection && m.connection.state
+    if (k === 'online' || k === 'stale') {
+      return (m.telemetry && m.telemetry.status && m.telemetry.status.value) || 'unknown'
+    }
+    return 'unknown'
+  }
+
+  function tuoiGiay(m) {
+    var moc = m.connection && m.connection.lastTelemetryAt
+    if (!moc) return null
+    var t = Date.parse(moc)
+    if (!isFinite(t)) return null
+    return (bayGio() - t) / 1000
+  }
+
+  function tenMay(m) {
+    return (m && m.identity && (m.identity.name || m.identity.id)) || '(máy lạ)'
+  }
+
+  /** `telemetryError` có thể là chuỗi hoặc vật thể tuỳ chỗ sinh ra nó — nhận cả hai. */
+  function chuLoiDoc(x) {
+    if (!x) return ''
+    if (typeof x === 'string') return x.slice(0, 240)
+    var c = x.message || x.reason || x.code
+    if (!c) { try { c = JSON.stringify(x) } catch (e) { c = String(x) } }
+    return String(c).slice(0, 240)
+  }
+
+  function jobCua(m) {
+    return (m && m.telemetry && m.telemetry.job && m.telemetry.job.value) || null
+  }
+
+  /**
+   * "Dừng giữa mẫu" — suy từ CHÍNH HAI CON SỐ máy khai, không phải từ việc đoán nghĩa mã trạng thái.
+   *
+   * Máy dừng khi vừa thêu xong mẫu là chuyện thường ngày. Máy dừng khi mẫu còn dở mới là thứ đáng
+   * để người ta đứng dậy đi xem. Hai cái ấy trên màn hình cũ trông giống hệt nhau: cùng chữ ĐÃ DỪNG.
+   */
+  function dungGiuaMau(m) {
+    return tinhTrang(m) === 'dung'
+  }
+
+  /**
+   * Một máy đang ở tình trạng nào — MỘT chỗ quyết định duy nhất cho cả trang.
+   *
+   * Thứ tự các câu hỏi ở đây là thứ tự ưu tiên, và nó có lý do:
+   *
+   *  1. Mất kết nối thì mọi con số còn lại là số CŨ. Nói "đang chạy" về một cái máy đã im 3 tiếng
+   *     là lời nói dối dễ chịu nhất trong cả cái nghề này. → `off` thắng tất cả.
+   *  2. Bridge đọc máy không nổi thì cũng không được suy tiếp từ số nó đọc được. → `loi`.
+   *  3. Cảnh báo bridge tự tính MỨC NẶNG cũng là lỗi. Viết theo lối "gặp cái nào nặng thì nhận"
+   *     chứ không liệt kê từng id, để cảnh báo nào bridge thêm về sau tự vào đây.
+   *  4. `unknown` KHÔNG được suy thành `dung`: broker trả `unknown` ở khung đầu và ngay sau khi
+   *     đổi mẫu, tức lúc nó thành thật nói "chưa đủ cơ sở". Suy tiếp là nói hộ máy.
+   */
+  function tinhTrang(m) {
+    var kn = (m && m.connection && m.connection.state) || 'unknown'
+    if (kn !== 'online' && kn !== 'stale') return 'off'
+    if (m.telemetryError) return 'loi'
+    var t = trangThai(m)
+    if (t === 'fault') return 'loi'
+    if ((m.derivedAlerts || []).some(function (a) { return a && a.severity === 'critical' })) return 'loi'
+    if (t === 'running') return 'chay'
+    if (t !== 'stopped' && t !== 'paused') return 'chuaro'
+    var j = jobCua(m)
+    var cur = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
+    var tot = j && typeof j.totalStitches === 'number' ? j.totalStitches : null
+    if (tot !== null && tot > 0 && cur !== null) {
+      if (cur >= tot) return 'hoanthanh'
+      if (cur > 0) return 'dung'
+    }
+    return 'cho'
+  }
+
+  /**
+   * Đồng hồ dự phòng phía trình duyệt: máy vào tình trạng này từ lúc nào.
+   *
+   * Chỉ dùng khi mốc của bridge không nói về đúng tình trạng đang hiện — ví dụ `telemetryError`,
+   * thứ bridge không ghi mốc riêng. Mốc phía trình duyệt mất khi tải lại trang, nên con số ra từ
+   * đây LUÔN là cận dưới và luôn kèm chữ "ít nhất".
+   */
+  var mocTT = {}
+
+  function soatMoc(m) {
+    var id = m && m.identity && m.identity.id
+    if (!id) return
+    var tt = tinhTrang(m)
+    var cu = mocTT[id]
+    if (!cu || cu.tt !== tt) mocTT[id] = { tt: tt, luc: bayGio() }
+  }
+
+  /** `{giay, itNhat}` hoặc `null` nếu không biết. KHÔNG tự ghi sổ — xem `soatMoc`. */
+  function lauTinhTrang(m) {
+    var tt = tinhTrang(m)
+    if (tt === 'off') {
+      // Máy off thì "bao lâu" = im lặng bao lâu, đo từ bản tin cuối cùng nó gửi.
+      var g = tuoiGiay(m)
+      return g === null ? null : { giay: g, itNhat: false }
+    }
+    var ss = m.statusSince
+    var nhan = KHOP_MOC[tt] || []
+    if (ss && ss.at && nhan.indexOf(ss.status) >= 0) {
+      var d = (bayGio() - Date.parse(ss.at)) / 1000
+      if (isFinite(d) && d >= 0) return { giay: d, itNhat: !!ss.approximate }
+    }
+    var cu = mocTT[m.identity.id]
+    if (!cu || cu.tt !== tt) return null
+    return { giay: (bayGio() - cu.luc) / 1000, itNhat: true }
+  }
+
+  /** Có cảnh báo MỨC NẶNG mà chưa ai bấm "đã xem". */
+  function coCanhNang(m) {
+    return (m.alerts || []).some(function (a) { return a && !a.acknowledged && a.severity === 'critical' })
+  }
+
+  /** Có bất kỳ cảnh báo nào chưa ai bấm "đã xem", mức nào cũng tính. */
+  function coCanhChuaXem(m) {
+    return (m.alerts || []).some(function (a) { return a && !a.acknowledged })
+  }
+
+  /** Chữ đồng hồ hoàn chỉnh cho một thẻ: "dừng ít nhất 12 phút 3 giây". */
+  function chuLau(m) {
+    var lt = lauTinhTrang(m)
+    if (lt === null) return ''
+    var k = khoang(lt.giay)
+    if (k === null) return ''
+    return (CHU_LAU[tinhTrang(m)] || '') + (lt.itNhat ? 'ít nhất ' : '') + k
+  }
+
+  /**
+   * Tên tiếng Việt cho MÃ TRẠNG THÁI — chỉ ba mã đã đo đủ chắc.
+   *
+   * Đo trên ~58.000 lượt khung liên tiếp trong toàn bộ `broker.log` (kể cả các bản đã xoay), 13 máy:
+   *
+   *   mã  0 —  4.477 lượt: 91,5% kèm mũi TĂNG,  99,6% đang ở giữa mẫu       → "đang thêu"
+   *   mã  2 —  1.155 lượt: 99,8% mũi ĐỨNG YÊN, 100,0% đang ở giữa mẫu       → "dừng giữa mẫu"
+   *   mã 15 — 52.347 lượt: 99,5% mũi đứng yên,  91,9% hết mẫu / chưa có mẫu → "không thêu"
+   *
+   * Mã -1 CỐ Ý để trống: chỉ 20 lượt, 30% tăng / 55% đứng — quá ít để gọi tên. Máy này không có
+   * trường báo lỗi nào để cãi lại, nên đặt tên cho một mã chưa hiểu là nói hộ máy.
+   *
+   * Và một điều chính phép đo dạy lại: MÃ KHÔNG ĐỦ để biết máy có đang dừng dở dang hay không —
+   * đợt dừng dài nhất đo được (60,1 phút) máy khai mã 15 chứ không phải mã 2. Nên `dungGiuaMau()`
+   * ở trên vẫn suy từ SỐ MŨI, không suy từ mã.
+   */
+  var TEN_MA = { '0': 'đang thêu', '2': 'dừng giữa mẫu', '15': 'không thêu' }
+
+  /**
+   * Dừng giữa mẫu bao lâu thì đáng đi xem — ĐO, không đoán.
+   *
+   * 182 đợt dừng giữa mẫu trên 13 máy (một đợt = các khung liên tiếp có số mũi đứng yên và
+   * 0 < mũi < tổng; cách nhau quá 60 giây thì tính là đứt, để mất kết nối không bị đếm thành
+   * một đợt dừng dài):
+   *
+   *   phân vị 50 =     2 giây      phân vị 90 =    44 giây
+   *   phân vị 95 =   213 giây      phân vị 99 =   983 giây      dài nhất = 3.608 giây (60,1 phút)
+   *   dưới 1 phút: 166 đợt = 91,2%   ·   trên 10 phút: 3 đợt = 1,6%
+   *
+   * 91,2% các đợt dừng xong trong vòng một phút — đó là NHỊP BÌNH THƯỜNG của nghề: đổi màu, cắt
+   * chỉ, thợ chỉnh tay. Báo hết cả 182 đợt là bắt người ta đọc 182 dòng để lấy ra chừng 16 dòng
+   * đáng đọc, và sau vài ngày thì không ai đọc dòng nào nữa. Hai mốc dưới đây cắt đúng phần đuôi.
+   */
+  var DUNG_DE_Y = 60      // giây — qua mốc này là đã ra ngoài 91,2% đợt dừng thường ngày
+  var DUNG_DI_XEM = 300   // giây — nằm giữa phân vị 95 và 99; chỉ ~3% số đợt dừng lên tới đây
+
+  /**
+   * Đợt dừng giữa mẫu đã kéo dài bao nhiêu giây, hoặc `null` nếu không đang dừng dở dang.
+   *
+   * Mốc lấy từ `statusSince` của bridge chứ không đo tại chỗ, để tải lại trang không làm đồng hồ
+   * chạy lại từ đầu. `approximate` nghĩa là bridge vừa khởi động lại và đã thấy máy ở trạng thái
+   * này sẵn rồi — khi ấy con số là CẬN DƯỚI, mà cận dưới vượt ngưỡng thì vẫn là vượt ngưỡng.
+   */
+  function lauDungGiuaMau(m) {
+    if (!dungGiuaMau(m)) return null
+    var ss = m.statusSince
+    if (!ss || !ss.at) return null
+    var d = (bayGio() - Date.parse(ss.at)) / 1000
+    return isFinite(d) && d >= 0 ? d : null
+  }
+
+  /** 0 = còn trong nhịp thường (hoặc chưa biết dừng từ bao giờ), 1 = đáng để ý, 2 = nên đi xem. */
+  function mucDung(m) {
+    var d = lauDungGiuaMau(m)
+    if (d === null) return 0
+    if (d >= DUNG_DI_XEM) return 2
+    if (d >= DUNG_DE_Y) return 1
+    return 0
+  }
+
+  /** Chữ "ít nhất " khi mốc thời gian chỉ là cận dưới. */
+  function chuItNhat(m) {
+    return (m.statusSince && m.statusSince.approximate) ? 'ít nhất ' : ''
+  }
+
+  function moTaMui(m) {
+    var j = jobCua(m)
+    var h = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
+    var t = j && typeof j.totalStitches === 'number' && j.totalStitches > 0 ? j.totalStitches : null
+    if (h === null || t === null) return ''
+    return ' · ' + so(h) + '/' + so(t) + ' mũi' + (h < t ? ' (giữa mẫu)' : ' (hết mẫu)')
+  }
+
+  /**
+   * Mã trạng thái máy TỰ KHAI, giữ lại ở đây vì sự kiện chỉ thoáng qua.
+   *
+   * Bridge chỉ giữ `telemetry.events` của khung MỚI NHẤT. Máy đổi mã ở khung này thì khung sau
+   * (1-2 giây) đã không còn sự kiện nữa — không nhặt lấy lúc nó bay qua là mất luôn.
+   */
+  var maCuoi = {}
+
+  /**
+   * Chống một cái máy "nháy" mã trạng thái làm ngập nhật ký.
+   *
+   * Đo thật lúc 17:31 ngày 26/08: máy 95C907 đang dừng giữa mẫu nhảy 0↔15 BA LẦN trong nửa giây,
+   * số mũi đứng im ở 6822/9993 suốt. Ghi từng lần là lấp kín nhật ký bằng đúng một sự việc.
+   *
+   * Nhưng bỏ đi thì mất luôn sự việc ấy — và nó rất có thể chính là dấu hiệu máy đang có chuyện.
+   * Nên: vài lần đầu ghi đủ, phần còn lại GOM thành một dòng có đếm số và nói rõ đã gom bao nhiêu.
+   * Không có dòng nào biến mất không dấu vết.
+   */
+  var NHAY_CUA_SO = 30000   // ms: bề rộng một cửa sổ gom
+  var NHAY_TRAN = 3         // quá ngần này lần đổi mã trong một cửa sổ thì gom nốt phần sau
+  var nhay = {}
+
+  /** Khép các cửa sổ đã hết hạn, ghi dòng tổng kết cho cửa sổ nào có phần bị gom. */
+  function xaNhay() {
+    var now = Date.now()
+    for (var id in nhay) {
+      var n = nhay[id]
+      if (now - n.tu <= NHAY_CUA_SO) continue
+      if (n.gom > 0) {
+        ghi('tin', n.ten, 'mã trạng thái nhảy qua lại giữa ' + Object.keys(n.ma).join(' / ') +
+            ' — ' + n.dem + ' lần trong ' + Math.round((now - n.tu) / 1000) + ' giây' +
+            ' (đã gom ' + n.gom + ' dòng cho khỏi ngập nhật ký)')
+      }
+      delete nhay[id]
+    }
+  }
+
+  /** true = cứ ghi dòng này; false = đang trong đợt nháy, để `xaNhay()` tổng kết sau. */
+  function chongNhay(m, ma) {
+    xaNhay()
+    var id = m.identity.id
+    var n = nhay[id]
+    if (!n) {
+      nhay[id] = { tu: Date.now(), ten: tenMay(m), dem: 1, gom: 0, ma: {} }
+      nhay[id].ma[ma] = 1
+      return true
+    }
+    n.dem++
+    n.ma[ma] = 1
+    if (n.dem <= NHAY_TRAN) return true
+    n.gom++
+    return false
+  }
+
+  var suKienDaGhi = {}
+  var suKienDem = 0
+  /** Sổ chống ghi trùng, KHÔNG phải sổ lưu trữ: đầy thì đổ đi, cùng lắm là ghi lặp một dòng. */
+  function daGhiSuKien(khoa) {
+    if (suKienDaGhi[khoa]) return true
+    if (suKienDem > 4000) { suKienDaGhi = {}; suKienDem = 0 }
+    suKienDaGhi[khoa] = 1
+    suKienDem++
+    return false
+  }
+
+  function khoaSuKien(m, e) {
+    return m.identity.id + '|' + (e.id || '') + '|' + (e.occurredAt || '')
+  }
+
+  /** Nhặt sự kiện của một máy vào `maCuoi` mà KHÔNG ghi nhật ký — dùng cho ảnh chụp lúc mới nối. */
+  function nhatSuKien(m, ghiLai) {
+    var ds = (m.telemetry && m.telemetry.events) || []
+    var moi = []
+    for (var i = 0; i < ds.length; i++) {
+      var e = ds[i]
+      if (daGhiSuKien(khoaSuKien(m, e))) continue
+      if (e.code !== undefined && e.code !== null) {
+        maCuoi[m.identity.id] = { ma: e.code, luc: e.occurredAt || null, chu: e.message || '' }
+      }
+      if (ghiLai) moi.push(e)
+    }
+    return moi
+  }
+
+  /**
+   * Cái quyết định nhật ký ghi gì: so bản tin mới với bản đang giữ, chỉ nói phần ĐỔI.
+   *
+   * Gom các dòng lại rồi mới ghi, để cả cụm kèm CHUNG một bản JSON thô — chứng cứ vẫn còn nguyên
+   * cho câu "số này ở đâu ra", mà không phải chép JSON ra nhiều lần.
+   */
+  function ghiThayDoi(cu, moi) {
+    var ten = tenMay(moi)
+    var dong = []
+    var i
+
+    // Lời máy nói đi vào HAI đường: `telemetry.events` (sống 1-2 giây rồi mất) và `alerts` của
+    // bridge (`deriveAlerts` biến mỗi sự kiện không phải `info` thành một cảnh báo, `title` chính
+    // là `message` của sự kiện). Mục 1 và mục 5 dưới đây đọc hai đường ấy, nên nếu không nhớ lại
+    // thì một lần đứt chỉ đẻ ra hai dòng y hệt nhau. Sổ này để mục 5 biết mục 1 vừa nói gì.
+    var daNoi = {}
+
+    // 1) lời máy tự nói (mã trạng thái đổi; sau này là mã lỗi thật khi có ca máy hỏng để đo)
+    var sk = nhatSuKien(moi, true)
+    for (i = 0; i < sk.length; i++) {
+      var e = sk[i]
+      var nang = e.severity === 'critical' || e.severity === 'error' || e.severity === 'warning'
+      // Việc nặng thì ghi bằng mọi giá, không cho bộ chống nháy gom: cái đáng sợ nhất của một bộ
+      // lọc là nó nuốt mất đúng dòng người ta cần đọc.
+      if (!nang && !chongNhay(moi, e.code)) continue
+      dong.push([nang ? 'canh' : 'tin',
+                 (e.message || '(máy không kèm lời)') +
+                 (e.code === undefined || e.code === null ? '' : ' [mã ' + e.code + ']')])
+      // `deriveAlerts` ghép id cảnh báo là `event:<id sự kiện>` — khớp đúng theo id chứ không so
+      // chuỗi lời nhắn, vì hai lỗi khác nhau vẫn có thể trùng chữ.
+      if (e.id) daNoi['event:' + e.id] = 1
+    }
+
+    if (!cu) {
+      dong.push(['noi', 'máy mới xuất hiện trên bridge'])
+    } else {
+      // 2) kết nối — tính trước mục 3 vì mục 3 cần biết lần đổi này có phải do kết nối không
+      var ka = (cu.connection && cu.connection.state) || 'unknown'
+      var kb = (moi.connection && moi.connection.state) || 'unknown'
+      if (ka !== kb) {
+        dong.push([kb === 'online' ? 'noi' : 'dut',
+                   'kết nối ' + (NHAN_KET_NOI[ka] || ka) + ' → ' + (NHAN_KET_NOI[kb] || kb)])
+      }
+
+      // 3) tình trạng vận hành, bằng đúng từ vựng trên thẻ
+      // Máy tắt/bật thì mục 2 vừa nói rồi; thêm "CHƯA CÓ MẪU → MÁY OFF" là hai dòng cho một việc.
+      var a = tinhTrang(cu), b = tinhTrang(moi)
+      if (a !== b && !((a === 'off' || b === 'off') && ka !== kb)) {
+        dong.push([b === 'loi' ? 'canh' : (b === 'off' ? 'dut' : 'noi'),
+                   'tình trạng ' + (NHAN_TT[a] || a) + ' → ' + (NHAN_TT[b] || b) + moTaMui(moi)])
+      }
+
+      // 4) bridge không đọc được máy
+      var la = cu.telemetryError ? chuLoiDoc(cu.telemetryError) : ''
+      var lb = moi.telemetryError ? chuLoiDoc(moi.telemetryError) : ''
+      if (la !== lb) {
+        dong.push(lb ? ['canh', 'bridge KHÔNG ĐỌC ĐƯỢC máy: ' + lb]
+                     : ['noi', 'đọc lại được máy, lỗi đọc đã hết'])
+      }
+
+      // 5) cảnh báo mới (so theo id, không so theo số lượng: một cái tắt một cái bật là số không đổi)
+      var co = {}
+      var dsa = cu.alerts || []
+      for (i = 0; i < dsa.length; i++) if (dsa[i].id) co[dsa[i].id] = 1
+      var dsb = moi.alerts || []
+      for (i = 0; i < dsb.length; i++) {
+        if (dsb[i].id && co[dsb[i].id]) continue
+        // Vừa in nguyên văn lời máy ở mục 1 rồi thì thôi. Chỉ bỏ khi CHÍNH lần gọi này đã in:
+        // nếu sự kiện đã bay mất từ lâu mà cảnh báo bây giờ mới tới, dòng này là dòng DUY NHẤT
+        // nói về nó, bỏ đi là mất hẳn.
+        if (dsb[i].id && daNoi[dsb[i].id]) continue
+        dong.push([dsb[i].severity === 'critical' ? 'canh' : 'tin',
+                   'cảnh báo mới · ' + (dsb[i].title || '(không tiêu đề)')])
+      }
+
+      // 5b) cảnh báo bridge tự tính — ghi cả lúc BẬT và lúc TẮT.
+      // Loại này tự tắt khi tình huống hết và không ai bấm xác nhận được, nên nhật ký chỉ ghi lúc
+      // bật sẽ để lại một câu hỏi treo: "cái cảnh báo lúc 9h15 ấy, hết lúc nào?".
+      var tuA = {}, tuB = {}, k
+      var dsc = canhTuTinh(cu)
+      for (i = 0; i < dsc.length; i++) tuA[dsc[i].id] = dsc[i]
+      var dsd = canhTuTinh(moi)
+      for (i = 0; i < dsd.length; i++) tuB[dsd[i].id] = dsd[i]
+      for (k in tuB) {
+        if (tuA[k]) continue
+        dong.push([tuB[k].severity === 'critical' ? 'canh' : 'tin',
+                   'bridge tự tính · ' + chuNgan(moi, tuB[k].title || k)])
+      }
+      for (k in tuA) {
+        if (tuB[k]) continue
+        // Nhắc lại nguyên văn lời cũ để người đọc nối được với dòng "bật" ở phía trên trong nhật ký.
+        dong.push(['noi', 'hết cảnh báo "' + chuNgan(moi, tuA[k].title || k) + '"'])
+      }
+
+      // 6) đổi mẫu — mốc để đọc lại số mũi, vì `currentStitch` đếm lại từ 0 theo từng mẫu
+      var ja = jobCua(cu), jb = jobCua(moi)
+      var ma = ja && ja.fileName || null, mb = jb && jb.fileName || null
+      if (ma !== mb && mb) dong.push(['tin', 'nạp mẫu ' + mb])
+    }
+
+    if (!dong.length) return
+    var tho = null
+    try { tho = JSON.stringify(moi) } catch (e2) { tho = null }
+    for (i = 0; i < dong.length; i++) ghi(dong[i][0], ten, dong[i][1], tho)
+  }
+
+  /**
+   * Cảnh báo bridge TỰ TÍNH (`derivedAlerts`) — khác hẳn `alerts`.
+   *
+   * `alerts` là cảnh báo bridge lưu lại và có người bấm "đã xem". `derivedAlerts` thì tính lại mỗi
+   * lần trả dữ liệu, tự tắt khi tình huống hết, và bridge TRẢ 400 nếu ai đó thử xác nhận chúng —
+   * nên trang này chỉ hiển thị, tuyệt đối không mọc nút "đã xem" cho chúng.
+   *
+   * Phần lớn danh sách ấy nói lại đúng thứ thẻ máy đã nói bằng chữ dễ hiểu hơn. In lần nữa chỉ làm
+   * thẻ dài ra chứ không thêm thông tin. Nên chúng bị chặn ở đây, KÈM lý do từng cái, để người sau
+   * biết đây là cố ý chứ không phải quên.
+   */
+  var CANH_TU_TINH_BO_QUA = {
+    'state:fault': 'thẻ đã in trạng thái hỏng to ở giữa',
+    'connection:offline': 'thẻ đã có dòng kết nối riêng',
+    'connection:unknown': 'thẻ đã có dòng kết nối riêng',
+    'connection:stale': 'tuổi dữ liệu trên thẻ đã tự già đi từng giây',
+    'telemetry:error': 'thẻ đã có dòng "bridge KHÔNG ĐỌC ĐƯỢC máy"',
+  }
+
+  /**
+   * Lọc lấy những cảnh báo tự tính CÒN THÊM ĐƯỢC gì cho thẻ máy.
+   *
+   * Hôm nay còn đúng một loại lọt qua: `state:idle-long` — máy còn nối, đã dừng quá ngưỡng của
+   * xưởng, mà KHÔNG dở mẫu nào. Đó đúng là khoảng trống của `mucDung()`: quy tắc ấy cố ý chỉ đếm
+   * lúc dừng dở mẫu, nên cái máy đứng không cả buổi mà chẳng nạp mẫu nào thì nó im. Khi thẻ đã có
+   * chip "Dừng giữa mẫu" thì bỏ nốt: cùng một sự thật, chữ của mình cụ thể hơn.
+   *
+   * Viết theo lối "chặn từng cái đã biết" chứ không phải "chỉ cho qua cái đã biết", nên cảnh báo
+   * nào bridge thêm về sau sẽ TỰ hiện ra ở đây thay vì biến mất im lặng.
+   */
+  function canhTuTinh(m) {
+    var ds = (m && m.derivedAlerts) || []
+    var ra = []
+    for (var i = 0; i < ds.length; i++) {
+      var a = ds[i]
+      if (CANH_TU_TINH_BO_QUA[a.id]) continue
+      if (a.id === 'state:idle-long' && dungGiuaMau(m)) continue
+      ra.push(a)
+    }
+    return ra
+  }
+
+  /** Bỏ "<tên máy>: " ở đầu tiêu đề và dấu chấm cuối — thẻ với nhật ký đều đã có cột tên máy. */
+  function chuNgan(m, chu) {
+    chu = String(chu === undefined || chu === null ? '' : chu)
+    var ten = m && m.identity && m.identity.name
+    if (ten && chu.indexOf(ten + ': ') === 0) chu = chu.slice(ten.length + 2)
+    return chu.replace(/\.$/, '')
+  }
+
+  function veTong() {
+    // BA ô tình trạng, không phải bốn. Ô "DỪNG" cũ gộp máy thêu xong mẫu, máy đứng dở mẫu và máy
+    // bật mà chưa nạp mẫu vào cùng một con số — ba chuyện cần ba phản ứng khác nhau, nên con số
+    // ấy không trả lời được câu nào. Nó chuyển xuống thẻ máy, nơi có chỗ nói rõ từng cái kèm đồng
+    // hồ. Ở đây chỉ giữ ba câu hỏi mà đứng xa 5 mét vẫn cần trả lời ngay.
+    var dem = { tong: may.length, chay: 0, loi: 0, off: 0 }
+    for (var i = 0; i < may.length; i++) {
+      var m = may[i]
+      var tt = tinhTrang(m)
+      if (tt === 'chay') dem.chay++
+      else if (tt === 'off') dem.off++
+      // Ô LỖI đếm RỘNG hơn chữ trên thẻ đúng một nhịp, và đó là chủ ý. Thẻ trả lời "máy ĐANG thế
+      // nào", ô này trả lời "còn gì chưa ai xử lý không". Máy vừa đứt chỉ, thợ gỡ xong cho chạy
+      // tiếp nhưng chưa ai bấm "đã xem" — thẻ ghi ĐANG CHẠY là đúng, mà để nó rơi khỏi ô LỖI thì
+      // cái đứt chỉ ấy biến khỏi tầm mắt luôn. Chỉ mức NẶNG kéo được vào đây; mức nhắc nhở mà cũng
+      // kéo thì ô này kêu suốt ngày và thành đồ trang trí.
+      // Nên ba ô KHÔNG chia hết đội máy và một máy có thể nằm ở hai ô — chúng trả lời ba câu hỏi
+      // khác nhau chứ không phải ba phần của một cái bánh.
+      if (tt === 'loi' || coCanhNang(m)) dem.loi++
+    }
+    // Mỗi ô mang hai nhãn: nhãn đủ cho màn hình rộng, nhãn rút gọn cho điện thoại. CSS chọn
+    // nhãn nào, JS không cần biết màn hình rộng bao nhiêu.
+    var o = [
+      ['', dem.tong, 'Tổng số máy', 'Tổng', 'Số máy đã khai trong xưởng'],
+      ['chay', dem.chay, 'Đang chạy', 'Chạy', 'Máy còn nối và số mũi đang tăng lên'],
+      ['loi', dem.loi, 'Lỗi', 'Lỗi',
+        'Máy tự báo hỏng, hoặc bridge không đọc được máy, hoặc bridge tự tính ra cảnh báo mức nặng. LƯU Ý: giao thức của máy này KHÔNG có trường báo lỗi nào, nên ô này chỉ đếm được lỗi ở phía tuyến đo — máy đứng dở mẫu lâu thì xem chữ trên thẻ.'],
+      ['off', dem.off, 'Máy off', 'Off', 'Máy không còn đẩy dữ liệu về (tắt máy, hoặc đứt mạng). Số trên thẻ là số cũ.'],
+    ]
+    var html = ''
+    for (var j = 0; j < o.length; j++) {
+      html += '<div class="o-tong ' + o[j][0] + '" title="' + (o[j][4] || o[j][2]) + '"><b>' + o[j][1] + '</b>' +
+        '<span class="dai">' + o[j][2] + '</span><span class="ngan">' + o[j][3] + '</span></div>'
+    }
+    el('tong').innerHTML = html
+  }
+
+  function theMay(m) {
+    var t = trangThai(m)
+    var tt = tinhTrang(m)
+    var d = document.createElement('article')
+    d.className = 'the'
+    d.setAttribute('data-trangthai', t)   // giữ lại: CSS cũ và bài thử cũ còn đọc thuộc tính này
+    d.setAttribute('data-tinhtrang', tt)
+    d.setAttribute('data-may', m.identity.id)
+
+    // --- đầu thẻ
+    var dau = document.createElement('div')
+    dau.className = 'dau'
+    var ten = document.createElement('span')
+    ten.className = 'ten'
+    ten.textContent = m.identity.name
+    var khu = document.createElement('span')
+    khu.className = 'khu'
+    khu.textContent = [m.identity.zone, m.identity.model].filter(Boolean).join(' · ') || '—'
+    dau.appendChild(ten); dau.appendChild(khu)
+    d.appendChild(dau)
+
+    // --- chữ trạng thái to
+    var lon = document.createElement('div')
+    lon.className = 'lon'
+    var ky = document.createElement('span'); ky.className = 'ky'; ky.textContent = KY_HIEU_TT[tt] || '?'
+    var chu = document.createElement('span'); chu.className = 'chu'; chu.textContent = NHAN_TT[tt] || tt
+    var lau = document.createElement('span'); lau.className = 'lau'; lau.setAttribute('data-lau', '1')
+    // Điền ngay lúc vẽ chứ không đợi nhịp giây kế tiếp: mỗi lần lưới vẽ lại, ô đồng hồ đứng trống
+    // gần một giây, và nó vẽ lại mỗi lần có bản tin — tức là nháy liên tục.
+    lau.textContent = chuLau(m)
+    lau.title = 'Đã ở tình trạng này bao lâu. "ít nhất" nghĩa là mốc bắt đầu chỉ là cận dưới.'
+    lon.appendChild(ky); lon.appendChild(chu); lon.appendChild(lau)
+    d.appendChild(lon)
+
+    // --- dòng kết nối
+    var ket = document.createElement('div')
+    ket.className = 'ket'
+    ket.setAttribute('data-ket', (m.connection && m.connection.state) || 'unknown')
+    var vc = document.createElement('span'); vc.className = 'vien-cham'
+    var kc = document.createElement('span'); kc.textContent = NHAN_KET_NOI[(m.connection && m.connection.state)] || 'Không xác định'
+    var tu = document.createElement('span'); tu.className = 'tuoi'; tu.setAttribute('data-tuoi', '1')
+    ket.appendChild(vc); ket.appendChild(kc); ket.appendChild(tu)
+    d.appendChild(ket)
+
+    // --- mẫu đang làm
+    // Tên mẫu là câu hỏi đầu tiên người đứng máy hỏi khi nhìn một cái thẻ. Trước đây nó nằm nép ở
+    // góc phải dòng số mũi, cùng cỡ chữ với chú thích, nên gần như không ai thấy.
+    var jm = jobCua(m)
+    var tenMau = (jm && jm.fileName) ? String(jm.fileName) : ''
+    var hm = document.createElement('div')
+    hm.className = 'mau-hang' + (tenMau ? '' : ' trong-mau')
+    var hmn = document.createElement('span'); hmn.className = 'nhan'; hmn.textContent = 'Mẫu'
+    var hmv = document.createElement('span'); hmv.className = 'ten-mau'
+    hmv.textContent = tenMau || 'chưa nạp mẫu nào'
+    if (tenMau) hmv.title = tenMau       // tên bị cắt bớt thì rê chuột vẫn đọc được đủ
+    hm.appendChild(hmn); hm.appendChild(hmv)
+    d.appendChild(hm)
+
+    // --- mũi thêu
+    var job = m.telemetry && m.telemetry.job && m.telemetry.job.value
+    var hien = job && typeof job.currentStitch === 'number' ? job.currentStitch : null
+    var tong = job && typeof job.totalStitches === 'number' && job.totalStitches > 0 ? job.totalStitches : null
+    if (hien !== null || tong !== null || (job && job.fileName)) {
+      // Máy mất kết nối thì mấy con số này là số CŨ, không phải số bây giờ.
+      // Làm mờ đi + ghi rõ một dòng, để đứng xa nhìn không tưởng là máy đang chạy.
+      var kn = (m.connection && m.connection.state) || 'unknown'
+      var conSong = kn === 'online' || kn === 'stale'
+      var mui = document.createElement('div')
+      mui.className = conSong ? 'mui' : 'mui cu'
+      var hang = document.createElement('div')
+      hang.className = 'hang'
+      var sos = document.createElement('span')
+      sos.className = 'so'
+      sos.textContent = so(hien) + (tong !== null ? ' / ' + so(tong) : '') + ' mũi'
+      // Tên mẫu đã có hàng riêng ngay trên, nên chỗ này đổi sang phần trăm — in tên mẫu hai lần
+      // trên cùng một thẻ là làm thẻ dài ra chứ không thêm gì.
+      var pt = document.createElement('span')
+      pt.className = 'mau'
+      pt.textContent = (tong !== null && hien !== null) ? Math.floor((hien / tong) * 100) + '%' : ''
+      hang.appendChild(sos); hang.appendChild(pt)
+      mui.appendChild(hang)
+      if (tong !== null && hien !== null) {
+        var th = document.createElement('div'); th.className = 'thanh'
+        var i2 = document.createElement('i')
+        i2.style.width = Math.max(0, Math.min(100, (hien / tong) * 100)) + '%'
+        th.appendChild(i2); mui.appendChild(th)
+      }
+      if (!conSong) {
+        var ghi = document.createElement('div')
+        ghi.className = 'cu-ghi'
+        ghi.textContent = 'Số cuối máy khai trước khi mất kết nối, không phải số bây giờ.'
+        mui.appendChild(ghi)
+      }
+      d.appendChild(mui)
+    } else {
+      var tr = document.createElement('p')
+      tr.className = 'trong'
+      tr.textContent = 'Máy chưa khai số mũi nào.'
+      d.appendChild(tr)
+    }
+
+    // --- bridge đọc máy không nổi
+    // Trường này có sẵn trong dữ liệu từ đầu mà chưa bao giờ được vẽ: máy hỏng đường đọc thì thẻ
+    // trông y hệt máy đang rỗi. Đó là đúng cái họ lỗi im lặng cả dự án này phải canh.
+    if (m.telemetryError) {
+      var ld = document.createElement('div')
+      ld.className = 'loi-doc'
+      ld.textContent = 'Bridge không đọc được máy: ' + chuLoiDoc(m.telemetryError)
+      d.appendChild(ld)
+    }
+
+    // --- mã trạng thái máy TỰ KHAI
+    // Số thô luôn hiện nguyên vẹn; tên tiếng Việt chỉ thêm cho ba mã đã đo đủ chắc (xem `TEN_MA`).
+    // Mã lạ thì để trần đúng như máy khai, không đoán — bên kia đọc màn hình này phải phân biệt
+    // được đâu là điều đã đo và đâu là điều còn chưa biết.
+    var mc = maCuoi[m.identity.id]
+    if (mc) {
+      var mm = document.createElement('div')
+      mm.className = 'ma-may'
+      var s1 = document.createElement('span'); s1.textContent = 'Mã máy tự khai: '
+      var s2 = document.createElement('b'); s2.textContent = String(mc.ma)
+      mm.appendChild(s1); mm.appendChild(s2)
+      var ten2 = TEN_MA[String(mc.ma)]
+      if (ten2) {
+        var s2b = document.createElement('span')
+        s2b.textContent = ' (' + ten2 + ')'
+        mm.appendChild(s2b)
+      }
+      var luc = mc.luc ? Date.parse(mc.luc) : NaN
+      if (isFinite(luc)) {
+        var s3 = document.createElement('span')
+        s3.textContent = ' · đổi ' + (khoang((bayGio() - luc) / 1000) || '—') + ' trước'
+        mm.appendChild(s3)
+      }
+      d.appendChild(mm)
+    }
+
+    // --- chip: thứ cần nhìn ngay
+    var chip = []
+    // Ba nấc, không phải một: dừng dở mẫu vài giây là chuyện thường (im lặng màu xám), quá 1 phút
+    // mới đáng để ý (vàng), quá 5 phút thì gần như chắc chắn có người cần biết (đỏ).
+    var mucD = mucDung(m)
+    if (dungGiuaMau(m)) {
+      var lauD = lauDungGiuaMau(m)
+      var chuD = lauD === null ? '' : ' ' + chuItNhat(m) + khoang(lauD)
+      chip.push([mucD === 2 ? 'critical' : (mucD === 1 ? 'do-mau' : ''), 'Dừng giữa mẫu' + chuD])
+    }
+    var chuaXn = (m.alerts || []).filter(function (a) { return !a.acknowledged })
+    for (var i = 0; i < chuaXn.length && i < 4; i++) chip.push([chuaXn[i].severity, chuaXn[i].title])
+    if (chuaXn.length > 4) chip.push(['', '+' + (chuaXn.length - 4) + ' nữa'])
+    // Cảnh báo bridge tự tính, chỉ phần thẻ chưa nói. Không nút, không "đã xem" — xem `canhTuTinh`.
+    var tuTinh = canhTuTinh(m)
+    for (var w = 0; w < tuTinh.length && w < 3; w++) chip.push([tuTinh[w].severity, chuNgan(m, tuTinh[w].title || tuTinh[w].id)])
+    if (tuTinh.length > 3) chip.push(['', '+' + (tuTinh.length - 3) + ' nữa'])
+    if (chip.length) {
+      var canh = document.createElement('div')
+      canh.className = 'canh'
+      for (var q = 0; q < chip.length; q++) {
+        var c = document.createElement('span')
+        c.className = 'chip ' + (chip[q][0] || '')
+        c.textContent = chip[q][1]
+        canh.appendChild(c)
+      }
+      d.appendChild(canh)
+    }
+
+    return d
+  }
+
+  function veLuoi() {
+    var luoi = el('luoi')
+    luoi.textContent = ''
+    // Máy cần chú ý nổi lên trước. Một cái màn hình sắp theo bảng chữ cái thì cái máy đang hỏng
+    // nằm ở đâu là chuyện may rủi.
+    // Thứ tự: lỗi → dừng dở mẫu → máy off → chưa rõ → hoàn thành → rỗi → đang chạy.
+    // "Đang chạy" xuống cuối vì nó là cái KHÔNG cần ai làm gì. "Hoàn thành" đứng trên "rỗi" vì
+    // máy vừa xong mẫu là máy đang chờ người tới thay hàng — mỗi phút nằm đó là một phút mất.
+    var hang = { loi: 0, dung: 1, off: 2, chuaro: 3, hoanthanh: 4, cho: 5, chay: 6 }
+    function bac(m) {
+      // Bridge không đọc được máy thì đứng trên tất cả: hỏng ở tuyến đo, mọi con số còn lại
+      // trên thẻ ấy đều đáng ngờ.
+      if (m.telemetryError) return -1
+      var h = hang[tinhTrang(m)]
+      if (h === undefined) h = 9
+      // Dừng khi mẫu còn dở đứng trên dừng vì đã xong mẫu — cùng chữ "ĐÃ DỪNG" nhưng khác hẳn nhau.
+      // Dừng càng lâu càng lên cao, để cái máy đứng im 20 phút không nằm lẫn giữa những máy vừa
+      // đổi màu xong.
+      if (dungGiuaMau(m)) h -= 0.25 + 0.25 * mucDung(m)
+      // Cảnh báo chưa ai bấm "đã xem" thì máy phải ở trong tầm mắt, kể cả khi nó đang chạy ngon
+      // trở lại — nhưng vẫn dưới máy ĐANG hỏng và máy ĐANG đứng dở mẫu, vì hai cái ấy là chuyện
+      // của bây giờ còn cảnh báo cũ là chuyện của lúc nãy.
+      if (coCanhChuaXem(m)) h = Math.min(h, 1.5)
+      return h
+    }
+    var sap = may.slice().sort(function (a, b) {
+      var d = bac(a) - bac(b)
+      return d !== 0 ? d : a.identity.name.localeCompare(b.identity.name, 'vi')
+    })
+    for (var i = 0; i < sap.length; i++) luoi.appendChild(theMay(sap[i]))
+    veTong()
+    nhipThoi()
+  }
+
+  /**
+   * Cập nhật mỗi giây những con số phải TỰ GIÀ ĐI kể cả khi không có bản tin nào.
+   *
+   * Đây là phần làm cho trang này trung thực: nếu bridge im, tuổi dữ liệu cứ tăng lên trước mắt
+   * người xem. Một trang chỉ vẽ lại khi có bản tin sẽ đứng hình mà trông vẫn như đang chạy.
+   */
+  /**
+   * Ghi nhật ký khi một đợt dừng vượt ngưỡng — MỘT DÒNG cho mỗi nấc, không lặp lại.
+   *
+   * Chỗ này bắt buộc phải nằm trong nhịp đồng hồ chứ không nằm trong nhánh "có bản tin mới": máy
+   * đang dừng vẫn đẩy bản tin đều đặn 1-2 giây một cái, nhưng NỘI DUNG không đổi chút nào, nên
+   * `ghiThayDoi()` không có gì để ghi. Đó chính là lý do đợt dừng 60,1 phút đo được trong log đi
+   * qua màn hình cũ mà không để lại một dòng nào.
+   */
+  var daBaoDung = {}
+
+  function soatDungLau(m) {
+    var id = m.identity.id
+    var muc = mucDung(m)
+    if (muc === 0) { delete daBaoDung[id]; return }     // máy chạy lại rồi thì quên đợt cũ đi
+    if ((daBaoDung[id] || 0) >= muc) return             // nấc này báo rồi, không báo lại
+    daBaoDung[id] = muc
+    var lau = chuItNhat(m) + khoang(lauDungGiuaMau(m))
+    ghi(muc === 2 ? 'canh' : 'tin', tenMay(m),
+        'dừng giữa mẫu đã ' + lau + moTaMui(m) + ' — ' +
+        (muc === 2 ? 'quá 5 phút, dài hơn ~97% các đợt dừng đã đo'
+                   : 'quá 1 phút, đã ra ngoài 91% nhịp dừng thường ngày'))
+  }
+
+  function nhipThoi() {
+    xaNhay()   // đợt nháy tạnh hẳn thì không còn bản tin nào để kích hoạt tổng kết nữa
+    var t = new Date()
+    el('dong-ho').textContent = gio(t)
+
+    var the = document.querySelectorAll('.the')
+    for (var i = 0; i < the.length; i++) {
+      var id = the[i].getAttribute('data-may')
+      var m = null
+      for (var j = 0; j < may.length; j++) if (may[j].identity.id === id) { m = may[j]; break }
+      if (!m) continue
+      soatMoc(m)      // phải chạy TRƯỚC `chuLau` phía dưới, vì nó là chỗ ghi mốc
+      soatDungLau(m)
+
+      var oTuoi = the[i].querySelector('[data-tuoi]')
+      if (oTuoi) {
+        var g = tuoiGiay(m)
+        oTuoi.textContent = g === null ? 'chưa nhận được gì' : khoang(g) + ' trước'
+      }
+
+      // `approximate` = bridge vừa khởi động lại và thấy máy ĐÃ ở trạng thái này rồi. Mốc ấy là
+      // lúc ta bắt đầu nhìn, không phải lúc máy đổi trạng thái — nên phải nói "ít nhất".
+      var oLau = the[i].querySelector('[data-lau]')
+      if (oLau) oLau.textContent = chuLau(m)
+    }
+
+    // Bản thân đường truyền cũng phải tự già đi.
+    if (lucNhanCuoi !== null) {
+      var im = Math.round((Date.now() - lucNhanCuoi) / 1000)
+      el('nhip-chu').textContent = im < 3
+        ? 'Trực tiếp · ' + soBanTin + ' bản tin'
+        : 'Trực tiếp · im ' + khoang(im)
+    }
+  }
+
+  // ---------------------------------------------------------------- nhật ký gỡ rối
+
+  /**
+   * Sổ ghi mọi thứ trang này nhận được từ bridge.
+   *
+   * Lý do có nó: khi bên kia hỏi "số này ở đâu ra", mở nhật ký ra chỉ vào bản tin thật, kèm JSON
+   * thô — chứ không phải nói suông. Nó chỉ QUAN SÁT, không đổi hành vi của trang: bỏ hẳn phần này
+   * đi thì màn hình vẫn chạy y nguyên.
+   *
+   * KHÔNG BAO GIỜ ghi giá trị token vào đây. Màn hình này để treo tường và chiếu cho người ngoài.
+   */
+  var LOG_TRAN = 500        // đã lọc thì 500 dòng là hàng giờ lịch sử, không còn là nửa phút
+  var LOG_THO_TRAN = 4000   // JSON thô dài hơn thế thì cắt, có ghi dấu cắt
+  var nhatKy = []
+  var logMo = false
+  var logTho = false
+  /**
+   * Chế độ "ghi mọi bản tin" — MẶC ĐỊNH TẮT.
+   *
+   * Trước đây trang ghi mỗi bản tin WebSocket một dòng. 13 máy đẩy mỗi 1-2 giây ⇒ khoảng 10
+   * dòng/giây; trần 300 dòng trôi hết trong nửa phút. Mở nhật ký ra chỉ thấy một dòng thác chảy,
+   * và đúng lúc cần tìm "lúc nãy máy nào vừa dừng" thì dòng ấy đã trôi mất từ lâu.
+   *
+   * Nay chia việc: SỐ nằm trên thẻ máy, nhật ký chỉ ghi cái ĐỔI. Máy chạy đều cả tiếng thì nhật
+   * ký im cả tiếng — im ở đây là tin tốt, không phải trang chết. Bật cờ này lại thì được y như cũ.
+   */
+  var logTatCa = false
+
+  function gioLog(d) {
+    function h(n, r) { return String(n).padStart(r || 2, '0') }
+    return h(d.getHours()) + ':' + h(d.getMinutes()) + ':' + h(d.getSeconds()) + '.' + h(d.getMilliseconds(), 3)
+  }
+
+  function nodeLog(m) {
+    // Mỗi mục là MỘT node bọc (dòng + phần thô), để cắt bớt dòng cũ chỉ việc bỏ node đầu tiên.
+    var boc = document.createElement('div')
+    boc.className = 'muc'
+    var d = document.createElement('div')
+    d.className = 'd'
+    d.setAttribute('data-muc', m.muc)
+    var a = document.createElement('span'); a.className = 'gio'; a.textContent = gioLog(m.luc)
+    var b = document.createElement('span'); b.className = 'loai'; b.textContent = m.loai
+    var c = document.createElement('span'); c.className = 'chu'; c.textContent = m.chu
+    d.appendChild(a); d.appendChild(b); d.appendChild(c)
+    boc.appendChild(d)
+    if (logTho && m.tho) {
+      var e = document.createElement('div'); e.className = 'tho'; e.textContent = m.tho
+      boc.appendChild(e)
+    }
+    return boc
+  }
+
+  function cuonLog() {
+    if (!el('log-theo').checked) return
+    var than = el('log-than')
+    than.scrollTop = than.scrollHeight
+  }
+
+  function veLog() {
+    var than = el('log-than')
+    than.textContent = ''
+    if (!nhatKy.length) {
+      var p = document.createElement('p')
+      p.className = 'log-trong'
+      p.textContent = 'Chưa có gì. Nhật ký chỉ ghi việc đáng chú ý: máy đổi trạng thái, mất hoặc nối lại, bridge không đọc được máy, cảnh báo mới. Máy chạy đều thì chỗ này im.'
+      than.appendChild(p)
+      return
+    }
+    var f = document.createDocumentFragment()
+    for (var i = 0; i < nhatKy.length; i++) f.appendChild(nodeLog(nhatKy[i]))
+    than.appendChild(f)
+    cuonLog()
+  }
+
+  function ghi(muc, loai, chu, tho) {
+    var m = { luc: new Date(), muc: muc, loai: loai, chu: chu, tho: tho || null }
+    if (m.tho && m.tho.length > LOG_THO_TRAN) m.tho = m.tho.slice(0, LOG_THO_TRAN) + ' …(cắt bớt)'
+    nhatKy.push(m)
+    if (nhatKy.length > LOG_TRAN) nhatKy.splice(0, nhatKy.length - LOG_TRAN)
+    el('log-dem').textContent = nhatKy.length + ' dòng'
+      + (nhatKy.length >= LOG_TRAN ? ' (chỉ giữ ' + LOG_TRAN + ' dòng gần nhất)' : '')
+
+    // Đóng thì chỉ gom vào bộ nhớ. Mở ra lúc nào cũng thấy đủ những gì đã xảy ra từ đầu.
+    if (!logMo) return
+    var than = el('log-than')
+    var trong = than.querySelector('.log-trong')
+    if (trong) than.removeChild(trong)
+    than.appendChild(nodeLog(m))
+    while (than.children.length > LOG_TRAN) than.removeChild(than.firstChild)
+    cuonLog()
+  }
+
+  function moLog(v) {
+    logMo = !!v
+    el('log').hidden = !logMo
+    el('nut-log').setAttribute('aria-expanded', logMo ? 'true' : 'false')
+    try { localStorage.setItem('xem-log', logMo ? '1' : '0') } catch (e) {}
+    if (logMo) veLog()
+    else boChepTay()
+  }
+
+  /** Một dòng người đọc được cho một cái máy, để khỏi phải mở JSON thô mới hiểu chuyện gì. */
+  function tomTatMay(m) {
+    if (!m || !m.identity) return '(bản tin không có phần máy)'
+    var kn = (m.connection && m.connection.state) || 'unknown'
+    var tuoi = tuoiGiay(m)
+    var job = m.telemetry && m.telemetry.job && m.telemetry.job.value
+    var hien = job && typeof job.currentStitch === 'number' ? job.currentStitch : '—'
+    var tong = job && typeof job.totalStitches === 'number' ? job.totalStitches : '—'
+    return (m.identity.name || m.identity.id)
+      + ' · ' + kn + (tuoi === null ? '' : '(' + Math.round(tuoi) + 's)')
+      + ' · ' + trangThai(m)
+      + ' · mũi ' + hien + '/' + tong
+      + ((job && job.fileName) ? ' · ' + job.fileName : '')
+  }
+
+  function tomTat(tin) {
+    if (tin.type === 'hello') return 'bridge chào, giờ máy chủ ' + (tin.serverTime || '—')
+    if (tin.type === 'fleet_state') {
+      var n = (tin.machines || []).length
+      var x = (tin.sites && tin.sites[0] && tin.sites[0].name) || '—'
+      return 'toàn đội: ' + n + ' máy · xưởng ' + x
+    }
+    if (tin.type === 'machine_update') return tomTatMay(tin.machine)
+    if (tin.type === 'machine_removed') return 'bỏ máy ' + tin.machineId
+    return '(loại bản tin lạ)'
+  }
+
+  function chuLog() {
+    return nhatKy.map(function (m) {
+      var d = gioLog(m.luc) + '  ' + m.loai + '  ' + m.chu
+      return m.tho ? d + '\n    ' + m.tho : d
+    }).join('\n')
+  }
+
+  el('nut-log').addEventListener('click', function () { moLog(!logMo) })
+
+  el('log-tat-ca').addEventListener('change', function () {
+    logTatCa = el('log-tat-ca').checked
+    try { localStorage.setItem('xem-log-tatca', logTatCa ? '1' : '0') } catch (e) {}
+    ghi('thuong', 'nhật ký', logTatCa
+      ? 'bật ghi MỌI bản tin — sẽ chảy khoảng 10 dòng mỗi giây'
+      : 'chỉ ghi việc đáng chú ý')
+  })
+
+  el('log-tho').addEventListener('change', function () {
+    logTho = el('log-tho').checked
+    try { localStorage.setItem('xem-log-tho', logTho ? '1' : '0') } catch (e) {}
+    if (logMo) veLog()
+  })
+
+  el('log-than').addEventListener('scroll', function () {
+    // Người xem đang kéo lên đọc lại thì đừng giật họ xuống đáy nữa — trên production bản tin về
+    // mỗi giây, không có cái này thì không đọc nổi dòng nào cũ. Kéo về sát đáy là tự bật lại.
+    var than = el('log-than')
+    var sat = than.scrollHeight - than.scrollTop - than.clientHeight < 24
+    if (el('log-theo').checked !== sat) el('log-theo').checked = sat
+  })
+
+  el('log-xoa').addEventListener('click', function () {
+    nhatKy = []
+    el('log-dem').textContent = '0 dòng'
+    boChepTay()
+    veLog()
+  })
+
+  el('log-chep').addEventListener('click', function () {
+    // Chép LUÔN kèm JSON thô, kể cả khi đang tắt hiển thị thô: bản chép là thứ gửi cho người khác
+    // đọc, cắt mất phần thô là cắt mất đúng cái chứng cứ.
+    var nut = el('log-chep')
+    function bao(ok) {
+      nut.textContent = ok ? 'Đã chép' : 'Không chép được'
+      setTimeout(function () { nut.textContent = 'Chép' }, 1600)
+    }
+    var s = chuLog()
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(s).then(function () { bao(true) }, function () { chepTay(s) })
+      return
+    }
+    // Vào bằng địa chỉ `http://` trong xưởng (tailnet, IP LAN) thì trình duyệt coi là không an toàn
+    // và giấu luôn `navigator.clipboard`.
+    chepTay(s)
+  })
+
+  /**
+   * Đường lùi khi trình duyệt không cho chép bằng lệnh (địa chỉ http, hoặc trang không được focus).
+   *
+   * Không cố lách: đổ nguyên văn ra một ô đã bôi đen sẵn để bấm Cmd+C / Ctrl+C. Xấu hơn nhưng
+   * chắc chắn có kết quả — chứ không phải bấm nút rồi dán ra thấy trống, không hiểu vì sao.
+   */
+  function chepTay(s) {
+    boChepTay()
+    var o = document.createElement('textarea')
+    o.id = 'log-tay'
+    o.className = 'log-tay'
+    o.readOnly = true
+    o.value = s
+    el('log').insertBefore(o, el('log-than'))
+    o.focus()
+    o.select()
+    var nut = el('log-chep')
+    nut.textContent = 'Bấm Cmd+C'
+    setTimeout(function () { nut.textContent = 'Chép' }, 4000)
+  }
+
+  function boChepTay() {
+    var cu = el('log-tay')
+    if (cu) cu.parentNode.removeChild(cu)
+  }
+
+  try {
+    logTho = localStorage.getItem('xem-log-tho') === '1'
+    el('log-tho').checked = logTho
+    logTatCa = localStorage.getItem('xem-log-tatca') === '1'
+    el('log-tat-ca').checked = logTatCa
+    if (localStorage.getItem('xem-log') === '1') moLog(true)
+  } catch (e) { /* trình duyệt cấm lưu: nhật ký vẫn chạy, chỉ là lần mở sau phải bấm lại */ }
+
+  // ---------------------------------------------------------------- nhận bản tin
+
+  function dapNhip() {
+    var c = el('cham')
+    c.classList.remove('dap')
+    void c.offsetWidth   // ép trình duyệt chạy lại animation cho lần đập kế tiếp
+    c.classList.add('dap')
+  }
+
+  function nhan(tin) {
+    lucNhanCuoi = Date.now()
+    soBanTin++
+
+    if (tin.type === 'hello') {
+      var t = Date.parse(tin.serverTime)
+      if (isFinite(t)) {
+        lechDongHo = t - Date.now()
+        // Mọi câu "x giây trước" trên màn hình đều tính theo giờ BRIDGE, không theo giờ máy này.
+        // Lệch lớn mà không biết là ngồi cãi nhau về một con số không có thật.
+        ghi('thuong', 'lệch giờ', 'đồng hồ máy này lệch đồng hồ bridge ' + Math.round(lechDongHo / 100) / 10 + ' giây')
+      }
+      return
+    }
+    if (tin.type === 'fleet_state') {
+      may = tin.machines || []
+      tenXuong = (tin.sites && tin.sites[0] && tin.sites[0].name) || '—'
+      el('ten-xuong').textContent = tenXuong
+      // Ảnh chụp lúc mới nối là MỐC, không phải thay đổi: nhặt mã trạng thái đang có vào thẻ,
+      // nhưng KHÔNG đổ cả nắm sự kiện cũ vào nhật ký — nối lại mạng ba lần không nên đẻ ra ba
+      // lần cùng một tin.
+      var canXem = 0
+      for (var g = 0; g < may.length; g++) {
+        nhatSuKien(may[g], false)
+        if (may[g].telemetryError || mucDung(may[g]) > 0 ||
+            (may[g].derivedAlerts || []).some(function (a) { return a.severity === 'critical' })) canXem++
+      }
+      ghi('noi', 'toàn đội', 'nhận ảnh chụp ' + may.length + ' máy · ' + canXem + ' máy cần xem')
+      veLuoi()
+      dapNhip()
+      return
+    }
+    if (tin.type === 'machine_update') {
+      var thay = false
+      for (var i = 0; i < may.length; i++) {
+        if (may[i].identity.id === tin.machine.identity.id) {
+          ghiThayDoi(may[i], tin.machine)   // so TRƯỚC khi đè, không thì mất bản cũ để mà so
+          may[i] = tin.machine
+          thay = true
+          break
+        }
+      }
+      if (!thay) { ghiThayDoi(null, tin.machine); may.push(tin.machine) }
+      veLuoi()
+      dapNhip()
+      return
+    }
+    if (tin.type === 'machine_removed') {
+      var bo = null
+      for (var r = 0; r < may.length; r++) if (may[r].identity.id === tin.machineId) bo = may[r]
+      ghi('dut', bo ? tenMay(bo) : String(tin.machineId), 'bridge bỏ máy này khỏi đội')
+      may = may.filter(function (m) { return m.identity.id !== tin.machineId })
+      veLuoi()
+      dapNhip()
+    }
+  }
+
+  // ---------------------------------------------------------------- đường truyền
+
+  var ws = null
+  var lanThu = 0
+
+  function noi() {
+    var giaoThuc = location.protocol === 'https:' ? 'wss://' : 'ws://'
+    var dia = giaoThuc + location.host + '/ws'
+    // Trình duyệt không cho đặt header `Authorization` lên WebSocket, nên token đi bằng
+    // subprotocol. Không nhét vào query string: query string nằm lại trong log của mọi proxy
+    // trên đường đi.
+    ghi('thuong', 'ws mở', 'đang nối ' + dia + (token ? ' (kèm token quyền xem)' : ' (không token)'))
+    try {
+      ws = token ? new WebSocket(dia, ['bearer', token]) : new WebSocket(dia)
+    } catch (e) {
+      ghi('dut', 'ws hỏng', 'không tạo được WebSocket: ' + (e && e.message ? e.message : e))
+      lenLich()
+      return
+    }
+
+    ws.onopen = function () {
+      lanThu = 0
+      el('nhip').className = 'nhip song'
+      el('nhip-chu').textContent = 'Trực tiếp'
+      ghi('noi', 'ws thông', 'đã nối, đang chờ bridge đẩy dữ liệu')
+    }
+    ws.onmessage = function (ev) {
+      var tin = null
+      try { tin = JSON.parse(ev.data) } catch (e) {
+        ghi('canh', 'tin hỏng', 'bản tin không phải JSON, bỏ qua', String(ev.data))
+        return
+      }
+      if (!tin) return
+      // Chỉ chế độ gỡ rối mới ghi nguyên văn từng bản tin. Mặc định `nhan()` tự ghi phần ĐỔI —
+      // xem lời giải thích ở chỗ khai `logTatCa`.
+      if (logTatCa) {
+        ghi('tin', tin.type || '(không loại)', tomTat(tin) + ' · ' + String(ev.data).length + ' byte', ev.data)
+      }
+      nhan(tin)
+    }
+    ws.onclose = function (ev) {
+      ws = null
+      el('nhip').className = 'nhip dut'
+      el('nhip-chu').textContent = 'Mất kết nối tới bridge — đang nối lại…'
+      // Mã 1006 = đứt mà không kịp bắt tay đóng: thường là mạng rớt, hoặc bridge từ chối token
+      // ngay ở lúc nâng cấp giao thức. Ghi cả mã lẫn lý do để lát nữa còn phân biệt được.
+      ghi('dut', 'ws đứt', 'mã ' + (ev && ev.code) + (ev && ev.reason ? ' · ' + ev.reason : '')
+        + ((ev && ev.code === 1006) ? ' (đứt đột ngột: mạng rớt hoặc bridge từ chối)' : ''))
+      lenLich()
+    }
+    ws.onerror = function () { /* onclose luôn chạy ngay sau, xử lý ở đó cho một chỗ */ }
+  }
+
+  function lenLich() {
+    lanThu++
+    // Lùi dần nhưng có trần: một màn hình treo tường phải tự nối lại được sau khi mạng xưởng
+    // chập, mà không nện vào bridge mỗi 100 ms suốt đêm.
+    var cho = Math.min(15000, 700 * Math.pow(1.6, Math.min(lanThu, 8)))
+    ghi('thuong', 'hẹn nối lại', 'lần thứ ' + lanThu + ', chờ ' + Math.round(cho / 100) / 10 + ' giây')
+    setTimeout(noi, cho)
+  }
+
+  // ---------------------------------------------------------------- vào cửa
+
+  function moMan() {
+    el('cong').hidden = true
+    el('man').hidden = false
+    noi()
+    setInterval(nhipThoi, 1000)
+    nhipThoi()
+  }
+
+  /**
+   * Thử một lần gọi có quyền để biết bridge này có cần token không.
+   *
+   * Hỏi trước bằng HTTP chứ không phóng thẳng WebSocket: WebSocket bị từ chối 401 chỉ báo về một
+   * sự kiện `close` trống rỗng, không phân biệt được "token sai" với "mạng hỏng" — và người cầm
+   * màn hình sẽ ngồi đợi một thứ không bao giờ tới.
+   */
+  function thu(tokenThu) {
+    var h = tokenThu ? { Authorization: 'Bearer ' + tokenThu } : {}
+    var bd = Date.now()
+    return fetch('/api/v2/fleet', { headers: h, cache: 'no-store' }).then(function (r) {
+      ghi(r.ok ? 'noi' : 'canh', 'http', 'GET /api/v2/fleet → ' + r.status + ' · ' + (Date.now() - bd) + ' ms'
+        + (tokenThu ? ' (có token)' : ' (không token)'))
+      if (r.ok) return { ok: true }
+      if (r.status === 401 || r.status === 403) return { ok: false, canToken: true }
+      return { ok: false, canToken: false, ma: r.status }
+    }).catch(function (e) {
+      ghi('dut', 'http hỏng', 'GET /api/v2/fleet không tới nơi sau ' + (Date.now() - bd) + ' ms: '
+        + (e && e.message ? e.message : e))
+      return { ok: false, canToken: false, ma: 0 }
+    })
+  }
+
+  /**
+   * Token đặt sẵn cạnh trang, để KHÔNG AI phải gõ gì khi mở màn hình này.
+   *
+   * File `token.json` do bridge phục vụ như một file tĩnh bình thường. Ai mở được trang thì cũng
+   * đọc được nó — đó là chủ ý: màn hình này để treo tường và gửi cho bên ngoài xem. Token trong đó
+   * là quyền XEM, nên đọc được số máy nhưng không ra lệnh được gì (POST vẫn 403).
+   *
+   * Không cất vào localStorage: đổi token bên bridge là lần mở sau ăn ngay, khỏi đi dọn từng máy.
+   */
+  function tokenDatSan() {
+    return fetch('token.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null })
+      // Thiếu file thì bridge trả về chính index.html (200 text/html) chứ không phải 404,
+      // nên r.json() sẽ ném — rơi xuống catch, coi như không có token đặt sẵn.
+      .then(function (j) {
+        var t = (j && typeof j.token === 'string' && j.token) ? j.token : null
+        // Chỉ ghi ĐỘ DÀI, không bao giờ ghi giá trị: nhật ký này để chiếu cho người khác xem.
+        ghi(t ? 'noi' : 'canh', 'token', t ? 'có token đặt sẵn (' + t.length + ' ký tự)' : 'token.json không có token dùng được')
+        return t
+      })
+      .catch(function () {
+        ghi('canh', 'token', 'không có token.json cạnh trang')
+        return null
+      })
+  }
+
+  function hienCong() {
+    el('cong').hidden = false
+    el('cong-o').focus()
+  }
+
+  function batDau() {
+    ghi('thuong', 'mở trang', location.origin + location.pathname + ' · ' + Intl.DateTimeFormat().resolvedOptions().timeZone)
+
+    // Thứ tự tìm token: địa chỉ (dán một lần rồi thôi) → trình duyệt (lần mở sau) → hỏi.
+    var q = new URLSearchParams(location.search)
+    var tuDiaChi = q.get('token')
+    var luu = null
+    try { luu = localStorage.getItem('xem-token') } catch (e) { /* trình duyệt cấm lưu: vẫn xem được, chỉ là lần sau phải dán lại */ }
+    token = tuDiaChi || luu || null
+
+    if (tuDiaChi) {
+      try { localStorage.setItem('xem-token', tuDiaChi) } catch (e) {}
+      // Xoá token khỏi thanh địa chỉ ngay sau khi cất: một cái màn hình đang chiếu cho người khác
+      // xem thì thanh địa chỉ cũng là thứ người ta đọc được.
+      history.replaceState(null, '', location.pathname)
+    }
+
+    thu(token).then(function (kq) {
+      if (kq.ok) { moMan(); return }
+      if (kq.canToken) {
+        // Chưa có token dùng được: thử token đặt sẵn trước đã. Ô nhập chỉ hiện ra khi
+        // cả hai đường đều không xong — chứ không bắt người xem gõ khi không cần.
+        return tokenDatSan().then(function (t) {
+          if (!t) { hienCong(); return }
+          return thu(t).then(function (k2) {
+            if (k2.ok) { token = t; moMan() } else { hienCong() }
+          })
+        })
+      }
+      // Bridge không trả lời hoặc trả lỗi khác: vẫn mở màn hình, để phần "mất kết nối" tự nói ra.
+      moMan()
+    })
+  }
+
+  el('cong-form').addEventListener('submit', function (ev) {
+    ev.preventDefault()
+    var v = el('cong-o').value.trim()
+    if (!v) return
+    var loi = el('cong-loi')
+    loi.hidden = true
+    thu(v).then(function (kq) {
+      if (kq.ok) {
+        token = v
+        try { localStorage.setItem('xem-token', v) } catch (e) {}
+        moMan()
+      } else {
+        loi.hidden = false
+        loi.textContent = kq.canToken
+          ? 'Token này không xem được đội máy. Kiểm tra lại, hoặc xin token quyền xem.'
+          : 'Không gọi được tới bridge (mã ' + (kq.ma || 'không rõ') + ').'
+      }
+    })
+  })
+
+  batDau()
+})()
+</script>
+</body>
+</html>
