@@ -1462,7 +1462,7 @@
             "fields": {},
             "sort": [
               {
-                "field": "Tình trạng",
+                "field": "Máy",
                 "desc": false
               }
             ]

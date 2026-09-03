@@ -1336,35 +1336,19 @@ body {
     nhoViec.quet(may)
     var luoi = el('luoi')
     luoi.textContent = ''
-    // Máy cần chú ý nổi lên trước. Một cái màn hình sắp theo bảng chữ cái thì cái máy đang hỏng
-    // nằm ở đâu là chuyện may rủi.
-    // Thứ tự: lỗi → dừng dở mẫu → máy off → chưa rõ → hoàn thành → rỗi → đang chạy.
-    // "Đang chạy" xuống cuối vì nó là cái KHÔNG cần ai làm gì. "Hoàn thành" đứng trên "rỗi" vì
-    // máy vừa xong mẫu là máy đang chờ người tới thay hàng — mỗi phút nằm đó là một phút mất.
-    // `tat-han` và `cum-im` chen ngay sau `off` vì cả ba đều là "máy không còn nói", chỉ khác lý
-    // do — người ở xưởng cần thấy chúng cùng một chỗ. `tat-may` và `ngoai-gio` xuống dưới `chay`
-    // vì đó là hai chuyện KHÔNG cần ai làm gì: thợ chủ động tắt, và hết giờ làm.
-    var hang = { loi: 0, dung: 1, off: 2, 'tat-han': 2.4, 'cum-im': 2.6, chuaro: 3,
-                 hoanthanh: 4, cho: 5, chay: 6, 'tat-may': 7, 'ngoai-gio': 8 }
-    function bac(m) {
-      // Bridge không đọc được máy thì đứng trên tất cả: hỏng ở tuyến đo, mọi con số còn lại
-      // trên thẻ ấy đều đáng ngờ.
-      if (m.telemetryError) return -1
-      var h = hang[tinhTrang(m)]
-      if (h === undefined) h = 9
-      // Dừng khi mẫu còn dở đứng trên dừng vì đã xong mẫu — cùng chữ "ĐÃ DỪNG" nhưng khác hẳn nhau.
-      // Dừng càng lâu càng lên cao, để cái máy đứng im 20 phút không nằm lẫn giữa những máy vừa
-      // đổi màu xong.
-      if (dungGiuaMau(m)) h -= 0.25 + 0.25 * mucDung(m)
-      // Cảnh báo chưa ai bấm "đã xem" thì máy phải ở trong tầm mắt, kể cả khi nó đang chạy ngon
-      // trở lại — nhưng vẫn dưới máy ĐANG hỏng và máy ĐANG đứng dở mẫu, vì hai cái ấy là chuyện
-      // của bây giờ còn cảnh báo cũ là chuyện của lúc nãy.
-      if (coCanhChuaXem(m)) h = Math.min(h, 1.5)
-      return h
+    // Vị trí thẻ CỐ ĐỊNH theo số máy (Máy 1 … Máy 19), đúng thứ tự máy đứng trong xưởng. Trước đây
+    // màn hình xếp máy cần chú ý lên đầu, nghe hợp lý nhưng người đứng xưởng bảo: mỗi lần một máy
+    // đổi màu là cả lưới xáo lại, mắt phải đi tìm "Máy 5" từ đầu. Tình trạng đã có màu thẻ và ô
+    // tổng lo; chỗ đứng thì phải như cái máy ngoài kia — không nhúc nhích.
+    // Số lấy từ đuôi tên ("Máy 12" → 12); tên không có số thì xuống cuối, xếp theo chữ.
+    function soMay(m) {
+      var t = /(\d+)\s*$/.exec((m.identity && m.identity.name) || '')
+      return t ? parseInt(t[1], 10) : Infinity
     }
     var sap = may.slice().sort(function (a, b) {
-      var d = bac(a) - bac(b)
-      return d !== 0 ? d : a.identity.name.localeCompare(b.identity.name, 'vi')
+      var sa = soMay(a), sb = soMay(b)
+      if (sa !== sb) return sa < sb ? -1 : 1
+      return a.identity.name.localeCompare(b.identity.name, 'vi')
     })
     for (var i = 0; i < sap.length; i++) luoi.appendChild(theMay(sap[i]))
     veTong()
