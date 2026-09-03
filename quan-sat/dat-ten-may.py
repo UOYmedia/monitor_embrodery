@@ -166,7 +166,13 @@ if not tok_ghi:
 hom_nay = __import__('datetime').datetime.utcnow().strftime('%Y-%m-%d')
 xong, hong = 0, []
 for ma, i, _tc, tm, _kc, km in doi:
-    than = {'name': tm, 'zone': km,
+    # PATCH của bridge không phải sửa-từng-trường: nó đi qua pairMany → validateMachineInput,
+    # tức là upsert NGUYÊN bản ghi. siteId/ipAddress thiếu là 400; model/serial/macAddress
+    # thiếu là bị xoá thành null. Nên chép lại từ bản ghi đang có, chỉ thay tên/khu/ghi chú.
+    # (assetTag, adapter, verification, maintenance, giá mũi: bridge tự giữ theo bản cũ.)
+    than = {'siteId': i.get('siteId'), 'ipAddress': i.get('ipAddress'),
+            'model': i.get('model'), 'serial': i.get('serial'), 'macAddress': i.get('macAddress'),
+            'name': tm, 'zone': km,
             'note': 'Định danh %s. Tên và vị trí do người khai tại xưởng ngày %s.' % (ma, hom_nay)}
     try:
         goi('/api/v2/machines/' + i['id'], 'PATCH', than, tok_ghi)

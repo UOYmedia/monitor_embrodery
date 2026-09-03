@@ -1,54 +1,78 @@
 {
-  "3CE4B0C54F54": {
-    "ten": "Máy C54F54",
-    "khu": "Chưa gán"
-  },
-  "602602621294": {
-    "ten": "Máy 621294",
-    "khu": "Chưa gán"
-  },
-  "602602621948": {
-    "ten": "Máy 621948",
-    "khu": "Chưa gán"
-  },
-  "602602911CB8": {
-    "ten": "Máy 911CB8",
-    "khu": "Chưa gán"
-  },
-  "6026029341EB": {
-    "ten": "Máy 9341EB",
-    "khu": "Chưa gán"
-  },
-  "6026029348ED": {
-    "ten": "Máy 9348ED",
+  "602602A6F22B": {
+    "ten": "Máy 1",
     "khu": "Chưa gán"
   },
   "60260295C907": {
-    "ten": "Máy 95C907",
+    "ten": "Máy 2",
     "khu": "Chưa gán"
   },
-  "60260298B4C7": {
-    "ten": "Máy 98B4C7",
+  "6026029613C2": {
+    "ten": "Máy 3",
     "khu": "Chưa gán"
   },
-  "602602A6F22B": {
-    "ten": "Máy A6F22B",
+  "60260295BE00": {
+    "ten": "Máy 4",
     "khu": "Chưa gán"
   },
-  "A15-MQTT": {
-    "ten": "Máy thêu A15 (qua gateway MQTT)",
-    "khu": "Chuyền A"
-  },
-  "B83DF60B3FB8": {
-    "ten": "Máy 0B3FB8",
-    "khu": "Chưa gán"
-  },
-  "C0D60A8F4D52": {
-    "ten": "Máy 8F4D52",
+  "3CE4B0C54F54": {
+    "ten": "Máy 5",
     "khu": "Chưa gán"
   },
   "F4B8985355EF": {
-    "ten": "Máy 5355EF",
+    "ten": "Máy 6",
+    "khu": "Chưa gán"
+  },
+  "6026029348ED": {
+    "ten": "Máy 7",
+    "khu": "Chưa gán"
+  },
+  "B83DF60B3FB8": {
+    "ten": "Máy 8",
+    "khu": "Chưa gán"
+  },
+  "60260298B4C7": {
+    "ten": "Máy 9",
+    "khu": "Chưa gán"
+  },
+  "C0D60A8F4D52": {
+    "ten": "Máy 10",
+    "khu": "Chưa gán"
+  },
+  "602602621294": {
+    "ten": "Máy 11",
+    "khu": "Chưa gán"
+  },
+  "602602621948": {
+    "ten": "Máy 12",
+    "khu": "Chưa gán"
+  },
+  "6026029341EB": {
+    "ten": "Máy 13",
+    "khu": "Chưa gán"
+  },
+  "6026029341B8": {
+    "ten": "Máy 14",
+    "khu": "Chưa gán"
+  },
+  "602602911CB8": {
+    "ten": "Máy 15",
+    "khu": "Chưa gán"
+  },
+  "602602933651": {
+    "ten": "Máy 16",
+    "khu": "Chưa gán"
+  },
+  "A15-MQTT": {
+    "ten": "Máy 17",
+    "khu": "Chuyền A"
+  },
+  "6026029EF56E": {
+    "ten": "Máy 18",
+    "khu": "Chưa gán"
+  },
+  "602602932EBC": {
+    "ten": "Máy 19",
     "khu": "Chưa gán"
   }
 }
