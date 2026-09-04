@@ -158,6 +158,10 @@ Một bảng ôm hết mọi thứ thì ai mở ra cũng phải tự lọc bằn
 | `dahao-mot-may` | thợ đứng tại máy | riêng máy này đang ra sao | 10s | 12h |
 | `dahao-gio-may` | **chủ xưởng, kế toán** | **một ngày trôi đi đâu: thêu / dừng / chờ** | 1m | hôm nay |
 
+> Con số **"lùi N mũi"** của `dahao-dut-chi` là **suy đoán**, không phải máy báo — máy A15
+> không có trường lỗi nào. Cách suy, bằng chứng đo thật, và **chỗ nó đang đọc cao gấp ~4 lần
+> vì trận dồn khung**: [`docs/lui-mui.md`](../docs/lui-mui.md).
+
 ### `dahao-can-xu-ly` — chia theo LOẠI VIỆC, không chia theo mã
 
 Ba bảng riêng, vì ba việc phải làm khác hẳn nhau:
