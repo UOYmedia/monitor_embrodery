@@ -299,6 +299,29 @@ và `dai`/`so_dai` (≥ 60 giây). Cộng thêm `so_nhay` — số lần dừng 
 nên nếu không tách ra thì cột "số lần" chẳng nói lên điều gì. `soi-lan-dung.py` vứt hẳn nhóm này
 — đó chính là lý do số lần bên `va-mau` bao giờ cũng nhỏ hơn bên đây, không phải ai sai.
 
+### Bốn ô nhìn theo TỪNG MÁY
+
+Câu "máy **đó** chạy bao lâu" được trả lời ở bốn chỗ, mỗi chỗ hợp một kiểu người xem:
+
+| ô | kiểu | trả lời |
+|---|---|---|
+| 430 `Từng máy — một ngày trôi đi đâu` | bảng | 19 dòng × 12 cột — số chính xác, cộng chân bảng |
+| 450 `Từng máy chạy bao lâu — xếp cạnh nhau` | thanh ngang | so bằng mắt, mỗi máy một thanh chia bốn khúc màu |
+| 460 `Từng máy thêu vào những giờ nào` | cột chồng theo giờ | máy nào thêu vào lúc nào; cột **Total** ở chú giải = tổng giờ thêu của từng máy |
+| ô `Máy` trên đầu bảng | bộ lọc | chọn một máy thì **mọi ô** phía trên cũng chỉ tính máy ấy |
+
+Ô 450 xếp máy **theo số**, không xếp theo giá trị — để lần nào mở cũng tìm được máy của mình ở
+đúng chỗ cũ. Thanh của mọi máy **dài bằng nhau** (đúng bằng khoảng đang xem) vì bất biến bốn rổ;
+cái đáng nhìn là **tỷ lệ màu**, không phải độ dài.
+
+Ô 460 chỉ vẽ rổ `chay`, xếp chồng — chiều cao cả cột là giây thêu của cả xưởng, mỗi dải là một
+máy. Cả cột tụt = cả xưởng cùng nghỉ; **một** dải biến mất trong khi các dải khác vẫn dày = riêng
+máy ấy có chuyện.
+
+> Máy 17/18/19 hiện đọc **100 % “mất tín hiệu”** — đã khai trong `may.json` nhưng chưa hề gửi
+> khung nào. Đó là sự thật của xưởng, không phải ô hỏng; ô “Tỷ lệ thêu” của ba máy ấy để **trống**
+> (mẫu số lọc `> 0`) vì "không biết" đúng hơn số 0.
+
 ### ⚠ Bẫy: `broker.log` KHÔNG xếp đúng thứ tự giờ, chốt sớm là mất số IM LẶNG
 
 Broker nhả log theo cụm; khoảng của máy đi sau có thể tới **hàng phút** sau khi phút của nó đã
