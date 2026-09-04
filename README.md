@@ -400,6 +400,80 @@ vào KPI sản xuất. File gốc **không bị xoá**; sao lưu nó trước kh
 Màu không bao giờ là kênh thông tin duy nhất: mỗi trạng thái đều có nhãn chữ, lý do và mốc thời
 gian. API dùng ISO 8601 UTC; dashboard đổi sang múi giờ của site khi hiển thị.
 
+## Đứt chỉ: máy không báo, nhưng lùi khung thì đếm được
+
+Controller A15 **không gửi mã lỗi nào**. Chốt trên 224.016 khung thật: khung luôn đúng 8 trường,
+`state` chỉ có 4 giá trị (`-1`, `0`, `2`, `15`), **không có trường lỗi**. Nên ô "Lỗi" trên
+dashboard nói về **đường đo**, không bao giờ là mã lỗi của máy.
+
+Cái đoán được nằm ở chỗ khác. Sổ tay BECS-A15 §2.6: đứt chỉ hoặc hết suốt thì **máy tự dừng**.
+§2.4: **lùi khung là để vá** chỗ vừa hỏng. Ghép hai điều đó lại thì có một dấu vết đọc được trên
+dây: **số mũi `curStitch` GIẢM giữa chừng một mẫu** = có người kéo khung ngược rồi cho chạy tiếp
+= vừa xảy ra một lần vá.
+
+Đây là **suy luận**, không phải máy khai. Nói "nghi đứt chỉ" chứ không nói "đứt chỉ".
+
+`quan-sat/soi-lan-dung.py` đặt tên cho **mọi** lần dừng, xét từ trên xuống, gặp cái nào đúng
+trước thì lấy:
+
+| Nhãn | Khi nào | Nghĩa |
+| --- | --- | --- |
+| `mat-ket-noi` | ngưng gửi tin > 120 s giữa mẫu | Đường đo có vấn đề, **không** kết luận gì về máy |
+| `doi-mau` | tên mẫu đổi giữa chừng | Bỏ dở mẫu này, nhảy sang mẫu khác |
+| `khoi-dong-lai` | `cur` nhảy về gần 0 sau khi xong mẫu | Thêu tấm tiếp theo — **không phải sự cố** |
+| **`nghi-dut-chi`** | **`cur` giảm giữa mẫu** | **Có người lùi khung rồi chạy tiếp — thao tác vá §2.4** |
+| `dung-han` | dừng giữa mẫu rồi thôi | Máy còn đang đứng lúc đọc |
+| `dung-lau` | dừng > 60 s rồi chạy tiếp, **không lùi** | Chờ việc, chỉnh khung, thợ rời máy |
+| `dung-ngan` | dừng ≤ 60 s rồi chạy tiếp, **không lùi** | Đổi màu, cắt chỉ, chỉnh nhanh |
+
+Điểm cốt lõi: **không lùi mũi thì không nghi vá**, dù máy đứng bao lâu. `dung-lau` đứng cả tiếng
+vẫn không bị gọi là đứt chỉ.
+
+Hai chốt chặn khỏi đọc nhầm, cả hai đều đã cắn thật:
+
+```python
+LUI_TOI_DA = 1000   # tụt hơn 1000 mũi trong một nhịp = nhảy về đầu mẫu, không phải vá
+VE_DAU     = 0.05   # đang cuối mẫu mà nhảy về dưới 5% tổng mũi = tấm mới
+```
+
+Nhưng ngưỡng ấy **không được nuốt cái thật**: vá đúng ở mũi cuối (`3758 → 3788 → 3758`) vẫn phải
+ra `nghi-dut-chi`. Ca thử 11b trong `--tu-kiem` giữ chỗ này; chạy `python3 soi-lan-dung.py
+--tu-kiem` được 20/20 ca.
+
+### ⚠ Con số này đang đọc CAO GẤP ~4 LẦN — đọc kèm chỗ trừ
+
+Máy mất kết nối một lúc thì **xếp khung vào hàng đợi**, nối lại được thì **trút cả đống ra một
+lượt** — và trong lượt trút ấy khung **không giữ đúng thứ tự**. Hai dãy `cur` cài răng lược vào
+nhau, bộ dò đọc thành hàng loạt "lùi mũi" giả: tám "lần vá" trong đúng một giây, mỗi lần `dừng 0s`.
+Không thợ nào vá được như thế.
+
+Đo trên cửa sổ 16 giờ 49 phút, coi một giây là "trận dồn" nếu có ≥ 3 khung cùng một máy rơi vào:
+
+| | |
+| --- | --- |
+| `nghi-dut-chi` bộ dò sinh ra | **321 lần** |
+| trong đó rơi vào trận dồn | **239 lần (74,5 %)** ← **rác** |
+| ngoài trận dồn | **82 lần (25,5 %)** ← đáng tin |
+| giây-máy bị dồn | 1.374 / 80.808 (chỉ 1,7 % thời gian) |
+
+1,7 % thời gian đẻ ra 3/4 số cảnh báo. **Cách đọc bảng cho tới khi vá xong:** bỏ mọi dòng
+`dừng ≤ 2s`, bỏ chùm dòng dày đặc trong cùng một giây — còn lại là số thật. **Cách chữa tận gốc:**
+chặn ở `soi-lan-dung.py`, không tính `cur` tụt là lùi khi khung tới với `Δ < 0,5 giây`, vì máy thêu
+không thể chạy nhanh hơn nhịp 2 giây của chính nó. *Chưa vá.*
+
+Sau khi lọc rác, 82 lần còn lại rất có dạng của thao tác người: 76/82 (92,7 %) là bội của 10, mỗi
+máy có một bước lùi riêng (8/14 máy bước 30, máy 05 bước 20), thời gian đứng để vá trung vị 48 giây.
+
+### Xem ở đâu
+
+- Bảng Grafana `dahao-dut-chi` — từng lần một, kèm máy, mẫu, độ lùi, thời gian đứng.
+- Cột **"Mũi lùi lại"** trong bảng `dahao-gio-may` — cộng theo máy.
+- **Tài liệu đầy đủ: [`docs/lui-mui.md`](docs/lui-mui.md)** — bằng chứng đo, ảnh chụp `broker.log`
+  của trận dồn khung, bảng "đổi gì thì sửa ở đâu".
+
+Cái này **không** nói được: đứt chỉ hay hết suốt hay kim gãy (cả ba đều lùi khung như nhau), ai
+đứng máy, và tuyệt đối không nói được gì về khoảng `mat-ket-noi`.
+
 ## Sản lượng ca & lương khoán
 
 Số mũi **không** do dashboard ước lượng. Bridge đọc bộ đếm tổng (odometer) của controller mỗi
@@ -515,8 +589,12 @@ Mọi phản hồi lỗi kèm `correlationId`; tìm đúng dòng log bằng
 
 ## Khoảng trống đã biết
 
-- **Chưa có adapter Dahao thật.** Cần tài liệu giao thức hoặc bản bắt gói được cho phép. Cho tới
-  lúc đó mọi máy `manual` hiển thị "Chưa đọc được từ controller" thay vì số liệu suy đoán.
+- **Đường Dahao thật đã chạy, nhưng KHÔNG phải bằng adapter poll.** Máy A15 không cho hỏi — nó
+  **tự đẩy** telemetry qua MQTT cổng 3865 tới `DesignServer`. `deploy-mini/broker.py` đóng vai
+  server đó, nhận khung rồi chuyển vào bridge qua cổng dial-in 1600; 19 máy đang chạy như vậy.
+  Nghĩa là mục *Tích hợp giao thức thật* ở trên mô tả **cơ chế adapter chung**, còn Dahao đi lối
+  riêng. Máy nào chưa vào lối ấy thì vẫn `manual` và hiển thị "Chưa đọc được từ controller" thay
+  vì số liệu suy đoán.
 - **Chưa có OIDC/SSO.** Hiện là single-admin hoặc token theo vai trò.
 - **Hạn giữ nhật ký audit không sửa được từ dashboard** — cố ý. Màn hình đọc và giải thích
   `audit.retentionDays`, còn muốn đổi thì sửa `bridge.config.json` trên máy bridge: một nút
