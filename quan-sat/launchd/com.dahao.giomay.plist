@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/phong</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>PYTHONIOENCODING</key>
+		<string>utf-8</string>
+	</dict>
+	<key>GroupName</key>
+	<string>staff</string>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.dahao.giomay</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/python3</string>
+		<string>-B</string>
+		<string>-u</string>
+		<string>/Users/phong/dahao-gateway/quan-sat/dem-gio-may.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/phong/dahao-gateway/logs/gio-may.err</string>
+	<key>StandardOutPath</key>
+	<string>/Users/phong/dahao-gateway/logs/gio-may.out</string>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>UserName</key>
+	<string>phong</string>
+	<key>WorkingDirectory</key>
+	<string>/Users/phong/dahao-gateway</string>
+</dict>
+</plist>

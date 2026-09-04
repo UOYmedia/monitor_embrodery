@@ -495,3 +495,84 @@ loki.process "canh_gac" {
     action_on_failure = "skip"
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// GIỜ MÁY — mỗi máy mỗi phút một dòng, chia 60 giây ấy vào 4 rổ (thêu / dừng / chờ / mất tín hiệu)
+// `quan-sat/dem-gio-may.py` đẻ ra file này. Nó ĐO chứ không phải kể chuyện: LogQL không so được
+// hai mẫu liền nhau nên không có cách nào tính "máy chạy bao lâu" từ `broker` hay `tinh-trang`.
+// ---------------------------------------------------------------------------------------------
+local.file_match "gio_may" {
+  path_targets = [{
+    __path__ = "/Users/phong/dahao-gateway/logs/gio-may.out",
+    job      = "gio-may",
+    tep      = "gio-may.out",
+  }]
+}
+
+loki.source.file "gio_may" {
+  targets    = local.file_match.gio_may.targets
+  forward_to = [loki.process.gio_may.receiver]
+  tail_from_end = false
+}
+
+loki.process "gio_may" {
+  forward_to = [loki.write.mac.receiver]
+
+  stage.json {
+    expressions = {
+      at      = "",
+      may     = "",
+      ten     = "",
+      gio     = "",
+      phut    = "",
+      chay    = "",
+      dung    = "",
+      cho     = "",
+      mat     = "",
+      ngan    = "",
+      dai     = "",
+      so_ngan = "",
+      so_nhay = "",
+      so_dai  = "",
+      mui     = "",
+      lui     = "",
+    }
+  }
+
+  // Nhãn: `may` 19 giá trị, `gio` 2 -> 38 luồng. `ten` cũng lên nhãn tuy nó là chữ, vì nó DÍNH
+  // một-một với `may` (cùng một máy thì cùng một tên) nên không đẻ thêm luồng nào — đổi lại bảng
+  // Grafana `sum by (ten)` đọc ra tên người chứ không phải địa chỉ MAC.
+  // Các con số thì tuyệt đối không được làm nhãn.
+  stage.labels {
+    values = {
+      may = "",
+      ten = "",
+      gio = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      phut    = "",
+      chay    = "",
+      dung    = "",
+      cho     = "",
+      mat     = "",
+      ngan    = "",
+      dai     = "",
+      so_ngan = "",
+      so_nhay = "",
+      so_dai  = "",
+      mui     = "",
+      lui     = "",
+    }
+  }
+
+  // `at` là đầu phút được đo, lấy từ giờ trong broker.log. Bù lịch sử (`--bu`) vì thế rơi đúng
+  // chỗ trên trục thời gian chứ không dồn về lúc chạy lệnh.
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339"
+    action_on_failure = "skip"
+  }
+}

@@ -1,0 +1,1404 @@
+{
+  "uid": "dahao-gio-may",
+  "title": "Dahao — giờ máy chạy & dừng",
+  "tags": [
+    "dahao",
+    "xuong",
+    "gio-may"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "ten",
+        "label": "Máy",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-dahao"
+        },
+        "query": "label_values({job=\"gio-may\"}, ten)",
+        "definition": "label_values({job=\"gio-may\"}, ten)",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "gio",
+        "label": "Khung giờ",
+        "type": "custom",
+        "query": "trong-gio,ngoai-gio",
+        "options": [
+          {
+            "text": "Trong giờ làm",
+            "value": "trong-gio",
+            "selected": true
+          },
+          {
+            "text": "Ngoài giờ",
+            "value": "ngoai-gio",
+            "selected": false
+          }
+        ],
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": [
+            "Trong giờ làm"
+          ],
+          "value": [
+            "trong-gio"
+          ]
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 400,
+      "type": "text",
+      "title": "Bốn rổ thời gian — đọc bảng này thế nào",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Mỗi máy mỗi phút được chia đúng 60 giây vào **bốn rổ**, không rổ nào chồng lên rổ nào:\n\n| rổ | nghĩa | máy khai gì |\n|---|---|---|\n| **Đang thêu** | kim đang chạy | số mũi TĂNG giữa hai khung |\n| **Dừng** | mẫu đang dở, máy đứng im | số mũi ĐỨNG YÊN (hoặc lùi) trong khi 0 < mũi < tổng |\n| **Chờ** | không có việc trong máy | chưa nạp mẫu, hoặc mũi = 0, hoặc đã thêu xong tấm |\n| **Mất tín hiệu** | không biết | máy thôi gửi khung — mất điện, rớt mạng, hoặc tắt máy |\n\nCộng bốn rổ luôn đúng bằng thời gian đã trôi. “Dừng” và “Chờ” tách nhau vì trách nhiệm khác nhau: **dừng** là tấm đang làm mà máy đứng (đứt chỉ, hết chỉ, đổi màu, thợ bỏ đi); **chờ** là máy rảnh chờ người nạp việc. Số liệu đến từ `quan-sat/dem-gio-may.py` đọc thẳng `broker.log` — không phải suy từ bảng tình trạng."
+      }
+    },
+    {
+      "id": 410,
+      "type": "stat",
+      "title": "Đang thêu",
+      "description": "Tổng thời gian kim thật sự chạy, cộng hết các máy đang chọn.\n\nĐo bằng: số mũi tăng giữa hai khung liên tiếp trong broker.log.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 411,
+      "type": "stat",
+      "title": "Dừng",
+      "description": "Máy có mẫu đang dở nhưng số mũi không nhúc nhích. Đây là thời gian MẤT — đứt chỉ, hết chỉ, đổi màu, thợ rời máy.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dung [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 412,
+      "type": "stat",
+      "title": "Chờ việc",
+      "description": "Máy rảnh: chưa nạp mẫu, hoặc mũi = 0, hoặc vừa thêu xong tấm và đứng đợi người tháo khung nạp tấm mới.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap cho [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 413,
+      "type": "stat",
+      "title": "Mất tín hiệu",
+      "description": "Không có khung nào gửi về. Máy A15 cắm điện thì đẩy khung mỗi ~2 giây suốt 24/7, kể cả lúc rảnh — nên im ở đây nghĩa là MẤT ĐIỆN / RỚT MẠNG / TẮT MÁY, chứ không bao giờ là “máy đang rảnh”.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap mat [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 414,
+      "type": "stat",
+      "title": "Tỷ lệ thêu",
+      "description": "Thêu ÷ (thêu + dừng + chờ). Không tính giờ mất tín hiệu, vì khoảng đó mình không biết máy làm gì nên không được phép quy tội cho ai.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "((sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))) / ((sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))) + (sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dung [$__range]))) + (sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap cho [$__range]))) > 0)) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 415,
+      "type": "stat",
+      "title": "Mũi đã thêu",
+      "description": "Tổng số mũi cộng thêm được trong khoảng đang xem.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap mui [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 420,
+      "type": "stat",
+      "title": "Dừng dưới 1 phút",
+      "description": "Cộng thời gian của những lần dừng NGẮN (< 60 giây). Phần lớn là cắt chỉ, đổi màu, chỉnh khung — vụn nhưng cộng lại rất tốn.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap ngan [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 421,
+      "type": "stat",
+      "title": "bao nhiêu lần",
+      "description": "Số lần dừng ngắn đã KHÉP LẠI (máy dừng rồi chạy tiếp) trong khoảng đang xem. Lần dừng được tính vào phút mà nó KẾT THÚC.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 5,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_ngan [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 422,
+      "type": "stat",
+      "title": "trong đó chỉ thoáng ≤ 4 giây",
+      "description": "Những lần dừng chỉ hiện ra đúng một nhịp đo (máy khai mỗi ~2 giây). Thường là cắt chỉ tự động chứ không phải sự cố — thời gian vẫn được cộng đủ vào ô bên trái, tách ra đây để cột “bao nhiêu lần” không bị nó lấp mất.\n\nNhật ký vá mẫu (`va-mau`) VỨT HẲN những lần này, nên số lần bên đó bao giờ cũng nhỏ hơn ở đây.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 9,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_nhay [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 423,
+      "type": "stat",
+      "title": "Dừng từ 1 phút trở lên",
+      "description": "Cộng thời gian của những lần dừng DÀI (≥ 60 giây). Đây mới là thứ đáng đi hỏi: hết chỉ không ai thay, kẹt khung, thợ bỏ máy.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 14,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dai [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 424,
+      "type": "stat",
+      "title": "bao nhiêu lần",
+      "description": "Số lần dừng dài đã khép lại trong khoảng đang xem.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 19,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "expr": "(sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_dai [$__range]))) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 48
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 430,
+      "type": "table",
+      "title": "Từng máy — một ngày trôi đi đâu",
+      "description": "Mỗi dòng là một máy. Bốn cột đầu cộng lại đúng bằng khoảng thời gian đang xem.\n\n“lần” là số lần dừng đã KHÉP LẠI (dừng rồi chạy tiếp) — một lần dừng còn đang mở ở mép cửa sổ thì giây của nó đã tính nhưng chưa được đếm lần, nên tổng giây có thể nhỉnh hơn (ngắn + dài) một chút.\n\n“Mũi lùi lại” = số mũi máy KÉO NGƯỢC. Máy A15 không hề gửi mã lỗi nào, nhưng thợ muốn vá chỗ đứt chỉ thì bắt buộc phải lùi khung — nên mũi giảm giữa mẫu là dấu vết gián tiếp của việc vá. Cột này SUY RA, không phải máy khai.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may, ten) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dung [$__range]))"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap cho [$__range]))"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap mat [$__range]))"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "(sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))) / ((sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__range]))) + (sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dung [$__range]))) + (sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap cho [$__range]))) > 0)"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap ngan [$__range]))"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_ngan [$__range]))"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_nhay [$__range]))"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dai [$__range]))"
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap so_dai [$__range]))"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap mui [$__range]))"
+        },
+        {
+          "refId": "L",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "queryType": "instant",
+          "format": "table",
+          "expr": "sum by (may) (sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap lui [$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(may|ten|Value.*)$"
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "may",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "may": true
+            },
+            "renameByName": {
+              "ten": "Máy",
+              "Value #A": "Đang thêu",
+              "Value #B": "Dừng",
+              "Value #C": "Chờ",
+              "Value #D": "Mất tín hiệu",
+              "Value #E": "Tỷ lệ thêu",
+              "Value #F": "Dừng <1′",
+              "Value #G": "lần",
+              "Value #H": "≤4 giây",
+              "Value #I": "Dừng ≥1′",
+              "Value #J": "lần ",
+              "Value #K": "Mũi đã thêu",
+              "Value #L": "Mũi lùi lại"
+            },
+            "indexByName": {
+              "ten": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4,
+              "Value #E": 5,
+              "Value #F": 6,
+              "Value #G": 7,
+              "Value #H": 8,
+              "Value #I": 9,
+              "Value #J": 10,
+              "Value #K": 11,
+              "Value #L": 12
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Máy",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": [
+            "Đang thêu",
+            "Dừng",
+            "Chờ",
+            "Mất tín hiệu",
+            "Dừng <1′",
+            "lần",
+            "≤4 giây",
+            "Dừng ≥1′",
+            "lần ",
+            "Mũi đã thêu",
+            "Mũi lùi lại"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "right",
+            "minWidth": 70
+          },
+          "unit": "s",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Máy"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "unit",
+                "value": "string"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Đang thêu"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dừng"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chờ"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mất tín hiệu"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tỷ lệ thêu"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dừng <1′"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lần"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "≤4 giây"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dừng ≥1′"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lần "
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mũi đã thêu"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mũi lùi lại"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tỷ lệ thêu"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mất tín hiệu"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 440,
+      "type": "timeseries",
+      "title": "Ngày trôi đi thế nào",
+      "description": "Cùng bốn rổ ấy nhưng xếp theo trục thời gian, cộng hết các máy đang chọn. Cột cao bằng nhau ở mọi chỗ vì mỗi khoảng luôn đủ 60 giây × số máy — cái đáng nhìn là TỶ LỆ MÀU trong cột, và chỗ nào màu đỏ (mất tín hiệu) dâng lên.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki-dahao"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "legendFormat": "Đang thêu",
+          "expr": "sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap chay [$__auto]))"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "legendFormat": "Dừng",
+          "expr": "sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap dung [$__auto]))"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "legendFormat": "Chờ việc",
+          "expr": "sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap cho [$__auto]))"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-dahao"
+          },
+          "legendFormat": "Mất tín hiệu",
+          "expr": "sum(sum_over_time({job=\"gio-may\", ten=~\"$ten\", gio=~\"$gio\"} | unwrap mat [$__auto]))"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Đang thêu"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dừng"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chờ việc"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mất tín hiệu"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
