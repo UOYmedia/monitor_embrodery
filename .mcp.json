@@ -1,0 +1,13 @@
+{
+  "_ghi_chu": "Máy chủ MCP cho Grafana của xưởng. Token KHÔNG nằm trong tệp này — nó đọc biến môi trường GRAFANA_SERVICE_ACCOUNT_TOKEN, tệp thật là ~/dahao-gateway/quan-sat/mcp-grafana.env (chmod 600, đã chặn bằng .gitignore). Cài nhị phân: brew install mcp-grafana. Xem quan-sat/mcp/README.md.",
+  "mcpServers": {
+    "grafana": {
+      "command": "mcp-grafana",
+      "args": ["-t", "stdio"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.phonh.io.vn",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_SERVICE_ACCOUNT_TOKEN}"
+      }
+    }
+  }
+}

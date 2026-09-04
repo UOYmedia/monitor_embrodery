@@ -27,7 +27,11 @@ beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'bridge-service-'))
   published = []
   service = new BridgeService(
-    { ...defaultConfig, sites, dataPath: join(dir, 'fleet-store.json'), auditPath: join(dir, 'audit.jsonl'), productionPath: join(dir, 'production.json') },
+    // `faultPath` phải trỏ vào thư mục tạm như ba đường kia. Thiếu nó thì mặc định là
+    // `./bridge-data/loi-<site>.jsonl` NGAY TRONG REPO: bài thử ghi sổ lần lỗi thật ra đó
+    // (đã phình tới 980 KB trước khi phát hiện), và tệ hơn là `service.load()` của lần chạy
+    // sau đọc lại đống rác của lần chạy trước — bài thử hết độc lập mà không hề đỏ.
+    { ...defaultConfig, sites, dataPath: join(dir, 'fleet-store.json'), auditPath: join(dir, 'audit.jsonl'), productionPath: join(dir, 'production.json'), faultPath: join(dir, 'loi-<site>.jsonl') },
     { publish: (message) => published.push(message) },
   )
   await service.load()
@@ -111,6 +115,52 @@ describe('machine view', () => {
     expect(view.telemetry).toBeNull()
     expect(view.alerts).toEqual([])
     expect(view.identity.verification.status).toBe('unverified')
+  })
+
+  // Chỗ hỏng nằm ở KHÚC NỐI giữa `machineView` và `derivedAlerts`, không nằm trong hàm nào.
+  // `derived-alerts.test.mjs` gọi thẳng hàm với mốc đúng nên xanh suốt, trong khi production
+  // truyền vào NaN và cảnh báo "dừng quá ngưỡng" tắt ngóm. Nên bài thử này cố ý đi đường vòng
+  // qua `machineView` — đúng đường mà API thật đi.
+  it('phát cảnh báo dừng quá ngưỡng qua machineView, không chỉ khi gọi thẳng derivedAlerts', async () => {
+    const [view] = await service.pairMany([input({ adapter: 'http-json', adapterConfig: { port: 8080 } })], technician)
+    const id = view.identity.id
+    const base = Date.parse('2026-08-14T07:00:00Z')
+    const nguong = service.site('hn-1').stopEscalationMinutes ?? 5
+
+    // Máy vừa gửi telemetry (nên còn `online`) nhưng đã đứng ở `stopped` từ lâu.
+    service.now = () => base
+    service.telemetry.set(id, telemetryFor(id, { status: 'stopped' }, new Date(base).toISOString()))
+    service.recordReachability(id, true)
+    service.statusSince.set(id, {
+      status: 'stopped',
+      at: new Date(base - (nguong + 5) * 60_000).toISOString(),
+      approximate: false,
+    })
+
+    const ra = service.machineView(service.machines[0])
+    expect(ra.connection.state).toBe('online')
+    expect(ra.derivedAlerts.map((a) => a.id)).toContain('state:idle-long')
+    // Dòng cảnh báo phải nói ĐƯỢC máy dừng bao lâu. NaN phút vẫn lọt qua `toContain` ở trên.
+    expect(ra.derivedAlerts.find((a) => a.id === 'state:idle-long').title).toMatch(/10 phút/)
+    expect(ra.derivedAlerts.find((a) => a.id === 'state:idle-long').title).not.toMatch(/NaN/)
+  })
+
+  it('chưa quá ngưỡng thì im — cảnh báo dừng lâu không được nổ sớm', async () => {
+    const [view] = await service.pairMany([input({ adapter: 'http-json', adapterConfig: { port: 8080 } })], technician)
+    const id = view.identity.id
+    const base = Date.parse('2026-08-14T07:00:00Z')
+    const nguong = service.site('hn-1').stopEscalationMinutes ?? 5
+
+    service.now = () => base
+    service.telemetry.set(id, telemetryFor(id, { status: 'stopped' }, new Date(base).toISOString()))
+    service.recordReachability(id, true)
+    service.statusSince.set(id, {
+      status: 'stopped',
+      at: new Date(base - (nguong - 1) * 60_000).toISOString(),
+      approximate: false,
+    })
+
+    expect(service.machineView(service.machines[0]).derivedAlerts.map((a) => a.id)).not.toContain('state:idle-long')
   })
 
   it('never marks an unverified machine as verified just because telemetry arrived', async () => {
@@ -679,5 +729,187 @@ describe('sổ thời gian ngừng máy', () => {
     }
     const opens = (await downtimeRows(id)).filter((entry) => entry.action === 'machine.downtime.open')
     expect(opens).toHaveLength(1)
+  })
+
+  /**
+   * Dựng lại đúng chuỗi đã ĐO ĐƯỢC trên máy 3ce4b0c54f54 ngày 27/08 (log `tinh-trang`, 2 s một
+   * nhịp). Bản cũ đi qua chuỗi này rồi khai một mốc bịa mà vẫn đóng dấu "chính xác":
+   *
+   *   08:20:03  stopped   tu_luc=03:11:21  xap_xi=false   ← bridge biết đúng
+   *   08:20:22  unknown                                    ← adapter không đọc được
+   *   08:20:26  stopped   tu_luc=08:20:26  xap_xi=FALSE    ← hơn 5 tiếng bốc hơi
+   *
+   * `unknown` không phải trạng thái của máy, nó là "không đọc được" (contract). Ra khỏi nó thì
+   * mốc mới chỉ là cận dưới, y như lần đầu tiên nhìn thấy máy.
+   */
+  it('mất tín hiệu giữa chừng → mốc bắt đầu là cận dưới, KHÔNG được đóng dấu chính xác', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T01:00:00.000Z'))
+    expect(service.statusSince.get(id)).toMatchObject({ at: '2026-08-24T01:00:00.000Z', approximate: false })
+
+    // Bốn giây mù, rồi thấy lại đúng trạng thái cũ.
+    service.ingestSnapshot(machine, snap(id, 'unknown', '2026-08-24T05:59:56.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T06:00:00.000Z'))
+
+    const since = service.statusSince.get(id)
+    expect(since.at).toBe('2026-08-24T06:00:00.000Z')
+    expect(since.approximate).toBe(true)                      // ← lỗi cũ: false
+    expect(since.somNhat).toBe('2026-08-24T01:00:00.000Z')    // phép đo cũ không bị vứt
+  })
+
+  it('hai bên khoảng mù là hai trạng thái khác nhau → không mượn mốc cũ', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T01:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'unknown', '2026-08-24T05:59:56.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T06:00:00.000Z'))
+
+    const since = service.statusSince.get(id)
+    expect(since.approximate).toBe(true)
+    // Máy đang CHẠY trước khoảng mù. Mốc đó nói về lần chạy, không nói gì về lần dừng này —
+    // mượn sang là bịa ra một lần dừng 5 tiếng chưa từng xảy ra.
+    expect(since.somNhat).toBeNull()
+  })
+
+  it('nhiều khoảng mù liên tiếp vẫn nhớ được trạng thái đọc được cuối cùng', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T01:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'unknown', '2026-08-24T02:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T03:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'unknown', '2026-08-24T04:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T05:00:00.000Z'))
+
+    // Trạng thái đọc được cuối cùng trước khoảng mù thứ hai là `running` lúc 03:00 — không
+    // phải `stopped` lúc 01:00 đã bị khoảng mù thứ nhất bỏ lại.
+    expect(service.statusSince.get(id)).toMatchObject({ approximate: true, somNhat: '2026-08-24T03:00:00.000Z' })
+  })
+
+  it('sổ lần lỗi mang cả cận dưới lẫn cận trên, và nói ra mốc chắc tới đâu', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T01:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'unknown', '2026-08-24T05:59:56.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T06:00:00.000Z'))
+    service.now = () => Date.parse('2026-08-24T06:06:00.000Z')
+    service.sweepDowntime()
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T06:10:00.000Z'))
+
+    const { episodes } = await service.docLichSuLoi(id, {})
+    expect(episodes).toHaveLength(1)
+    const [lan] = episodes
+    expect(lan.batDauUocChung).toBe(true)
+    expect(lan.batDau).toBe('2026-08-24T06:00:00.000Z')
+    expect(lan.batDauSomNhat).toBe('2026-08-24T01:00:00.000Z')
+    expect(lan.thoiLuongGiay).toBe(600)          // chắc chắn ít nhất 10 phút
+    expect(lan.thoiLuongToiDaGiay).toBe(18_600)  // nhiều nhất 5 tiếng 10 phút
+    expect(lan.cauMoc).toContain('CẬN DƯỚI')
+    expect(lan.cauMoc).toContain('2026-08-24T01:00:00.000Z')
+  })
+
+  it('không có khoảng mù thì không sinh ra cận trên giả', async () => {
+    const machine = await pairOne()
+    const id = machine.id
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T00:00:00.000Z'))
+    service.ingestSnapshot(machine, snap(id, 'stopped', '2026-08-24T01:00:00.000Z'))
+    service.now = () => Date.parse('2026-08-24T01:06:00.000Z')
+    service.sweepDowntime()
+    service.ingestSnapshot(machine, snap(id, 'running', '2026-08-24T01:10:00.000Z'))
+
+    const [lan] = (await service.docLichSuLoi(id, {})).episodes
+    expect(lan.batDauUocChung).toBe(false)
+    expect(lan.batDauSomNhat).toBeNull()
+    expect(lan.thoiLuongToiDaGiay).toBeNull()
+    expect(lan.cauMoc).toContain('chắc chắn')
+  })
+})
+
+/**
+ * Cổng tin cậy: nhiều máy thêu đi chung một địa chỉ.
+ *
+ * Broker MQTT đẩy telemetry của MỌI máy qua chung một socket, ra từ 127.0.0.1. Bridge định
+ * danh theo địa chỉ nguồn, nên nếu không có khái niệm cổng thì hai máy hoặc gộp làm một
+ * (số trộn vào nhau, không một dòng lỗi), hoặc bị `ambiguous_source` vứt cả luồng — mất
+ * luôn cái máy đang chạy tốt. Cả hai đều đã từng là hành vi thật, nên chốt lại bằng test.
+ */
+describe('dial-in qua cổng tin cậy', () => {
+  const dialIn = (overrides = {}) => input({ adapter: 'dial-in', ...overrides })
+  const moCong = (address = '192.168.10.21') => {
+    service.config = { ...service.config, ingest: { ...(service.config.ingest ?? {}), gateways: [address] } }
+  }
+
+  it('cho ghép nhiều máy cùng một địa chỉ KHI địa chỉ đó là cổng đã khai', async () => {
+    moCong()
+    const machines = await service.pairMany(
+      [dialIn(), input({ adapter: 'dial-in', assetTag: 'HN-002', name: 'Máy thêu 02', ipAddress: '192.168.10.21' })],
+      technician,
+    )
+    expect(machines).toHaveLength(2)
+  })
+
+  it('vẫn chặn hai máy trùng IP ở địa chỉ KHÔNG phải cổng — đó vẫn là gõ nhầm sổ máy', async () => {
+    await expect(
+      service.pairMany(
+        [dialIn(), input({ adapter: 'dial-in', assetTag: 'HN-002', name: 'Máy thêu 02', ipAddress: '192.168.10.21' })],
+        technician,
+      ),
+    ).rejects.toThrow(/IP 192\.168\.10\.21 đã thuộc về máy/)
+  })
+
+  it('trả về cổng phân giải được ĐÚNG máy theo machineId, thay vì gộp hay từ chối cả luồng', async () => {
+    moCong()
+    const [mot, hai] = await service.pairMany(
+      [dialIn(), input({ adapter: 'dial-in', assetTag: 'HN-002', name: 'Máy thêu 02', ipAddress: '192.168.10.21' })],
+      technician,
+    )
+    const resolved = service.identifyDialIn('192.168.10.21')
+    expect(resolved.machine).toBeUndefined()
+    expect(resolved.gateway.resolve(mot.identity.id).id).toBe(mot.identity.id)
+    expect(resolved.gateway.resolve(hai.identity.id).id).toBe(hai.identity.id)
+  })
+
+  it('không tin lời khai: machineId lạ trả null chứ không rơi về máy nào khác', async () => {
+    moCong()
+    await service.pairMany([dialIn()], technician)
+    const { gateway } = service.identifyDialIn('192.168.10.21')
+    expect(gateway.resolve('mch-khong-co')).toBeNull()
+    expect(gateway.resolve('')).toBeNull()
+    expect(gateway.resolve(undefined)).toBeNull()
+  })
+
+  it('máy đã lưu kho thì cổng cũng không hồi sinh nó qua đường dây', async () => {
+    moCong()
+    const [machine] = await service.pairMany([dialIn()], technician)
+    await service.archiveMachine(machine.identity.id, technician)
+    expect(service.identifyDialIn('192.168.10.21')).toEqual({ reason: 'unknown_source' })
+  })
+
+  it('vẫn soi lại allowlist ở cổng, không chỉ ở đường trực tiếp', async () => {
+    moCong()
+    const [machine] = await service.pairMany([dialIn()], technician)
+    service.config = { ...service.config, sites: sites.map((s) => (s.id === 'hn-1' ? { ...s, allowedCidrs: ['192.168.11.0/24'] } : s)) }
+    const { gateway } = service.identifyDialIn('192.168.10.21')
+    expect(gateway.resolve(machine.identity.id)).toBeNull()
+    expect(service.telemetryErrors.get(machine.identity.id).kind).toBe('policy')
+  })
+
+  it('địa chỉ không khai là cổng thì hành vi cũ giữ nguyên từng bước', async () => {
+    const [machine] = await service.pairMany([dialIn()], technician)
+    expect(service.identifyDialIn('192.168.10.21').machine.id).toBe(machine.identity.id)
+    expect(service.identifyDialIn('192.168.10.99')).toEqual({ reason: 'unknown_source' })
+  })
+
+  it('đánh dấu cổng trên bảng địa chỉ, để nhiều máy một IP không bị đọc nhầm thành lỗi khai trùng', async () => {
+    moCong()
+    await service.pairMany(
+      [dialIn(), input({ adapter: 'dial-in', assetTag: 'HN-002', name: 'Máy thêu 02', ipAddress: '192.168.10.21' })],
+      technician,
+    )
+    service.dialIn.touchCaller('192.168.10.21', { accepted: true })
+    const [caller] = service.ingestStatus().callers
+    expect(caller.pairedCount).toBe(2)
+    expect(caller.pairedGateway).toBe(true)
   })
 })

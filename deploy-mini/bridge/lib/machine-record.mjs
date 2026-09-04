@@ -231,16 +231,23 @@ export function validateMachineInput(raw, { sites, actor, now = new Date().toISO
 /**
  * Cross-record duplicate detection. Runs over the whole prospective fleet so a batch
  * is rejected before anything is written, rather than half-applied.
+ *
+ * `sharedAddresses` là danh sách địa chỉ được phép có NHIỀU máy — đúng bằng
+ * `ingest.gateways`. Bình thường hai máy cùng một IP là gõ nhầm sổ máy, và chặn ngay lúc
+ * ghép là đúng. Nhưng ở một cổng nội bộ, nhiều máy chung một địa chỉ chính là hình dạng
+ * mong muốn: chúng phân biệt nhau bằng `machineId` trong từng khung, không bằng IP. Nới ở
+ * đây chứ không bỏ hẳn phép kiểm, để cái sai do gõ nhầm vẫn bị chặn ở mọi địa chỉ khác.
  */
-export function assertNoDuplicates(records) {
+export function assertNoDuplicates(records, { sharedAddresses = [] } = {}) {
   const ids = new Set()
   for (const record of records) {
     if (ids.has(record.id)) fail(`Mã máy ${record.id} xuất hiện hai lần trong cùng một lô.`, 'id')
     ids.add(record.id)
   }
+  const shared = new Set(sharedAddresses)
   const keys = [
     { field: 'assetTag', label: 'Mã tài sản', pick: (record) => record.assetTag, show: (record) => record.assetTag },
-    { field: 'ipAddress', label: 'IP', pick: (record) => record.ipAddress, show: (record) => record.ipAddress },
+    { field: 'ipAddress', label: 'IP', pick: (record) => (shared.has(record.ipAddress) ? null : record.ipAddress), show: (record) => record.ipAddress },
     { field: 'macAddress', label: 'MAC', pick: (record) => record.macAddress, show: (record) => record.macAddress },
     // Serial numbers are only guaranteed unique inside one site's asset register.
     { field: 'serial', label: 'Serial', pick: (record) => (record.serial ? `${record.siteId}:${record.serial.toUpperCase()}` : null), show: (record) => record.serial },

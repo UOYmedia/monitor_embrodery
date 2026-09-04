@@ -156,9 +156,34 @@ function normalizeIngest(raw, base) {
     capture: strictBool(configured.capture, defaultIngestConfig.capture, 'ingest.capture'),
     captureMaxBytes: positiveInt(configured.captureMaxBytes, defaultIngestConfig.captureMaxBytes, 'ingest.captureMaxBytes'),
     capturePath: resolve(base, configured.capturePath ?? defaultConfig.capturePath),
+    gateways: normalizeGateways(configured.gateways),
   }
   if (ingest.maxFrameBytes > 1_048_576) fail('ingest.maxFrameBytes tối đa 1048576 byte.')
   return ingest
+}
+
+/**
+ * Danh sách địa chỉ được phép tự khai máy nào đang nói.
+ *
+ * Kiểm chặt và fail ngay lúc khởi động, vì đây là khai báo NỚI một quy tắc an toàn: sai
+ * chính tả một địa chỉ ở đây thì hoặc cổng thật không được nhận (mất telemetry), hoặc một
+ * địa chỉ ngoài ý muốn được quyền tự xưng. Cả hai đều nên nổ lúc khởi động chứ không phải
+ * lúc 3 giờ sáng.
+ */
+function normalizeGateways(raw) {
+  if (raw === undefined || raw === null) return [...defaultIngestConfig.gateways]
+  if (!Array.isArray(raw)) fail('ingest.gateways phải là mảng địa chỉ.')
+  const seen = new Set()
+  for (const entry of raw) {
+    if (typeof entry !== 'string' || entry.trim() === '') fail('ingest.gateways chỉ nhận địa chỉ dạng chuỗi, không rỗng.')
+    const address = entry.trim()
+    // Đây là một ĐỊA CHỈ, không phải dải: cấp quyền tự khai cho cả một subnet là mở đúng
+    // cái cửa mà quy tắc "định danh theo IP nguồn" dựng lên để đóng.
+    if (address.includes('/')) fail(`ingest.gateways nhận từng địa chỉ một, không nhận dải CIDR: ${address}`)
+    if (seen.has(address)) fail(`ingest.gateways có địa chỉ lặp: ${address}`)
+    seen.add(address)
+  }
+  return [...seen]
 }
 
 /**
@@ -373,6 +398,9 @@ export function configWarnings(config) {
   if (config.ingest.enabled) {
     warnings.push(`ingest đang mở cổng ${config.ingest.host}:${config.ingest.port} cho máy tự gọi vào. Chỉ mở trong LAN xưởng và chỉ nhận địa chỉ đã ghép máy.`)
     if (config.ingest.capture) warnings.push('ingest.capture đang bật: bridge ghi lại byte thô chưa giải mã ra đĩa. Chỉ bật khi đang dò giao thức, và nhớ tắt sau đó.')
+    if (config.ingest.gateways.length > 0) {
+      warnings.push(`ingest.gateways=${config.ingest.gateways.join(', ')}: các địa chỉ này được phép tự khai machineId trong từng khung, thay vì bridge suy ra từ địa chỉ nguồn. Chỉ khai cổng nội bộ do mình chạy (broker trên cùng máy). Ai mở được kết nối từ địa chỉ này thì gửi được telemetry vào tên BẤT KỲ máy nào đã ghép tại đó.`)
+    }
   }
   for (const site of config.sites) {
     // Wrong shift boundaries produce wrong payroll, so an undeclared calendar must be loud.

@@ -1,0 +1,54 @@
+{
+  "3CE4B0C54F54": {
+    "ten": "Máy C54F54",
+    "khu": "Chưa gán"
+  },
+  "602602621294": {
+    "ten": "Máy 621294",
+    "khu": "Chưa gán"
+  },
+  "602602621948": {
+    "ten": "Máy 621948",
+    "khu": "Chưa gán"
+  },
+  "602602911CB8": {
+    "ten": "Máy 911CB8",
+    "khu": "Chưa gán"
+  },
+  "6026029341EB": {
+    "ten": "Máy 9341EB",
+    "khu": "Chưa gán"
+  },
+  "6026029348ED": {
+    "ten": "Máy 9348ED",
+    "khu": "Chưa gán"
+  },
+  "60260295C907": {
+    "ten": "Máy 95C907",
+    "khu": "Chưa gán"
+  },
+  "60260298B4C7": {
+    "ten": "Máy 98B4C7",
+    "khu": "Chưa gán"
+  },
+  "602602A6F22B": {
+    "ten": "Máy A6F22B",
+    "khu": "Chưa gán"
+  },
+  "A15-MQTT": {
+    "ten": "Máy thêu A15 (qua gateway MQTT)",
+    "khu": "Chuyền A"
+  },
+  "B83DF60B3FB8": {
+    "ten": "Máy 0B3FB8",
+    "khu": "Chưa gán"
+  },
+  "C0D60A8F4D52": {
+    "ten": "Máy 8F4D52",
+    "khu": "Chưa gán"
+  },
+  "F4B8985355EF": {
+    "ten": "Máy 5355EF",
+    "khu": "Chưa gán"
+  }
+}

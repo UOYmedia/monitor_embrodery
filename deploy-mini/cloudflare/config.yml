@@ -19,4 +19,12 @@ ingress:
       connectTimeout: 10s
       noTLSVerify: false
   # Bat buoc phai co: moi yeu cau khong khop hostname tren deu bi tu choi.
+  - hostname: grafana.phonh.io.vn
+    # Grafana (Loki + bang tinh trang may). KHAC hai hostname tren: bridge chi tra con so,
+    # Grafana tra LOG THO. Vi vay `auth.anonymous` trong quan-sat/native/grafana.ini phai TAT —
+    # mo ten mien nay ma quen tat no la cong khai log cua ca xuong.
+    service: http://100.107.219.95:3000
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
   - service: http_status:404

@@ -36,7 +36,13 @@ rsync -a "$HERE/cloudflare/" "$G/cloudflare/"
 rsync -a "$HERE/tests/"      "$G/tests/"
 [ -d "$HERE/docs" ] && rsync -a "$HERE/docs/" "$G/docs/"
 
-# KHONG bao gio dong goi: giao dien (day la dich vu thuan API), du lieu chay that,
+# xem/ = man hinh van hanh, chinh la thu `bridge.config.dahao-mqtt.json` tro toi qua uiPath.
+# Truoc day goi nay co ghi chu "day la dich vu thuan API" nen co tinh bo giao dien — nhung
+# cau hinh DI KEM trong goi lai dat uiPath la ./xem. Cai tu goi cu = bridge tra 404
+# "Chua build giao dien" o dung cai trang ca xuong dang nhin.
+rsync -a "$HERE/xem/" "$G/xem/"
+
+# KHONG bao gio dong goi: giao dien React da build (khac voi xem/), du lieu chay that,
 # va chinh cac ban goi cu.
 rm -rf "$G/dist" "$G/index.html"
 rm -f  "$G"/*.tar.gz "$G/broker.log" "$G/catalog.json" "$G/enum-growth.csv"

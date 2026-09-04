@@ -23,6 +23,56 @@ import { basename, dirname, join } from 'node:path'
  * từng lỗi — mà đó đúng là lúc người ta cần bằng chứng nhất.
  */
 
+/**
+ * **NGUỒN GỐC — trường bắt buộc, và là chốt chặn quan trọng nhất của cả quyển sổ.**
+ *
+ * Máy Dahao A15 **không gửi mã lỗi qua mạng**. Chốt trên 326.342 khung: đúng 4 giá trị
+ * `state`, đúng 8 trường ở cả 4 mã, 21 field / 54 topic toàn hệ, và broker của mình CHÍNH
+ * LÀ server nên không còn chỗ nào cho một kênh giấu. Bảng 30 mã EC (EC95 = đứt chỉ) chỉ có
+ * ở các đời A18/A58/A68/A88 và là **mã hiển thị trên màn**, không có câu nào trong sổ tay
+ * nói nó đi ra dây.
+ *
+ * Hệ quả: mọi thứ quyển sổ này ghi được đều **KHÔNG PHẢI** máy tự khai lỗi. Nếu không dán
+ * nhãn nguồn gốc thì đội đọc sổ sau này sẽ đếm "99 lần máy hỏng" trong khi sự thật là "99
+ * lần bridge bấm giờ thấy máy đứng im quá 5 phút" — rồi cử thợ đi tìm một cái hỏng mà
+ * controller chưa hề báo. Nên `nguon` là **bắt buộc**, không có mặc định.
+ */
+export const NGUON = {
+  /** Giá trị đến THẲNG từ một trường trong khung MQTT máy đẩy lên. */
+  MAY_DAY: 'may-day',
+  /** Bridge tự suy ra từ số mũi / đồng hồ. Đúng hay sai là do luật suy luận, không phải do máy. */
+  SUY_LUAN: 'suy-luan',
+  /** Sự cố của chính hệ thống đo (mất tín hiệu, adapter câm). KHÔNG được đếm chung với sự cố máy. */
+  DUONG_DO: 'duong-do',
+  /** Người khai. Là "lỗi thật" theo nghĩa có người chứng kiến, nhưng không đo được. */
+  NHAP_TAY: 'nhap-tay',
+}
+
+const NGUON_HOP_LE = new Set(Object.values(NGUON))
+
+/** Câu giải thích nguồn gốc, in thẳng lên màn hình / trả thẳng qua API. */
+export const CAU_NGUON = {
+  [NGUON.MAY_DAY]: 'Máy tự khai qua khung MQTT.',
+  [NGUON.SUY_LUAN]: 'Bridge suy ra — máy KHÔNG báo lỗi, đây là kết luận từ đồng hồ và số mũi.',
+  [NGUON.DUONG_DO]: 'Sự cố ĐƯỜNG ĐO (mất tín hiệu / adapter câm), không phải sự cố của máy.',
+  [NGUON.NHAP_TAY]: 'Người khai tại chỗ, không đo được bằng máy.',
+}
+
+/**
+ * Hệ mã của trường `ma`. Chống trộn hai hệ mã vào một cột — đọc "95" mà không biết nó thuộc
+ * hệ nào thì con số vô nghĩa.
+ */
+export const HE_MA = {
+  /** 4 giá trị `state` máy A15 thật sự gửi: -1 / 0 / 2 / 15. Đây KHÔNG phải mã lỗi. */
+  A15_STATE: 'a15-state',
+  /** Bảng EC của Dahao (EC95 = đứt chỉ). Chỉ có trên MÀN HÌNH ⇒ chỉ vào sổ qua người gõ. */
+  DAHAO_EC: 'dahao-ec',
+  /** Mã do chính bridge đặt ra (long-stop, mat-tin-hieu…). Không phải mã của hãng. */
+  BRIDGE: 'bridge',
+}
+
+const HE_MA_HOP_LE = new Set(Object.values(HE_MA))
+
 /** Lần lỗi đóng vì controller thật sự báo sang trạng thái khác. Chỉ trường hợp này mới là "hết lỗi". */
 export const DONG_BINH_THUONG = 'controller-bao-trang-thai-khac'
 /** Ba trường hợp ở PRD 4.2 — biết là *không còn thấy lỗi*, KHÔNG biết là *đã sửa*. */
@@ -86,19 +136,51 @@ export class FaultEpisodeLog {
    * hằng số mà không dữ liệu nào ở xưởng đỡ nổi, và gộp sai thì che mất một lần dừng máy có
    * thật. Nối bằng `previousEpisodeId` để vẫn đọc được chuỗi lỗi lặp.
    */
-  moLanLoi(machineId, { siteId = null, batDau, events = [], uocChung = false } = {}) {
+  moLanLoi(machineId, {
+    siteId = null, batDau, events = [], uocChung = false, batDauSomNhat = null,
+    nguon, heMa = null, ma: maVao = null, moTa: moTaVao = null, kieu = null, nguoi = null,
+  } = {}) {
+    // `nguon` KHÔNG có mặc định, và ném lỗi chứ không ngã về một giá trị "an toàn". Một dòng
+    // không dán nhãn nguồn gốc còn tệ hơn là không có dòng nào: nó sẽ được đọc là lỗi máy.
+    if (!NGUON_HOP_LE.has(nguon)) {
+      throw new Error(`Lần lỗi phải khai nguồn gốc hợp lệ (${[...NGUON_HOP_LE].join(' | ')}), nhận: ${nguon}`)
+    }
+    if (heMa !== null && !HE_MA_HOP_LE.has(heMa)) {
+      throw new Error(`Hệ mã không hợp lệ: ${heMa}`)
+    }
+    // Mã EC chỉ tồn tại trên MÀN HÌNH máy — không có đường nào để nó tự đi ra dây. Một dòng
+    // `dahao-ec` mà không do người gõ nghĩa là ở đâu đó có code đang bịa mã lỗi cho controller.
+    if (heMa === HE_MA.DAHAO_EC && nguon !== NGUON.NHAP_TAY) {
+      throw new Error('Mã EC của Dahao chỉ hiện trên màn hình máy — chỉ được vào sổ qua nhập tay.')
+    }
+    if (maVao !== null && heMa === null) {
+      throw new Error('Có mã thì phải khai hệ mã — "95" không thuộc hệ nào là một con số vô nghĩa.')
+    }
+    if (nguon === NGUON.NHAP_TAY && !nguoi) {
+      throw new Error('Dòng nhập tay phải ghi rõ ai khai.')
+    }
+
     const dangCo = this.dangMo.get(machineId)
     if (dangCo) return dangCo            // đang mở rồi thì không mở chồng (ca L‑16)
 
-    const { ma, moTa } = loiNguyenVan(events)
+    const tuEvents = loiNguyenVan(events)
+    const ma = maVao ?? tuEvents.ma
+    const moTa = moTaVao ?? tuEvents.moTa
     const ban = {
       loai: 'episode',
       episodeId: randomUUID(),
       machineId,
       siteId,
+      // Ba trường dưới đây là hợp đồng với đội dùng sổ. Đọc `ma` mà bỏ qua `nguon`/`heMa`
+      // là đọc sai — xem khối chú thích NGUON ở đầu file.
+      nguon,
+      heMa,
+      kieu,                              // loại sự việc: 'dung-lau' | 'mat-tin-hieu' | 'nguoi-khai' …
+      nguoi,                             // ai khai, chỉ có khi nguon = nhap-tay
       batDau,
       ketThuc: null,
       thoiLuongGiay: null,
+      thoiLuongToiDaGiay: null,
       dangMo: true,
       lyDoDong: null,
       chuaBietVi: null,
@@ -109,6 +191,11 @@ export class FaultEpisodeLog {
       // Máy đã ở trạng thái lỗi từ TRƯỚC khi bridge bắt đầu nhìn: mốc bắt đầu chỉ là lúc ta
       // nhìn thấy, không phải lúc lỗi xảy ra. Màn hình phải nói "ít nhất từ …".
       batDauUocChung: Boolean(uocChung),
+      // Cận TRÊN của lần lỗi: mốc bridge đã tận mắt thấy máy ở đúng trạng thái này TRƯỚC
+      // khoảng mù gần nhất. Không phải suy đoán — là một quan sát cũ, chỉ mất tính chắc chắn
+      // vì giữa chừng ta không nhìn. `null` khi không có gì trước đó, hoặc khi hai bên khoảng
+      // mù là hai trạng thái khác nhau (lúc đó mốc cũ nói về chuyện khác, không được dùng).
+      batDauSomNhat: batDauSomNhat ?? null,
       mocDangNgo: false,
       ghiLuc: new Date(this.now()).toISOString(),
     }
@@ -133,6 +220,13 @@ export class FaultEpisodeLog {
     }
 
     const giay = chuaBietVi === null ? thoiLuongGiay(ban.batDau, ketThuc) : null
+    // Cận trên: tính từ mốc quan sát cũ nhất còn dùng được (`batDauSomNhat`) tới lúc đóng.
+    // Đi kèm `thoiLuongGiay` chứ không thay thế nó — một con số là "chắc chắn ít nhất chừng
+    // này", con số kia là "nhiều nhất chừng này". Gộp hai thứ lại thành một số duy nhất là
+    // đúng cái việc đã làm hỏng mọi thời lượng trước ngày 27/08.
+    const giayToiDa = chuaBietVi === null && ban.batDauSomNhat
+      ? thoiLuongGiay(ban.batDauSomNhat, ketThuc)
+      : null
     // Mốc cuối lùi trước mốc đầu ⇒ đồng hồ controller đã nhảy. Đánh dấu chứ không im lặng
     // sinh ra một thời lượng âm hay một số 0 giả (ca L‑19).
     const dangNgo = chuaBietVi === null && giay === null && Boolean(ketThuc)
@@ -142,6 +236,7 @@ export class FaultEpisodeLog {
       loai: 'episode-dong',
       ketThuc,
       thoiLuongGiay: giay,
+      thoiLuongToiDaGiay: giayToiDa,
       dangMo: false,
       lyDoDong: chuaBietVi === null ? DONG_BINH_THUONG : DONG_CHUA_BIET,
       chuaBietVi,
@@ -248,7 +343,7 @@ export class FaultEpisodeLog {
    * Đọc từ mảnh mới nhất về cũ nhưng dựng theo thứ tự ghi, vì một lần lỗi có thể có nhiều
    * dòng (mở → đóng → mở lại) và dòng sau mới là sự thật hiện hành.
    */
-  async docHopNhat({ machineId = null, from = null, to = null, limit = 100, maxSegments = 12 } = {}) {
+  async docHopNhat({ machineId = null, from = null, to = null, nguon = null, limit = 100, maxSegments = 12 } = {}) {
     // Ghi là bất đồng bộ (xếp hàng), đọc là từ đĩa. Không đợi hàng ghi cạn trước thì một lần
     // lỗi vừa xảy ra sẽ KHÔNG có trong câu trả lời của API gọi ngay sau đó — đúng cái khoảnh
     // khắc người ta mở màn hình ra xem vì máy vừa dừng.
@@ -274,8 +369,13 @@ export class FaultEpisodeLog {
     }
 
     const ra = []
+    // Danh sách rỗng = "không lọc", KHÔNG phải "lọc ra rỗng". `?nguon=` để trống trên URL mà
+    // trả về không dòng nào thì màn hình hiện "máy chưa hỏng lần nào" đúng lúc sổ đang đầy.
+    const xin = nguon === null ? null : (Array.isArray(nguon) ? nguon : [nguon]).filter(Boolean)
+    const loc = xin === null || xin.length === 0 ? null : new Set(xin)
     for (const ban of theoId.values()) {
       if (machineId && ban.machineId !== machineId) continue
+      if (loc && !loc.has(ban.nguon ?? null)) continue
       const batDauMs = Date.parse(ban.batDau)
       if (tuMs !== null && Number.isFinite(batDauMs) && batDauMs < tuMs) continue
       if (denMs !== null && Number.isFinite(batDauMs) && batDauMs > denMs) continue
@@ -292,12 +392,29 @@ export class FaultEpisodeLog {
         cauChu: ban.dangMo
           ? 'Đang lỗi — chưa thấy controller báo trạng thái khác.'
           : CAU_CHU[ban.chuaBietVi ?? ban.lyDoDong] ?? null,
+        // Đi kèm mọi dòng, kể cả dòng cũ ghi trước khi có trường `nguon`: dòng nào không
+        // khai nguồn thì nói thẳng là không biết, chứ không đoán hộ.
+        cauNguon: CAU_NGUON[ban.nguon] ?? 'Không rõ nguồn gốc — dòng ghi trước khi sổ bắt buộc khai nguồn.',
+        // Nói thẳng mốc bắt đầu chắc tới đâu. Một dòng `batDauUocChung: true` mà không có câu
+        // chữ đi kèm thì trên bảng nó trông y hệt dòng chắc chắn, và người đọc vẫn trừ hai mốc
+        // ra rồi tin con số đó.
+        cauMoc: !ban.batDauUocChung
+          ? 'Mốc bắt đầu chắc chắn — bridge nhìn thấy máy chuyển vào trạng thái này.'
+          : ban.batDauSomNhat
+            ? `Mốc bắt đầu là CẬN DƯỚI — giữa chừng mất tín hiệu. Trước khoảng mù, bridge đã thấy máy ở đúng trạng thái này từ ${ban.batDauSomNhat}.`
+            : 'Mốc bắt đầu là CẬN DƯỚI — máy đã ở trạng thái này từ trước lúc bridge nhìn thấy, không rõ từ bao giờ.',
       })
     }
 
     ra.sort((a, b) => Date.parse(b.batDau) - Date.parse(a.batDau))
     const catBot = ra.length > limit
-    return { episodes: ra.slice(0, limit), truncated: catBot, tongCong: ra.length }
+    // Đếm theo nguồn đi kèm MỌI câu trả lời, tính trên toàn bộ tập đã lọc chứ không phải
+    // trên trang đang trả. Đây là con số làm người đọc khỏi hiểu nhầm ngay từ dòng đầu:
+    // `may-day: 0` nói thẳng rằng máy chưa từng tự khai một lỗi nào.
+    const theoNguon = Object.fromEntries([...NGUON_HOP_LE].map((k) => [k, 0]))
+    theoNguon['khong-ro'] = 0
+    for (const ban of ra) theoNguon[ban.nguon ?? 'khong-ro'] += 1
+    return { episodes: ra.slice(0, limit), truncated: catBot, tongCong: ra.length, theoNguon }
   }
 
   async timTheoId(episodeId) {

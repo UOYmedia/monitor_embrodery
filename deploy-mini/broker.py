@@ -196,6 +196,17 @@ def deliver(topic, payload, plain=None):
     for c in targets:
         try: c[0].sendall(pkt)
         except Exception as e: log('deliver err',e)
+    # [Q1] Không ai nghe = bản tin RƠI. Trước đây rơi IM LẶNG, nên mọi phép thử đẩy topic
+    # mới đều kết luận sai là "máy không trả lời" trong khi mình chưa hề gửi được.
+    if not targets:
+        log('  ⚠ GIAO 0 SUB topic=%s len=%d — bản tin RƠI, không client nào subscribe'
+            % (topic, len(payload)))
+    # [Q2] Ghi chiều server->máy vào catalog. Trước đây 54/54 topic đều dir=in ⇒ mù hẳn
+    # nửa cuộc hội thoại. `plain` là bản rõ nếu chỗ gọi có sẵn; không có thì vẫn ghi
+    # được topic + số lượt + chiều. Field bí mật đã bị _is_secretish che sẵn.
+    if ENUM_ON:
+        try: catalog_observe('out', topic, plain, len(payload))
+        except Exception: pass
     return len(targets)
 
 def sub_match(sub, topic):
@@ -273,6 +284,50 @@ FWD_PORT=int(os.environ.get('BRIDGE_PORT','1600'))
 FWD_ON=os.environ.get('FWD_ENABLE','1')!='0'
 _fwd={'sock':None,'last_try':0.0}
 _prev={}  # dev -> (patternName, curStitch): suy status từ việc curStitch có tăng không
+_prev_state={}  # dev -> mã state lần trước: chỉ báo khi ĐỔI, không báo mỗi nhịp
+
+# ---- Bảng tên máy: dev trên dây (602602704E7B) -> machineId trong sổ máy (mch-a15-mqtt) ----
+#
+# Vì sao cần: mọi máy đẩy telemetry qua CHUNG một socket tới bridge, ra từ cùng 127.0.0.1.
+# Bridge định danh máy theo địa chỉ nguồn, nên nếu khung không tự khai tên thì hai máy sẽ
+# rơi vào một bản ghi và số mũi trộn vào nhau — hỏng kiểu im lặng, không một dòng lỗi.
+#
+# Bảng RỖNG là hợp lệ và giữ nguyên hành vi cũ từng byte: không khai tên thì không thêm
+# khoá, bridge suy theo IP như trước. Nhờ vậy nâng broker lên bản này KHÔNG đổi gì cho tới
+# khi có người thật sự viết file bảng.
+MAP_PATH=os.environ.get('DEV_MAP_PATH') or os.path.join(os.path.dirname(__file__),'may.json')
+_devmap={'at':0.0,'mtime':None,'map':{}}
+def dev_map():
+    """Đọc bảng, tự nạp lại khi file đổi — tối đa 5 giây một lần.
+
+    Nạp lại nóng là cố ý: thêm một máy vào xưởng mà phải khởi động lại broker thì lần thêm
+    nào cũng làm rụng máy đang chạy. File hỏng thì GIỮ bảng cũ và kêu, chứ không rơi về
+    bảng rỗng — rơi về rỗng nghĩa là lặng lẽ quay lại đúng cái lỗi trộn máy ở trên.
+    """
+    now=time.time()
+    if now-_devmap['at']<5: return _devmap['map']
+    _devmap['at']=now
+    try: mt=os.path.getmtime(MAP_PATH)
+    except OSError:
+        if _devmap['mtime'] is not None:
+            log('  [MAP] %s biến mất -> giữ bảng đang dùng (%d máy)'%(MAP_PATH,len(_devmap['map'])))
+        return _devmap['map']
+    if mt==_devmap['mtime']: return _devmap['map']
+    try:
+        raw=json.load(open(MAP_PATH))
+        if not isinstance(raw,dict): raise ValueError('phải là object dev -> machineId')
+        m={}
+        for k,v in raw.items():
+            if not isinstance(v,str) or not v.strip(): raise ValueError('machineId của %s phải là chuỗi'%k)
+            m[str(k).upper()]=v.strip()
+        _devmap['map']=m; _devmap['mtime']=mt
+        log('  [MAP] nạp %s: %d máy (%s)'%(MAP_PATH,len(m),', '.join(sorted(m.values())) or '-'))
+    except Exception as e:
+        log('  [MAP] %s đọc lỗi (%s) -> giữ bảng đang dùng (%d máy)'%(MAP_PATH,e,len(_devmap['map'])))
+    return _devmap['map']
+
+def machine_id_of(dev):
+    return dev_map().get(str(dev).upper())
 
 def _iso():
     return time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime())+'Z'
@@ -286,7 +341,26 @@ def state_to_status(dev, body):
         return 'running' if cur>prev[1] else 'stopped'
     return 'unknown'                      # lần đầu / vừa đổi mẫu: chưa đủ cơ sở
 
-def controller_state_event(body, at):
+# Tên tiếng Việt cho MÃ TRẠNG THÁI - chỉ 3 mã đã đo đủ chắc, đo trên ~58.000 lượt khung liên
+# tiếp trong toàn bộ broker.log (kể cả bản đã xoay), 13 máy:
+#
+#   mã  0 -  4.477 luot: 91,5% kem mui TANG,  99,6% dang o giua mau       -> "đang thêu"
+#   mã  2 -  1.155 luot: 99,8% mui DUNG YEN, 100,0% dang o giua mau       -> "dừng giữa mẫu"
+#   mã 15 - 52.347 luot: 99,5% mui dung yen,  91,9% het mau / chua co mau -> "không thêu"
+#
+# Mã -1 CỐ Ý để trống: chỉ 20 lượt, 30% tăng / 55% đứng - quá ít để gọi tên. Giao thức này không
+# có trường báo lỗi nào để cãi lại, nên đặt tên cho một mã chưa hiểu là nói hộ máy.
+TEN_MA = {0: 'đang thêu', 2: 'dừng giữa mẫu', 15: 'không thêu'}
+
+
+def _ten_ma(ma):
+    """'15 (không thêu)' nếu đã đo chắc, còn lại trả số trần."""
+    try: t = TEN_MA.get(int(ma))
+    except (TypeError, ValueError): t = None
+    return '%s (%s)' % (ma, t) if t else str(ma)
+
+
+def controller_state_event(dev, body, at):
     """[E2] Lời MÁY TỰ NÓI về trạng thái của nó, chuyển nguyên văn sang bridge.
 
     Vì sao đi bằng `events[]` chứ không bằng một khoá mới: hợp đồng bridge không có chỗ nào
@@ -302,11 +376,33 @@ def controller_state_event(body, at):
 
     Máy không nói thì KHÔNG nói hộ: thiếu mô tả hoặc thiếu số hiệu ⇒ trả None.
     """
-    desc = body.get('wstrStatusDesc')
-    if not isinstance(desc, str) or not desc.strip(): return None
     sid = body.get('stateID')
     if sid is None: sid = body.get('state')
     if sid is None: return None
+
+    desc = body.get('wstrStatusDesc')
+    if not isinstance(desc, str) or not desc.strip():
+        # Máy A15 KHÔNG gửi `wstrStatusDesc` (đã kiểm 13 máy, catalog không có trường này).
+        # Trước đây nhánh này trả None, nên màn hình chưa bao giờ nhận được sự kiện nào và ô
+        # "Lỗi máy" không thể rời khỏi 0. Nay báo bằng chính con số máy tự khai.
+        #
+        # CHỈ báo khi mã ĐỔI. Máy đẩy `state` mỗi 1-2 giây; báo mỗi nhịp là biến nhật ký thành
+        # dòng chảy vô nghĩa - đúng cái đang phải sửa.
+        #
+        # Số thô luôn giữ nguyên; tên tiếng Việt chỉ thêm cho 3 mã đã đo đủ chắc (TEN_MA).
+        # Mã lạ để trần đúng như máy khai. Bảng tên này phải khớp từng chữ với `TEN_MA` trong
+        # xem/index.html: hai màn hình gọi cùng một mã bằng hai cái tên là cách nhanh nhất để
+        # hai người cãi nhau về cùng một cái máy.
+        cu = _prev_state.get(dev)
+        if cu == sid: return None
+        _prev_state[dev] = sid
+        if cu is None: return None      # lần đầu thấy máy: chưa có gì để gọi là "đổi"
+        cur = body.get('curStitch'); tot = body.get('patternStitch')
+        them = ''
+        if isinstance(cur, int) and isinstance(tot, int) and tot > 0:
+            them = ' · %d/%d mũi%s' % (cur, tot, ' (giữa mẫu)' if cur < tot else ' (hết mẫu)')
+        desc = 'Máy đổi mã trạng thái %s sang %s%s' % (_ten_ma(cu), _ten_ma(sid), them)
+
     code = str(sid)[:40]              # contract.mjs:224 chặn 40
     return {'id': 'state-' + code,    # <=46: contract.mjs:236 chặn 80, vượt là bridge TỪ CHỐI CẢ GÓI
             'code': code,
@@ -322,8 +418,13 @@ def build_frame(dev, body):
              'job':{'fileName':body.get('patternName') or None,
                     'currentStitch':body.get('curStitch'),
                     'totalStitches':body.get('patternStitch')}}
+    # Khung TỰ KHAI máy nào đang nói. Không khai được thì thà không khai còn hơn khai bừa:
+    # bridge sẽ suy theo địa chỉ nguồn như cũ (đúng khi chỉ có một máy, và là lý do bảng
+    # rỗng vẫn chạy được y như trước).
+    mid = machine_id_of(dev)
+    if mid: frame['machineId'] = mid
     # [E2] THUẦN CỘNG THÊM: ba khoá trên giữ nguyên từng byte cho mọi trường hợp đang chạy.
-    event = controller_state_event(body, at)
+    event = controller_state_event(dev, body, at)
     if event is not None: frame['events'] = [event]
     return frame
 
@@ -578,17 +679,40 @@ def handle_pattern_dataack(entry, topic, payload):
 #   browse            = gửi danh sách mẫu (nhử máy)
 #   query <barCodeID> = gửi query/ack isFind=1
 #   data  <barCodeID> = gửi nguyên file trong 1 pattern/data (fileStart=0)
+#
+# Chọn máy: chèn @<dev> ngay sau lệnh, ví dụ  data @602602704E7B 12345
+#   - Đúng MỘT máy đang nối và không ghi @dev  -> dùng máy đó (giữ nguyên cách gõ cũ).
+#   - Từ HAI máy trở lên và không ghi @dev     -> TỪ CHỐI, in ra danh sách máy đang nối.
+#
+# Vì sao từ chối chứ không chọn giúp: lệnh này đẩy file thêu xuống máy thật. Bản trước lấy
+# máy đầu tiên trong danh sách kết nối, tức là "máy nào nối trước" — ở xưởng có hai máy thì
+# đó là thêu nhầm mẫu lên nhầm máy, và không có gì báo cho ai biết. Không đoán được thì
+# dừng lại là đáp án đúng.
 CTRL=os.path.join(os.path.dirname(__file__),'push-cmd.txt')
-def _first_dev():
+def _devs():
     with lock:
-        for c in clients:
-            d=c[2].get('dev') if len(c)>2 else None
-            if d: return d
-    return None
+        return [c[2].get('dev') for c in clients if len(c)>2 and c[2].get('dev')]
+def _pick_dev(parts):
+    """Trả (dev, phần còn lại của lệnh). dev=None nghĩa là không chọn được -> đừng gửi gì."""
+    devs=_devs()
+    if parts and parts[0].startswith('@'):
+        want=parts[0][1:]; rest=parts[1:]
+        hit=[d for d in devs if d.upper()==want.upper()]
+        if not hit:
+            log('  [CTRL] máy %s không đang nối. Đang nối: %s'%(want, ', '.join(devs) or '(chưa có máy nào)'))
+            return None,rest
+        return hit[0],rest
+    if len(devs)==1: return devs[0],parts
+    if not devs:
+        log('  [CTRL] chưa có máy nối, bỏ qua')
+        return None,parts
+    log('  [CTRL] có %d máy đang nối (%s) mà lệnh không ghi @<dev> -> TỪ CHỐI để khỏi đẩy nhầm máy'%(len(devs),', '.join(devs)))
+    return None,parts
 def do_ctrl(cmd):
-    dev=_first_dev()
-    if not dev: log('  [CTRL] chưa có máy nối, bỏ qua: %s'%cmd); return
     parts=cmd.split(); op=parts[0] if parts else ''
+    dev,parts=_pick_dev(parts[1:])
+    if not dev: return
+    parts=[op]+parts
     hdr={'mesgNo':'1','version':'1.0'}
     if op=='browse':
         _send_browse(dev,hdr)
@@ -655,6 +779,31 @@ def client_thread(sock, addr):
                 ka=struct.unpack_from('>H',body,i+2)[0]; i+=4
                 cid,i=rd_str(body,i)
                 log('CONNECT proto=%s lvl=%d cid=%s keepalive=%d cleanSession=%d cflags=0x%02x'%(pn.decode(errors='replace'),level,cid.decode(errors='replace'),ka,(cflags>>1)&1,cflags))
+                # [Q3] Đọc NỐT phần đuôi gói CONNECT. cflags=0xf6 (130 lượt) nghĩa là máy CÓ
+                # khai Last Will. Broker cũ dừng ở clientId nên vứt cả bốn trường.
+                # Ghép với 0 gói DISCONNECT sạch trên 228 lượt CONNECT: Will là cơ chế DUY NHẤT
+                # firmware định dùng để báo "tôi chết". Chỉ ĐỌC, không đổi một byte gửi ra.
+                # ⚠ willMessage/username/password: CHỈ ghi ĐỘ DÀI, không bao giờ ghi giá trị.
+                _will=None; _unl=None; _pwl=None; _du=None
+                try:
+                    if (cflags>>2)&1:
+                        _wt,i=rd_str(body,i); _wm,i=rd_str(body,i)
+                        _will={'topic':_wt.decode(errors='replace'),
+                               'qos':(cflags>>3)&3,'retain':(cflags>>5)&1,'msgLen':len(_wm)}
+                    if (cflags>>7)&1: _u,i=rd_str(body,i); _unl=len(_u)
+                    if (cflags>>6)&1: _p,i=rd_str(body,i); _pwl=len(_p)
+                    _du=len(body)-i
+                except Exception as _e:
+                    log('  [CONNECT đuôi] đọc lỗi: %s (đã đọc %d/%d byte)'%(_e,i,len(body)))
+                if _will:
+                    entry[2]['will']=_will
+                    log('  [WILL] topic=%s qos=%d retain=%d msgLen=%d'
+                        %(_will['topic'],_will['qos'],_will['retain'],_will['msgLen']))
+                elif (cflags>>2)&1:
+                    log('  [WILL] cflags nói CÓ will nhưng đọc không ra')
+                else:
+                    log('  [WILL] không khai (cflags=0x%02x)'%cflags)
+                log('  [CONNECT đuôi] userLen=%s passLen=%s thừa=%s byte'%(_unl,_pwl,_du))
                 _m=_re.match(r'([0-9A-Fa-f]{12})',cid.decode(errors='replace'))
                 if _m:
                     entry[2]['dev']=_m.group(1); log('  [dev] = %s (từ clientId)'%_m.group(1))
@@ -675,7 +824,10 @@ def client_thread(sock, addr):
                     with _enum_lock:
                         _enum['connect']={'clientId':cid.decode(errors='replace'),
                                           'proto':pn.decode(errors='replace'),
-                                          'level':level,'keepalive':ka,'at':_iso()}
+                                          'level':level,'keepalive':ka,'at':_iso(),
+                                          'cflags':'0x%02x'%cflags,
+                                          'will':_will,            # msgLen thôi, không có thân
+                                          'userLen':_unl,'passLen':_pwl,'duByte':_du}
                 # [V2] May khai keepalive=ka giay. Chuan MQTT: qua 1.5*ka ma im
                 # thi coi nhu chet. Lay 2*ka cho rong tay, toi thieu 45s.
                 try:
