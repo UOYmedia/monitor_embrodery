@@ -87,7 +87,7 @@ def bang():
         "tags": ["dahao", "xuong", "gio-may"],
         "timezone": "browser",
         "schemaVersion": 39,
-        "version": 2,
+        "version": 3,
         "editable": False,
         "graphTooltip": 1,
         "refresh": "1m",
@@ -137,23 +137,25 @@ def bang():
             o(415, "Mũi đã thêu", "Tổng số mũi cộng thêm được trong khoảng đang xem.",
               tong('mui'), 20, 6, don_vi="short", mau="text"),
 
-            o(420, "Dừng dưới 1 phút", "Cộng thời gian của những lần dừng NGẮN (< 60 giây). "
-                    "Phần lớn là cắt chỉ, đổi màu, chỉnh khung — vụn nhưng cộng lại rất tốn.",
-              tong('ngan'), 0, 11, w=5, mau="orange"),
-            o(421, "bao nhiêu lần", "Số lần dừng ngắn đã KHÉP LẠI (máy dừng rồi chạy tiếp) trong "
-                    "khoảng đang xem. Lần dừng được tính vào phút mà nó KẾT THÚC.",
-              tong('so_ngan'), 5, 11, w=4, don_vi="short"),
+            o(420, "Dừng dưới 1 phút", "SỐ LẦN máy dừng ngắn (< 60 giây) đã KHÉP LẠI — dừng rồi "
+                    "chạy tiếp. Lần dừng được tính vào phút mà nó KẾT THÚC.\n\nPhần lớn là cắt "
+                    "chỉ, đổi màu, chỉnh khung: vụn nhưng cộng lại rất tốn — thời gian nằm ở ô "
+                    "“mất bao lâu” ngay bên cạnh.",
+              tong('so_ngan'), 0, 11, w=5, don_vi="short", mau="orange"),
+            o(421, "mất bao lâu", "Cộng THỜI GIAN của đúng những lần dừng ngắn đã đếm ở ô bên "
+                    "trái.", tong('ngan'), 5, 11, w=4),
             o(422, "trong đó chỉ thoáng ≤ 4 giây", "Những lần dừng chỉ hiện ra đúng một nhịp đo "
                     "(máy khai mỗi ~2 giây). Thường là cắt chỉ tự động chứ không phải sự cố — "
-                    "thời gian vẫn được cộng đủ vào ô bên trái, tách ra đây để cột “bao nhiêu lần” "
-                    "không bị nó lấp mất.\n\nNhật ký vá mẫu (`va-mau`) VỨT HẲN những lần này, nên "
+                    "thời gian vẫn được cộng đủ vào ô “mất bao lâu” bên trái, tách ra đây để ô đếm "
+                    "“Dừng dưới 1 phút” không bị nó lấp mất.\n\nNhật ký vá mẫu (`va-mau`) VỨT HẲN những lần này, nên "
                     "số lần bên đó bao giờ cũng nhỏ hơn ở đây.",
               tong('so_nhay'), 9, 11, w=5, don_vi="short"),
-            o(423, "Dừng từ 1 phút trở lên", "Cộng thời gian của những lần dừng DÀI (≥ 60 giây). "
-                    "Đây mới là thứ đáng đi hỏi: hết chỉ không ai thay, kẹt khung, thợ bỏ máy.",
-              tong('dai'), 14, 11, w=5, mau="red"),
-            o(424, "bao nhiêu lần", "Số lần dừng dài đã khép lại trong khoảng đang xem.",
-              tong('so_dai'), 19, 11, w=5, don_vi="short"),
+            o(423, "Dừng từ 1 phút trở lên", "SỐ LẦN máy dừng dài (≥ 60 giây) đã khép lại trong "
+                    "khoảng đang xem.\n\nĐây mới là thứ đáng đi hỏi: hết chỉ không ai thay, kẹt "
+                    "khung, thợ bỏ máy.",
+              tong('so_dai'), 14, 11, w=5, don_vi="short", mau="red"),
+            o(424, "mất bao lâu", "Cộng THỜI GIAN của đúng những lần dừng dài đã đếm ở ô bên "
+                    "trái.", tong('dai'), 19, 11, w=5),
 
             {
                 "id": 430, "type": "table", "title": "Từng máy — một ngày trôi đi đâu",

@@ -122,8 +122,8 @@ def main():
     # ---- ô chữ to phải khớp tổng cột trong bảng ------------------------------------------
     print()
     KHOP = {410: 'Đang thêu', 411: 'Dừng', 412: 'Chờ', 413: 'Mất tín hiệu',
-            415: 'Mũi đã thêu', 420: 'Dừng <1′', 421: 'lần', 422: '≤4 giây',
-            423: 'Dừng ≥1′', 424: 'lần '}
+            415: 'Mũi đã thêu', 420: 'lần', 421: 'Dừng <1′', 422: '≤4 giây',
+            423: 'lần ', 424: 'Dừng ≥1′'}   # ô 420/423 nay đọc ra SỐ LẦN, thời gian lùi sang 421/424
     for pid in sorted(KHOP):
         r = hoi(o[pid]['targets'][0]['expr'])
         v = float(r[0]['value'][1]) if r else 0.0
