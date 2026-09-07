@@ -39,6 +39,8 @@ test('suy trạng thái vận hành giống dashboard bridge', () => {
   assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 20 })).status, 'PAUSED')
   assert.equal(mapMachine(machine({ status: 'stopped', current: 0, total: 20 })).status, 'IDLE')
   assert.equal(mapMachine(machine({ status: 'paused', current: 0, total: 0 })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'stopped', current: 10, total: null })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 0 })).status, 'IDLE')
   assert.equal(mapMachine(machine({ status: 'running', connection: 'stale' })).status, 'OFFLINE')
   assert.equal(mapMachine(machine({ status: 'running', connection: 'offline' })).status, 'OFFLINE')
   assert.equal(mapMachine(machine({ status: 'unknown' })).status, 'OFFLINE')

@@ -13,10 +13,10 @@ function readingValue(reading) {
 }
 
 function stoppedStatus(currentStitch, totalStitches) {
-  if (totalStitches !== null && totalStitches > 0 && currentStitch !== null && currentStitch >= totalStitches) {
-    return 'COMPLETED'
+  if (totalStitches !== null && totalStitches > 0 && currentStitch !== null) {
+    if (currentStitch >= totalStitches) return 'COMPLETED'
+    if (currentStitch > 0) return 'PAUSED'
   }
-  if (currentStitch !== null && currentStitch > 0) return 'PAUSED'
   return 'IDLE'
 }
 
