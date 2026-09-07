@@ -1,0 +1,1902 @@
+{
+  "type": "fleet_state",
+  "schemaVersion": 2,
+  "revision": 544414,
+  "at": "2026-09-07T03:40:48.293Z",
+  "sites": [
+    {
+      "id": "xuong-a15",
+      "name": "Xuong A15",
+      "timeZone": "Asia/Ho_Chi_Minh",
+      "allowedCidrs": [
+        "127.0.0.0/8"
+      ],
+      "freshSeconds": 30,
+      "staleSeconds": 90,
+      "stopEscalationMinutes": 5,
+      "threadBreakWarnPer1000": null,
+      "shifts": [
+        {
+          "id": "ca-ngay",
+          "name": "Cả ngày",
+          "start": "00:00",
+          "end": "24:00"
+        }
+      ],
+      "pricePer1000Stitches": null
+    }
+  ],
+  "machines": [
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-3ce4b0c54f54",
+        "assetTag": "3CE4B0C54F54",
+        "name": "Máy 05",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "3CE4B0C54F54",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 3CE4B0C54F54. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.319Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.319Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 13644,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:27:14.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-3ce4b0c54f54",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.319Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4162883478_1_Front1.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 5917,
+            "totalStitches": 5917,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "state:idle-long",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 05: đã dừng 14 phút.",
+          "detail": "Quá ngưỡng 5 phút của xưởng. Bridge không biết lý do dừng — controller chưa gửi mã lý do.",
+          "source": "bridge",
+          "since": "2026-09-07T03:27:14.000Z",
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602621294",
+        "assetTag": "602602621294",
+        "name": "Máy 11",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602621294",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602621294. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.790Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.790Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 17173,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:24:29.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-602602621294",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.790Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "#FLW~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 3496,
+            "totalStitches": 3496,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "state:idle-long",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 11: đã dừng 16 phút.",
+          "detail": "Quá ngưỡng 5 phút của xưởng. Bridge không biết lý do dừng — controller chưa gửi mã lý do.",
+          "source": "bridge",
+          "since": "2026-09-07T03:24:29.000Z",
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602621948",
+        "assetTag": "602602621948",
+        "name": "Máy 12",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602621948",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602621948. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.952Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.952Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 13622,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:35.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-602602621948",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.952Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4164~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 4477,
+            "totalStitches": 11595,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-a15-mqtt",
+        "assetTag": "A15-MQTT",
+        "name": "Máy 17",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS-A15-B104H-B",
+        "serial": "602602704E7B",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh A15-MQTT. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-21T08:00:00.000Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "unknown",
+        "reason": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+        "ageSeconds": null,
+        "lastTelemetryAt": null,
+        "lastReachableAt": null,
+        "lastCheckedAt": null,
+        "reachable": null,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 3946,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": null,
+      "lastCountedReading": null,
+      "telemetry": null,
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "connection:unknown",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 17: chưa kết luận được máy có đang kết nối.",
+          "detail": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+          "source": "bridge",
+          "since": null,
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602911cb8",
+        "assetTag": "602602911CB8",
+        "name": "Máy 15",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602911CB8",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602911CB8. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 0s trước.",
+        "ageSeconds": 0,
+        "lastTelemetryAt": "2026-09-07T03:40:48.000Z",
+        "lastReachableAt": "2026-09-07T03:40:48.283Z",
+        "lastCheckedAt": "2026-09-07T03:40:48.283Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 14195,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:10.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-602602911cb8",
+        "observedAt": "2026-09-07T03:40:48.000Z",
+        "receivedAt": "2026-09-07T03:40:48.283Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:48.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4161~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 9375,
+            "totalStitches": 21679,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:48.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-6026029341eb",
+        "assetTag": "6026029341EB",
+        "name": "Máy 13",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "6026029341EB",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 6026029341EB. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.685Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.685Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 11164,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:02.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-6026029341eb",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.685Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4164~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 927,
+            "totalStitches": 3005,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-6026029348ed",
+        "assetTag": "6026029348ED",
+        "name": "Máy 07",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "6026029348ED",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 6026029348ED. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.552Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.552Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 13397,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T01:03:28.000Z",
+        "approximate": true,
+        "somNhat": "2026-09-05T08:41:21.000Z",
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-6026029348ed",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.552Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4162~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 10532,
+            "totalStitches": 10532,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "state:idle-long",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 07: đã dừng ít nhất 2 giờ 37 phút.",
+          "detail": "Quá ngưỡng 5 phút của xưởng. Bridge không biết lý do dừng — controller chưa gửi mã lý do.",
+          "source": "bridge",
+          "since": "2026-09-07T01:03:28.000Z",
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-60260295c907",
+        "assetTag": "60260295C907",
+        "name": "Máy 02",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "60260295C907",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 60260295C907. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.798Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.798Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 12184,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:35:23.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-60260295c907",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.798Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4161~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 6667,
+            "totalStitches": 6667,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "state:idle-long",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 02: đã dừng 5 phút.",
+          "detail": "Quá ngưỡng 5 phút của xưởng. Bridge không biết lý do dừng — controller chưa gửi mã lý do.",
+          "source": "bridge",
+          "since": "2026-09-07T03:35:23.000Z",
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-60260298b4c7",
+        "assetTag": "60260298B4C7",
+        "name": "Máy 09",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "60260298B4C7",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 60260298B4C7. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.851Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.851Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 17046,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:39:23.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-60260298b4c7",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.851Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4164~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 5852,
+            "totalStitches": 9119,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602a6f22b",
+        "assetTag": "602602A6F22B",
+        "name": "Máy 01",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602A6F22B",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602A6F22B. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.580Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.580Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 15599,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:40:24.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-602602a6f22b",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.580Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4162~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 153,
+            "totalStitches": 4613,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-b83df60b3fb8",
+        "assetTag": "B83DF60B3FB8",
+        "name": "Máy 08",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "B83DF60B3FB8",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh B83DF60B3FB8. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.325Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.325Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 14968,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:42.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-b83df60b3fb8",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.325Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4157~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 7951,
+            "totalStitches": 15347,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-c0d60a8f4d52",
+        "assetTag": "C0D60A8F4D52",
+        "name": "Máy 10",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "C0D60A8F4D52",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh C0D60A8F4D52. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.555Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.555Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 15948,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:33:24.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-c0d60a8f4d52",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.555Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4164~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 2957,
+            "totalStitches": 10250,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-f4b8985355ef",
+        "assetTag": "F4B8985355EF",
+        "name": "Máy 06",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "F4B8985355EF",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh F4B8985355EF. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-26T09:59:34.173Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.972Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.972Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 16393,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:44.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-f4b8985355ef",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.972Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4153825911_replace_1_Front1.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 4951,
+            "totalStitches": 16407,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602933651",
+        "assetTag": "602602933651",
+        "name": "Máy 16",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602933651",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602933651. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-08-31T10:01:13.508Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.405Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.405Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 14257,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:37:42.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-602602933651",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.405Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4164~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 1784,
+            "totalStitches": 1813,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-6026029613c2",
+        "assetTag": "6026029613C2",
+        "name": "Máy 03",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "6026029613C2",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 6026029613C2. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-09-03T03:01:41.831Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.590Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.590Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 11086,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:33:20.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-6026029613c2",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.590Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4157410500 front christina.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 252,
+            "totalStitches": 6126,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "state:idle-long",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 03: đã dừng 7 phút.",
+          "detail": "Quá ngưỡng 5 phút của xưởng. Bridge không biết lý do dừng — controller chưa gửi mã lý do.",
+          "source": "bridge",
+          "since": "2026-09-07T03:33:20.000Z",
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-60260295be00",
+        "assetTag": "60260295BE00",
+        "name": "Máy 04",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "60260295BE00",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 60260295BE00. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-09-03T03:01:41.831Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 1s trước.",
+        "ageSeconds": 1,
+        "lastTelemetryAt": "2026-09-07T03:40:47.000Z",
+        "lastReachableAt": "2026-09-07T03:40:47.279Z",
+        "lastCheckedAt": "2026-09-07T03:40:47.279Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 14741,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "running",
+        "at": "2026-09-07T03:40:37.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-60260295be00",
+        "observedAt": "2026-09-07T03:40:47.000Z",
+        "receivedAt": "2026-09-07T03:40:47.279Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "running",
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4166~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 3632,
+            "totalStitches": 8044,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:47.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-6026029341b8",
+        "assetTag": "6026029341B8",
+        "name": "Máy 14",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "6026029341B8",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 6026029341B8. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-09-03T03:01:41.831Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "online",
+        "reason": "Telemetry mới 2s trước.",
+        "ageSeconds": 2,
+        "lastTelemetryAt": "2026-09-07T03:40:46.000Z",
+        "lastReachableAt": "2026-09-07T03:40:46.814Z",
+        "lastCheckedAt": "2026-09-07T03:40:46.814Z",
+        "reachable": true,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 15651,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": {
+        "status": "stopped",
+        "at": "2026-09-07T03:39:04.000Z",
+        "approximate": false,
+        "somNhat": null,
+        "truocKhiMu": null
+      },
+      "lastCountedReading": null,
+      "telemetry": {
+        "schemaVersion": 2,
+        "machineId": "mch-6026029341b8",
+        "observedAt": "2026-09-07T03:40:46.000Z",
+        "receivedAt": "2026-09-07T03:40:46.814Z",
+        "source": "dial-in:127.0.0.1",
+        "status": {
+          "value": "stopped",
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "rpm": null,
+        "rpmHistory": null,
+        "job": {
+          "value": {
+            "fileName": "4162~.DST",
+            "product": null,
+            "needle": null,
+            "threadColor": null,
+            "currentStitch": 10332,
+            "totalStitches": 10332,
+            "elapsedSeconds": null
+          },
+          "observedAt": "2026-09-07T03:40:46.000Z",
+          "source": "dial-in:127.0.0.1",
+          "quality": "verified"
+        },
+        "needlePosition": null,
+        "odometer": null,
+        "threadBreakWindow": null,
+        "controller": null,
+        "events": []
+      },
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": []
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-6026029ef56e",
+        "assetTag": "6026029EF56E",
+        "name": "Máy 18",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "6026029EF56E",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 6026029EF56E. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-09-03T03:01:41.831Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "unknown",
+        "reason": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+        "ageSeconds": null,
+        "lastTelemetryAt": null,
+        "lastReachableAt": null,
+        "lastCheckedAt": null,
+        "reachable": null,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 8427,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": null,
+      "lastCountedReading": null,
+      "telemetry": null,
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "connection:unknown",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 18: chưa kết luận được máy có đang kết nối.",
+          "detail": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+          "source": "bridge",
+          "since": null,
+          "acknowledged": null
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "identity": {
+        "id": "mch-602602932ebc",
+        "assetTag": "602602932EBC",
+        "name": "Máy 19",
+        "siteId": "xuong-a15",
+        "siteName": "Xuong A15",
+        "zone": "Chưa gán",
+        "model": "BECS (Dahao)",
+        "serial": "602602932EBC",
+        "ipAddress": "127.0.0.1",
+        "macAddress": null,
+        "adapter": "dial-in",
+        "adapterHasProtocol": true,
+        "pricePer1000Stitches": null,
+        "verification": {
+          "status": "unverified",
+          "verifiedAt": null,
+          "verifiedBy": null,
+          "evidence": null
+        },
+        "enabled": true,
+        "archived": false,
+        "note": "Định danh 602602932EBC. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+        "migratedFrom": null,
+        "migrationError": null,
+        "createdAt": "2026-09-03T03:01:41.831Z",
+        "updatedAt": "2026-09-04T07:32:33.914Z",
+        "updatedBy": "ky-thuat"
+      },
+      "connection": {
+        "state": "unknown",
+        "reason": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+        "ageSeconds": null,
+        "lastTelemetryAt": null,
+        "lastReachableAt": null,
+        "lastCheckedAt": null,
+        "reachable": null,
+        "poll": {
+          "failures": 0,
+          "breakerOpen": false,
+          "breakerOpensForMs": 0,
+          "nextPollInMs": 0,
+          "lastError": null
+        }
+      },
+      "thresholds": {
+        "freshSeconds": 30,
+        "staleSeconds": 90,
+        "stopEscalationMinutes": 5,
+        "threadBreakWarnPer1000": null
+      },
+      "statusSince": null,
+      "lastCountedReading": null,
+      "telemetry": null,
+      "telemetryError": null,
+      "maintenance": [],
+      "alerts": [],
+      "derivedAlerts": [
+        {
+          "id": "connection:unknown",
+          "severity": "warning",
+          "kind": "connection",
+          "title": "Máy 19: chưa kết luận được máy có đang kết nối.",
+          "detail": "Chưa nhận được telemetry hợp lệ nào từ máy này.",
+          "source": "bridge",
+          "since": null,
+          "acknowledged": null
+        }
+      ]
+    }
+  ]
+}

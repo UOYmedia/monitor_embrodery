@@ -17,12 +17,14 @@
     "probe:may-in": "node scripts/printer-probe.mjs",
     "capture:xem": "node scripts/xem-capture.mjs",
     "dns:log": "node scripts/dns-log.mjs",
-    "verify": "npm run test && npm run lint && npm run build && npm run bridge:check && npm run test:enum",
+    "verify": "npm run test && npm run test:connector && npm run lint && npm run build && npm run bridge:check && npm run test:enum",
     "kiem-mang": "node scripts/kiem-mang.mjs",
     "lang-nghe": "node scripts/lang-nghe.mjs",
     "bridge:xuong": "BRIDGE_CONFIG=./bridge.config.xuong.json node --env-file-if-exists=.env bridge/index.mjs",
     "test:enum": "node scripts/test-enum.mjs",
-    "coverage": "vitest run --coverage --coverage.reporter=text --coverage.include=bridge/lib/** --coverage.include=scripts/lib/** --coverage.exclude=**/*.test.*"
+    "coverage": "vitest run --coverage --coverage.reporter=text --coverage.include=bridge/lib/** --coverage.include=scripts/lib/** --coverage.exclude=**/*.test.*",
+    "connector:redthread": "node --env-file-if-exists=connector-redthread/.env connector-redthread/index.mjs",
+    "test:connector": "node --test connector-redthread/test/*.test.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { configDefaults } from 'vitest/config'
 
 /**
  * Dev server. Ở bản build thật, giao diện được chính bridge phục vụ (`uiPath`) nên cùng origin và
@@ -17,6 +18,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      // Connector dùng node:test để kiểm thử đúng môi trường service Node thuần.
+      exclude: [...configDefaults.exclude, 'connector-redthread/test/**'],
+    },
     server: {
       // Đúng 5173, không cho nhảy cổng: xem ghi chú `_autoPort` trong .claude/launch.json.
       port: 5173,
