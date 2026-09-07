@@ -712,7 +712,7 @@ Tên đúng là **`grafana-alloy`**.
 |---|---|---|---|
 | `com.dahao.loki` | 3.7.6 | `127.0.0.1:3100` | `quan-sat/native/loki.yml` |
 | `com.dahao.alloy` | 1.19.1 | `127.0.0.1:12345` | `quan-sat/native/config.alloy` |
-| `com.dahao.grafana` | 13.2.0 | `100.107.219.95:3000` | `quan-sat/native/grafana.ini` |
+| `com.dahao.grafana` | 13.2.0 | `100.105.80.93:3000` | `quan-sat/native/grafana.ini` |
 
 Thư mục `quan-sat/native/` khác bản container **đúng hai chỗ**: `/nhat-ky/…` → đường thật
 `/Users/phong/dahao-gateway/…`, và `http://loki:3100` → `http://127.0.0.1:3100`. File JSON của
@@ -724,7 +724,7 @@ trước khi bind, đúng lỗi `EADDRNOTAVAIL` đã cắn với bridge.
 
 ```
 loki    127.0.0.1:3100      alloy   127.0.0.1:12345
-loki    127.0.0.1:9096      grafana 100.107.219.95:3000
+loki    127.0.0.1:9096      grafana 100.105.80.93:3000
 ```
 
 Loki `auth_enabled: false` nên **phải** ở loopback — ai gọi thẳng 3100 là đọc được log thô;
@@ -1094,7 +1094,7 @@ thành … hiển thị luôn mẫu đang làm … nếu lỗi thì biết lỗi
 làm grafana"*. Phần trang `xem/` đã xong ở lượt trước; đây là phần Grafana.
 
 Bảng ở `quan-sat/grafana/dashboards/dahao-tinh-trang.json`, uid `dahao-tinh-trang`, 9 ô. Xem tại
-`http://100.107.219.95:3000/d/dahao-tinh-trang/` — chỉ trong tailnet, không qua tunnel.
+`http://100.105.80.93:3000/d/dahao-tinh-trang/` — chỉ trong tailnet, không qua tunnel.
 
 ### Trả lời "bao lâu" bằng BỀ NGANG, không bằng con số
 
@@ -1167,7 +1167,7 @@ xưởng đã tắt, mọi ô đều 0 — **không phân biệt được "đún
 ### Mở Grafana ra internet (27/08)
 
 `https://grafana.phonh.io.vn` — hostname thứ ba trên **cùng** tunnel Cloudflare đã có, trỏ vào
-`100.107.219.95:3000` (hai hostname kia trỏ bridge 8790).
+`100.105.80.93:3000` (hai hostname kia trỏ bridge 8790).
 
 **Tắt `auth.anonymous` TRƯỚC khi tên miền sống**, không phải sau. Grafana khác trang `xem/`: trang
 `xem/` chỉ trả con số nên để mở là chủ ý; Grafana đọc **log thô** — tên file mẫu, MAC máy, cảnh báo
@@ -1177,7 +1177,7 @@ Grafana → **đo `401` trên đường tailnet** → mới tạo bản ghi DNS 
 Hai chỗ dễ sai, đã ghi chú ngay trong `grafana.ini`:
 
 - **Phải đặt `root_url = https://grafana.phonh.io.vn/`.** Không có nó, đăng nhập xong Grafana đá
-  người dùng về `http://100.107.219.95:3000` — địa chỉ tailnet, ngoài xưởng không với tới.
+  người dùng về `http://100.105.80.93:3000` — địa chỉ tailnet, ngoài xưởng không với tới.
 - **KHÔNG bật `security.cookie_secure`.** Bật lên thì đường tailnet (http trần) không đăng nhập
   được nữa. Tailnet đã mã hoá ở tầng dưới; đây là lựa chọn, không phải quên.
 

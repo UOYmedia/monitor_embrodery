@@ -6,8 +6,13 @@ Bộ này **không thay** trang xem của thợ. Nó là màn hình cho người
 |---|---|---|
 | Cho ai | Thợ đứng máy, quản lý xưởng | Người trông tuyến kỹ thuật |
 | Trả lời | "Máy đang chạy hay dừng?" | "Vì sao lúc 3 giờ sáng máy ngừng nói?" |
-| Đường vào | Internet, không đăng nhập | **Chỉ tailnet** `http://100.107.219.95:3000` |
+| Đường vào | Internet, không đăng nhập | **Chỉ tailnet** `http://100.105.80.93:3000` |
 | Thấy gì | Con số đã xử lý | Log thô — nên **không đưa ra Internet** |
+
+> ⚠️ **IP tailnet KHÔNG cố định.** Ngày 04/09/2026 nó đổi `100.107.219.95` → `100.105.80.93`
+> và bridge + Grafana + tunnel chết cùng lúc vì cả ba đều ghi cứng IP cũ. Con số ghi trong
+> tài liệu này chỉ là **ví dụ tại thời điểm 07/09/2026**. Muốn địa chỉ đang có thì hỏi máy:
+> `tailscale ip -4` (hoặc `bash ~/dahao-gateway/dia-chi-tailnet.sh`), đừng chép số trong doc.
 
 ## Đang chạy bằng gì (26/08)
 
@@ -18,7 +23,7 @@ không màn hình (xem cuối file), nên bỏ hẳn đường container. Ba d�
 |---|---|---|---|
 | `com.dahao.loki` | `loki` 3.7.6 | `127.0.0.1:3100` | `native/loki.yml` |
 | `com.dahao.alloy` | `alloy` 1.19.1 | `127.0.0.1:12345` | `native/config.alloy` |
-| `com.dahao.grafana` | `grafana` 13.2.0 | `100.107.219.95:3000` | `native/grafana.ini` |
+| `com.dahao.grafana` | `grafana` 13.2.0 | `100.105.80.93:3000` | `native/grafana.ini` |
 
 Cả ba đều `KeepAlive` — giết tiến trình thì launchd dựng lại (đã thử thật: giết PID
 Grafana, 25 giây sau có PID mới, `runs = 2`).
@@ -127,8 +132,8 @@ python3 -B dung-bang-xem-nhanh.py \
 luôn `dahao-xem-nhanh` làm trang chủ của tài khoản ấy — đăng nhập là thấy ngay, khỏi mò menu.
 
 - **Mật khẩu sinh trên Mini, ghi vào `grafana-viewer.env` (chmod 600), không in ra màn hình.**
-- Grafana **chỉ nghe trên địa chỉ tailnet** (`grafana.ini` → `http_addr = 100.107.219.95`), nên
-  script phải gọi `http://100.107.219.95:3000`; `127.0.0.1:3000` **connection refused**.
+- Grafana **chỉ nghe trên địa chỉ tailnet** (`grafana.ini` → `http_addr = 100.105.80.93`), nên
+  script phải gọi `http://100.105.80.93:3000`; `127.0.0.1:3000` **connection refused**.
 - Kiểm bằng `thu-tai-khoan-xem.py`: đăng nhập được cả tailnet lẫn công khai, đọc bảng 200, còn
   ghi đè bảng / `/api/admin/settings` / `/api/org/users` đều **403**. `/api/datasources` trả 200
   nhưng chỉ có tên + URL, không có trường bí mật — Grafana che sẵn.

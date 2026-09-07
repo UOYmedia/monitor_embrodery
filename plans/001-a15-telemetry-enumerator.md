@@ -499,17 +499,17 @@ print('== ENUM SELF-TEST PASS ==')
 This step needs the Mac Mini (SSH key + the live machine). If you are an
 executor without that access, **stop here and report Phase A complete**; the
 operator will run this step. Exact commands for whoever has access
-(`KEY`=path to the Mini SSH key, host `phong@100.107.219.95`):
+(`KEY`=path to the Mini SSH key, host `phong@100.105.80.93`):
 
 1. Copy the updated broker to the Mini and byte‑check it there:
-   `scp -i "$KEY" -o IdentitiesOnly=yes deploy-mini/broker.py phong@100.107.219.95:'~/dahao-gateway/broker.py'`
+   `scp -i "$KEY" -o IdentitiesOnly=yes deploy-mini/broker.py phong@100.105.80.93:'~/dahao-gateway/broker.py'`
    then over SSH: `python3 -m py_compile ~/dahao-gateway/broker.py && echo OK`.
 2. Restart the broker (machine reconnects within ~30s):
    `launchctl kickstart -k gui/$(id -u)/com.dahao.broker`.
 3. Let it run across a real production window (ideally a full shift, so
    running/error/thread‑break states occur naturally — **no operator action for
    us is required; this is just wall‑clock time**). Then fetch the artifacts:
-   `scp -i "$KEY" phong@100.107.219.95:'~/dahao-gateway/{catalog.json,enum.log}' .`
+   `scp -i "$KEY" phong@100.105.80.93:'~/dahao-gateway/{catalog.json,enum.log}' .`
 4. (Optional, low‑risk window) run the falsification probe once and watch:
    over SSH `echo enumprobe > ~/dahao-gateway/push-cmd.txt`, wait 60s, then
    check `enum.log` — expected result: **no new machine→server topic appears**
@@ -520,7 +520,7 @@ operator will run this step. Exact commands for whoever has access
 (`body.curStitch`, `body.patternStitch`, `body.state`, `body.patternName`,
 `header.companyId`) and `enum.log` shows ≥1 state and a non‑zero field count;
 the dashboard still serves data (`curl -s -o /dev/null -w '%{http_code}'
-http://100.107.219.95:8790/api/v2/fleet` → `200`).
+http://100.105.80.93:8790/api/v2/fleet` → `200`).
 
 ## Test plan
 

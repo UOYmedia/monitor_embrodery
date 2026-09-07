@@ -82,7 +82,7 @@ grep "nạp lại catalog cũ" ~/dahao-gateway/logs/broker.out | tail -1
 tail -20 ~/dahao-gateway/logs/broker.out | grep -E "STATE|forward|ENUM"
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8790/api/health   # 200
 
-# 5.4 Dashboard vẫn xanh: mở http://100.107.219.95:8790 — máy phải là `online`
+# 5.4 Dashboard vẫn xanh: mở http://100.105.80.93:8790 — máy phải là `online`
 ```
 
 Nếu 5.2 hoặc 5.3 sai ⇒ **lùi ngay** (mục 7), đừng chẩn đoán trên máy đang chạy.
