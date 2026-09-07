@@ -16,9 +16,8 @@ function machine({ status = 'running', connection = 'online', current = 10, tota
   }
 }
 
-test('map đủ sáu dòng trạng thái trong spec', () => {
+test('suy trạng thái vận hành giống dashboard bridge', () => {
   assert.equal(mapMachine(machine({ status: 'running' })).status, 'RUNNING')
-  assert.equal(mapMachine(machine({ status: 'paused' })).status, 'PAUSED')
   assert.deepEqual(
     { status: mapMachine(machine({ status: 'fault', events: [
       { code: 'E12', severity: 'critical', occurredAt: '2026-09-07T03:39:00Z' },
@@ -33,10 +32,17 @@ test('map đủ sáu dòng trạng thái trong spec', () => {
   assert.deepEqual(
     { status: mapMachine(machine({ status: 'stopped', current: 20, total: 20 })).status,
       note: mapMachine(machine({ status: 'stopped', current: 20, total: 20 })).statusNote },
-    { status: 'IDLE', note: 'Xong mẫu A.DST' },
+    { status: 'COMPLETED', note: 'Xong mẫu A.DST' },
   )
-  assert.equal(mapMachine(machine({ status: 'stopped', current: 10, total: 20 })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 20, total: 20 })).status, 'COMPLETED')
+  assert.equal(mapMachine(machine({ status: 'stopped', current: 10, total: 20 })).status, 'PAUSED')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 20 })).status, 'PAUSED')
+  assert.equal(mapMachine(machine({ status: 'stopped', current: 0, total: 20 })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 0, total: 0 })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'stopped', current: 10, total: null })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 0 })).status, 'IDLE')
   assert.equal(mapMachine(machine({ status: 'running', connection: 'stale' })).status, 'OFFLINE')
+  assert.equal(mapMachine(machine({ status: 'running', connection: 'offline' })).status, 'OFFLINE')
   assert.equal(mapMachine(machine({ status: 'unknown' })).status, 'OFFLINE')
 })
 
