@@ -72,7 +72,7 @@ export function mapMachine(machine, overrides = {}) {
     currentFile,
     currentStitch,
     totalStitches,
-    rpm: Number.isInteger(rpmValue) ? rpmValue : null,
+    rpm: Number.isFinite(rpmValue) && rpmValue >= 0 ? Math.round(rpmValue) : null,
     errorCode,
     statusNote,
   }

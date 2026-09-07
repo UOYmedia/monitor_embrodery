@@ -46,6 +46,12 @@ test('machine-map override thắng convention tên máy', () => {
   assert.equal(externalMachineId(value, { 'bridge-7': 42 }), 42)
 })
 
+test('rpm dạng số thập phân được làm tròn cho contract số nguyên của RedThread', () => {
+  const value = machine()
+  value.telemetry.rpm.value = 700.6
+  assert.equal(mapMachine(value).rpm, 701)
+})
+
 test('eventId ổn định theo nội dung và đủ 64 ký tự', () => {
   const input = { externalMachineId: 7, fromStatus: 'IDLE', toStatus: 'RUNNING', occurredAt: '2026-09-07T03:40:00.000Z' }
   assert.equal(stableEventId(input), stableEventId({ ...input }))
