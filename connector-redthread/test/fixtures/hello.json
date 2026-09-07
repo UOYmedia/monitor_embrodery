@@ -1,0 +1,16 @@
+{
+  "type": "hello",
+  "schemaVersion": 2,
+  "serverTime": "2026-09-07T03:40:48.293Z",
+  "session": {
+    "actor": "nguoi-xem",
+    "role": "viewer",
+    "authMode": "token",
+    "authenticated": true,
+    "permissions": [
+      "fleet:read",
+      "audit:read"
+    ]
+  },
+  "heartbeatSeconds": 20
+}

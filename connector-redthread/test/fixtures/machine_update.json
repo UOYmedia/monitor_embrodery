@@ -1,0 +1,106 @@
+{
+  "type": "machine_update",
+  "schemaVersion": 2,
+  "revision": 544415,
+  "at": "2026-09-07T03:40:48.327Z",
+  "machine": {
+    "schemaVersion": 2,
+    "identity": {
+      "id": "mch-b83df60b3fb8",
+      "assetTag": "B83DF60B3FB8",
+      "name": "Máy 08",
+      "siteId": "xuong-a15",
+      "siteName": "Xuong A15",
+      "zone": "Chưa gán",
+      "model": "BECS (Dahao)",
+      "serial": "B83DF60B3FB8",
+      "ipAddress": "127.0.0.1",
+      "macAddress": null,
+      "adapter": "dial-in",
+      "adapterHasProtocol": true,
+      "pricePer1000Stitches": null,
+      "verification": {
+        "status": "unverified",
+        "verifiedAt": null,
+        "verifiedBy": null,
+        "evidence": null
+      },
+      "enabled": true,
+      "archived": false,
+      "note": "Định danh B83DF60B3FB8. Tên và vị trí do người khai tại xưởng ngày 2026-09-03.",
+      "migratedFrom": null,
+      "migrationError": null,
+      "createdAt": "2026-08-26T09:59:34.173Z",
+      "updatedAt": "2026-09-04T07:32:33.914Z",
+      "updatedBy": "ky-thuat"
+    },
+    "connection": {
+      "state": "online",
+      "reason": "Telemetry mới 0s trước.",
+      "ageSeconds": 0,
+      "lastTelemetryAt": "2026-09-07T03:40:48.000Z",
+      "lastReachableAt": "2026-09-07T03:40:48.327Z",
+      "lastCheckedAt": "2026-09-07T03:40:48.327Z",
+      "reachable": true,
+      "poll": {
+        "failures": 0,
+        "breakerOpen": false,
+        "breakerOpensForMs": 0,
+        "nextPollInMs": 12624,
+        "lastError": null
+      }
+    },
+    "thresholds": {
+      "freshSeconds": 30,
+      "staleSeconds": 90,
+      "stopEscalationMinutes": 5,
+      "threadBreakWarnPer1000": null
+    },
+    "statusSince": {
+      "status": "running",
+      "at": "2026-09-07T03:40:42.000Z",
+      "approximate": false,
+      "somNhat": null,
+      "truocKhiMu": null
+    },
+    "lastCountedReading": null,
+    "telemetry": {
+      "schemaVersion": 2,
+      "machineId": "mch-b83df60b3fb8",
+      "observedAt": "2026-09-07T03:40:48.000Z",
+      "receivedAt": "2026-09-07T03:40:48.327Z",
+      "source": "dial-in:127.0.0.1",
+      "status": {
+        "value": "running",
+        "observedAt": "2026-09-07T03:40:48.000Z",
+        "source": "dial-in:127.0.0.1",
+        "quality": "verified"
+      },
+      "rpm": null,
+      "rpmHistory": null,
+      "job": {
+        "value": {
+          "fileName": "4157~.DST",
+          "product": null,
+          "needle": null,
+          "threadColor": null,
+          "currentStitch": 7968,
+          "totalStitches": 15347,
+          "elapsedSeconds": null
+        },
+        "observedAt": "2026-09-07T03:40:48.000Z",
+        "source": "dial-in:127.0.0.1",
+        "quality": "verified"
+      },
+      "needlePosition": null,
+      "odometer": null,
+      "threadBreakWindow": null,
+      "controller": null,
+      "events": []
+    },
+    "telemetryError": null,
+    "maintenance": [],
+    "alerts": [],
+    "derivedAlerts": []
+  }
+}
