@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto'
 
 const STATUS_MAP = Object.freeze({
   running: 'RUNNING',
-  paused: 'PAUSED',
-  stopped: 'IDLE',
   fault: 'ERROR',
   unknown: 'OFFLINE',
 })
@@ -12,6 +10,14 @@ const OFFLINE_CONNECTIONS = new Set(['offline', 'stale', 'unknown'])
 
 function readingValue(reading) {
   return reading && Object.hasOwn(reading, 'value') ? reading.value : null
+}
+
+function stoppedStatus(currentStitch, totalStitches) {
+  if (totalStitches !== null && totalStitches > 0 && currentStitch !== null && currentStitch >= totalStitches) {
+    return 'COMPLETED'
+  }
+  if (currentStitch !== null && currentStitch > 0) return 'PAUSED'
+  return 'IDLE'
 }
 
 export function externalMachineId(machine, overrides = {}) {
@@ -53,13 +59,10 @@ export function mapMachine(machine, overrides = {}) {
 
   const status = OFFLINE_CONNECTIONS.has(connectionState)
     ? 'OFFLINE'
-    : (STATUS_MAP[bridgeStatus] ?? 'OFFLINE')
-  const completed = bridgeStatus === 'stopped'
-    && currentStitch !== null
-    && totalStitches !== null
-    && totalStitches > 0
-    && currentStitch === totalStitches
-  const statusNote = status === 'IDLE' && completed && currentFile ? `Xong mẫu ${currentFile}` : ''
+    : (bridgeStatus === 'stopped' || bridgeStatus === 'paused'
+        ? stoppedStatus(currentStitch, totalStitches)
+        : (STATUS_MAP[bridgeStatus] ?? 'OFFLINE'))
+  const statusNote = status === 'COMPLETED' && currentFile ? `Xong mẫu ${currentFile}` : ''
   const errorCode = status === 'ERROR' ? latestFaultCode(machine) : ''
   const statusSince = typeof machine?.statusSince?.at === 'string' ? machine.statusSince.at : null
   const rpmValue = readingValue(telemetry?.rpm)
