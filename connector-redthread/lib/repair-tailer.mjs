@@ -33,20 +33,33 @@ export class RepairTailer {
   // trong MỘT tick sẽ chiếm operationChain nhiều phút liền — heartbeat bị nghẽn
   // quá ngưỡng sweeper (~3 phút) là máy bị đánh OFFLINE oan. Chia nhỏ mỗi tick
   // ≤200 event thì backfill xong trong ~10 phút mà heartbeat vẫn đều nhịp.
-  constructor({ filePath, client, queue, getState, saveState, resolveExternalId, logger = console, sendBudget = 200 }) {
+  constructor({ filePath, client, queue, getState, saveState, resolveExternalId, fleetReady = () => true, logger = console, sendBudget = 200 }) {
     this.filePath = filePath
     this.client = client
     this.queue = queue
     this.getState = getState
     this.saveState = saveState
     this.resolveExternalId = resolveExternalId
+    this.fleetReady = fleetReady
     this.logger = logger
     this.sendBudget = sendBudget
     this.warnedSerials = new Set()
     this.warnedMissing = false
+    this.warnedNoFleet = false
   }
 
   async tick() {
+    // Lúc mới khởi động fleet chưa về, resolveExternalId fail toàn bộ — nếu cứ
+    // tail thì cursor ăn hết file mà không gửi được gì (mất backfill vĩnh viễn).
+    // Đứng yên chờ fleet; cursor không nhúc nhích nên không mất dòng nào.
+    if (!this.fleetReady()) {
+      if (!this.warnedNoFleet) {
+        this.warnedNoFleet = true
+        this.logger.warn('Repair tailer: chưa có fleet từ bridge — hoãn tail tới khi nhận được danh sách máy')
+      }
+      return { sent: 0 }
+    }
+    this.warnedNoFleet = false
     const state = this.getState()
     const read = await this.#readNewBytes(state)
     if (!read) return { sent: 0 }

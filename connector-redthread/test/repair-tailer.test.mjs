@@ -21,7 +21,7 @@ function fakeLogger() {
   return { warnings, errors, info: () => {}, warn: (m) => warnings.push(m), error: (m) => errors.push(m) }
 }
 
-async function makeSetup(t, { resolve = (serial) => SERIAL_MAP[serial] ?? null, repair, sendBudget = 200 } = {}) {
+async function makeSetup(t, { resolve = (serial) => SERIAL_MAP[serial] ?? null, repair, sendBudget = 200, fleetReady } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'redthread-repair-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const filePath = join(directory, 'va-mau.out')
@@ -37,6 +37,7 @@ async function makeSetup(t, { resolve = (serial) => SERIAL_MAP[serial] ?? null, 
     getState: () => state,
     saveState: async () => saves.push(state.repairCursor),
     resolveExternalId: resolve,
+    fleetReady,
     logger,
     sendBudget,
   })
@@ -219,4 +220,23 @@ test('file chưa tồn tại: warn một lần, không crash', async (t) => {
   assert.deepEqual(await tailer.tick(), { sent: 0 })
   assert.deepEqual(await tailer.tick(), { sent: 0 })
   assert.equal(logger.warnings.filter((m) => m.includes('Không thấy file vá')).length, 1)
+})
+
+// Sự cố 9/9 trên mini: tick đầu chạy trước khi fleet về → 16 serial fail resolve,
+// cursor ăn hết file mà không gửi gì. Gate fleetReady giữ cursor đứng yên.
+test('chưa có fleet: cursor đứng yên, có fleet thì xử lý đủ không mất dòng', async (t) => {
+  let ready = false
+  const { filePath, sentEvents, state, logger, tailer } = await makeSetup(t, { fleetReady: () => ready })
+  await writeFile(filePath, [LINE_DONG, LINE_DONG_2, ''].join('\n'))
+
+  assert.deepEqual(await tailer.tick(), { sent: 0 })
+  assert.deepEqual(await tailer.tick(), { sent: 0 })
+  assert.equal(state.repairCursor, 0)
+  assert.equal(sentEvents.length, 0)
+  assert.equal(logger.warnings.filter((m) => m.includes('chưa có fleet')).length, 1)
+
+  ready = true
+  assert.deepEqual(await tailer.tick(), { sent: 2 })
+  assert.deepEqual(sentEvents.map((event) => event.externalMachineId), [1, 2])
+  assert.equal(state.repairCursor, Buffer.byteLength([LINE_DONG, LINE_DONG_2, ''].join('\n'), 'utf8'))
 })

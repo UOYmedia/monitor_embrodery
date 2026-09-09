@@ -35,6 +35,7 @@ const repairTailer = new RepairTailer({
   getState: () => connector.state,
   saveState: () => connector.persistState(),
   resolveExternalId: (serial) => connector.resolveExternalId(serial),
+  fleetReady: () => connector.machines.size > 0,
 })
 const runtime = new Runtime({
   connector,
