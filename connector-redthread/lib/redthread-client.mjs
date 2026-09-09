@@ -34,4 +34,8 @@ export class RedThreadClient {
   event(event) {
     return this.#post('/api/v1/lan/machine-events', event)
   }
+
+  repair(event) {
+    return this.#post('/api/v1/lan/machine-repairs', event)
+  }
 }

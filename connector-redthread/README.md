@@ -13,6 +13,9 @@ file này ngoài Git:
 - `REDTHREAD_URL`: URL gốc RedThread.
 - `REDTHREAD_LAN_API_KEY`: key `mac-mini-a15`, scope workspace VietNam.
 - `HEARTBEAT_INTERVAL_MS`: mặc định 30000 ms.
+- `VA_MAU_PATH`: file JSONL của classifier soi-lan-dung, mặc định
+  `/Users/phong/dahao-gateway/logs/va-mau.out`. File chưa tồn tại thì connector cảnh báo một lần và
+  chạy tiếp.
 
 `machine-map.json` cho phép map ngoại lệ theo dạng `{ "bridge-machine-id": 20 }`. Nếu không có
 override, connector đọc tên `Máy N` thành `externalMachineId=N`. Máy không map được chỉ bị bỏ qua và
@@ -38,6 +41,13 @@ Log có một dòng tổng hợp mỗi phút (`machines`, `posts_ok`, `posts_fai
 đổi trạng thái. Event gửi lỗi được ghi tuần tự vào `data/queue.jsonl` và tự replay; heartbeat lỗi
 không được queue vì RedThread dùng thời gian nhận ở server. `data/state.json` giữ trạng thái gần nhất
 để vá đoạn timeline bị hở nếu service ngừng quá năm phút.
+
+Connector còn tail `va-mau.out` mỗi 30 giây, lọc episode `viec=dong && nghi=nghi-dut-chi` và đẩy lên
+`POST /api/v1/lan/machine-repairs` (cột "Lần vá" trong report RedThread). Vị trí đọc lưu ở
+`repairCursor` trong `data/state.json`; lần chạy đầu backfill nguyên file (chia ≤200 event mỗi tick để
+không nghẽn heartbeat). Event lỗi mạng vào queue riêng `data/repair-queue.jsonl`; lỗi 4xx bị bỏ hẳn
+kèm log để không kẹt hàng đợi. Trường `may` trong file là serial máy (= `identity.id` trên bridge);
+serial đã map được cache trong state nên máy tạm vắng khỏi fleet vẫn backfill được.
 
 ## Cài launchd trên mac-mini
 
