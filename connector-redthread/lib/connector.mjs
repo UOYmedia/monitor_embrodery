@@ -50,10 +50,19 @@ export class Connector {
     }
   }
 
-  resolveExternalId(bridgeId) {
-    const machine = this.machines.get(String(bridgeId))
-    if (!machine) return null
-    return this.#map(machine)?.externalMachineId ?? null
+  // Input là SERIAL trần từ va-mau.out (vd 602602A6F22B). KHÔNG dùng làm key
+  // this.machines được: key là identity.id dạng "mch-602602a6f22b" (prefix +
+  // lowercase) — sự cố 9/9 lần 2 chính là tra map bằng serial nên miss 100%.
+  // Serial thật nằm ở identity.serial (fallback assetTag); 19 máy nên quét tuyến
+  // tính là đủ rẻ.
+  resolveExternalId(serial) {
+    const wanted = String(serial).trim().toUpperCase()
+    if (!wanted) return null
+    for (const machine of this.machines.values()) {
+      const candidate = String(machine?.identity?.serial ?? machine?.identity?.assetTag ?? '').trim().toUpperCase()
+      if (candidate && candidate === wanted) return this.#map(machine)?.externalMachineId ?? null
+    }
+    return null
   }
 
   persistState() {
