@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { EventQueue, readJson, writeJsonAtomic } from './json-store.mjs'
 import { heartbeatMachine, machineEvent, mapMachine } from './mapping.mjs'
 
-const EMPTY_STATE = Object.freeze({ lastPushAt: null, statuses: {} })
+const EMPTY_STATE = Object.freeze({ lastPushAt: null, statuses: {}, repairCursor: 0, repairSerials: {} })
 
 function validDate(value) {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
@@ -35,7 +35,7 @@ export class Connector {
     this.gapMs = gapMs
     this.machines = new Map()
     this.warnedUnmapped = new Set()
-    this.state = { ...EMPTY_STATE, statuses: {} }
+    this.state = { ...EMPTY_STATE, statuses: {}, repairSerials: {} }
     this.initializedSnapshot = false
     this.stats = { postsOk: 0, postsFailed: 0 }
   }
@@ -45,7 +45,19 @@ export class Connector {
     this.state = {
       lastPushAt: validDate(saved?.lastPushAt) ? saved.lastPushAt : null,
       statuses: saved?.statuses && typeof saved.statuses === 'object' ? saved.statuses : {},
+      repairCursor: Number.isInteger(saved?.repairCursor) && saved.repairCursor >= 0 ? saved.repairCursor : 0,
+      repairSerials: saved?.repairSerials && !Array.isArray(saved.repairSerials) && typeof saved.repairSerials === 'object' ? saved.repairSerials : {},
     }
+  }
+
+  resolveExternalId(bridgeId) {
+    const machine = this.machines.get(String(bridgeId))
+    if (!machine) return null
+    return this.#map(machine)?.externalMachineId ?? null
+  }
+
+  persistState() {
+    return this.#saveState()
   }
 
   mappedMachines() {

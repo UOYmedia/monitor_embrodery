@@ -13,8 +13,9 @@ function fleetUrl(baseUrl) {
 }
 
 export class Runtime {
-  constructor({ connector, bridgeUrl, bridgeToken, heartbeatMs = 30_000, fetchImpl = fetch, WebSocketImpl = WebSocket, logger = console }) {
+  constructor({ connector, repairTailer = null, bridgeUrl, bridgeToken, heartbeatMs = 30_000, fetchImpl = fetch, WebSocketImpl = WebSocket, logger = console }) {
     this.connector = connector
+    this.repairTailer = repairTailer
     this.bridgeUrl = bridgeUrl
     this.bridgeToken = bridgeToken
     this.heartbeatMs = heartbeatMs
@@ -31,6 +32,10 @@ export class Runtime {
     await this.connector.init()
     this.#repeat(() => this.#run(() => this.connector.heartbeat(), 'Heartbeat'), this.heartbeatMs)
     this.#repeat(() => this.#run(() => this.connector.replayQueue(), 'Replay queue'), 5_000)
+    if (this.repairTailer) {
+      this.#repeat(() => this.#run(() => this.repairTailer.tick(), 'Repair tailer'), this.heartbeatMs)
+      this.#repeat(() => this.#run(() => this.repairTailer.replayQueue(), 'Replay repair queue'), 5_000)
+    }
     this.#repeat(() => this.connector.summary(), 60_000)
     this.#connect()
   }
