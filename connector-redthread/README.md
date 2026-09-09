@@ -42,7 +42,8 @@ Log có một dòng tổng hợp mỗi phút (`machines`, `posts_ok`, `posts_fai
 không được queue vì RedThread dùng thời gian nhận ở server. `data/state.json` giữ trạng thái gần nhất
 để vá đoạn timeline bị hở nếu service ngừng quá năm phút.
 
-Connector còn tail `va-mau.out` mỗi 30 giây, lọc episode `viec=dong && nghi=nghi-dut-chi` và đẩy lên
+Connector còn tail `va-mau.out` mỗi 30 giây (chỉ sau khi đã nhận danh sách máy từ bridge — chưa có
+fleet thì cursor đứng yên, không mất dòng nào), lọc episode `viec=dong && nghi=nghi-dut-chi` và đẩy lên
 `POST /api/v1/lan/machine-repairs` (cột "Lần vá" trong report RedThread). Vị trí đọc lưu ở
 `repairCursor` trong `data/state.json`; lần chạy đầu backfill nguyên file (chia ≤200 event mỗi tick để
 không nghẽn heartbeat). Event lỗi mạng vào queue riêng `data/repair-queue.jsonl`; lỗi 4xx bị bỏ hẳn
