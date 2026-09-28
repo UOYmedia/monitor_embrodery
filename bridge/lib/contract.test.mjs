@@ -235,7 +235,7 @@ describe('L‑06 · giới hạn độ dài của events[]', () => {
 
 
 describe('per-design counter quality does not discard live telemetry', () => {
-  it.each([[3912, 3912, false], [34628, 3912, true], [1, 0, true], [0, 0, false], [5, null, false], [null, 5, false]])('preserves %s/%s and marks overrun=%s', (currentStitch, totalStitches, overrun) => {
+  it.each([[3912, 3912, false], [34628, 3912, false], [46966, 3912, false], [1, 0, true], [0, 0, false], [5, null, false], [null, 5, false]])('preserves %s/%s and marks overrun=%s', (currentStitch, totalStitches, overrun) => {
     const frame = normalize({ status: 'running', rpm: 700, job: { fileName: 'A.DST', currentStitch, totalStitches } })
     expect(frame.status.value).toBe('running')
     expect(frame.rpm.value).toBe(700)
@@ -243,13 +243,15 @@ describe('per-design counter quality does not discard live telemetry', () => {
     expect(frame.job.value.counterWarning).toBe(overrun ? 'stitch-overrun' : undefined)
     expect(frame.odometer).toBeNull()
   })
-  it.each([-1, 1.5, '4000', Infinity, NaN, true])('still rejects malformed currentStitch=%s', (currentStitch) => {
+  it.each([-1, 1.5, '4000', Infinity, NaN, true, Number.MAX_SAFE_INTEGER + 1])('still rejects malformed currentStitch=%s', (currentStitch) => {
     expect(() => normalize({ status: 'running', job: { currentStitch, totalStitches: 10 } })).toThrow(ContractError)
   })
   it('recovery/reset/design change removes the warning without carrying old fields forward', () => {
     const overrun = normalize({ status: 'running', job: { fileName: 'A.DST', currentStitch: 34628, totalStitches: 3912 } })
     const recovered = normalize({ status: 'paused', job: { fileName: 'B.DST', currentStitch: 0, totalStitches: 7000 } })
-    expect(overrun.job.value.counterWarning).toBe('stitch-overrun')
+    expect(overrun.job.value.counterWarning).toBeUndefined()
+    expect(overrun.job.value).toMatchObject({ repeating: true, inferredItems: 8 })
+    expect(recovered.job.value).toMatchObject({ repeating: false, inferredItems: 0 })
     expect(recovered.job.value.counterWarning).toBeUndefined()
     expect(recovered.job.value.currentStitch).toBe(0)
     expect(recovered.status.value).toBe('paused')

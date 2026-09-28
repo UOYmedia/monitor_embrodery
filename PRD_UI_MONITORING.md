@@ -46,7 +46,7 @@ là "máy nói thế". Năm quy tắc bắt buộc, áp dụng cho **mọi** s�
 
 | Số | Công thức | Điều kiện hiển thị | Nhãn hiển thị |
 | --- | --- | --- | --- |
-| Tiến độ % | `currentStitch / totalStitches` | có cả hai trường | `62%`. **Bỏ kẹp trần 100%** trong `jobProgressPercent`: nếu > 100% in `Bộ đếm vượt tổng mũi (18.240/12.000) — kiểm tra tại máy` với tone cảnh báo, vì kẹp trần đang che lỗi bộ đếm |
+| Tiến độ % | `currentStitch / totalStitches` | có cả hai trường | `62%`. Nếu current > tổng một mẫu dương: hiện ≈ floor(current/total) items suy ra; không phần trăm/ETA cả khung (Vu cập nhật 28/09, event `3f8094cd8705be57b3aa07d1b77ac9f41d0e863a88096e922198d91e8832fbd2`) |
 | Giờ xong dự kiến (ETA) | `(totalStitches − currentStitch) / rpm` phút, cộng vào giờ hiện tại của site | `effectiveStatus === 'running'` **và** `connection.state === 'online'` **và** `rpm > 0` | `≈ xong 15:42` + dòng phụ `Ước tính theo tốc độ hiện tại 650 v/ph` |
 | Thời lượng trạng thái | `now − statusSince` (mục 12.2, bridge ghi lúc `status.value` đổi) | luôn, khi có `statusSince` | `Dừng từ 09:12 (41 phút)`. Sau khi bridge khởi động lại: `Dừng ít nhất từ 10:05 (lúc bridge khởi động)` — không bịa mốc trước đó |
 | Đứt chỉ /1000 mũi | `breaks / stitches × 1000` từ `threadBreakWindow` | có `threadBreakWindow` với `stitches > 0` | `0,4 lần/1000 mũi (2 lần trong 5.000 mũi gần nhất, kim 7)` — luôn in cả phân số gốc lẫn cửa sổ, không in mỗi tỉ lệ |
@@ -280,7 +280,7 @@ Quy tắc chuyển: gập theo khu vực bật tự động khi danh sách sau l
 | Chưa từng ping được | `Chưa từng liên lạc được với máy này` |
 | Đứt chỉ | `0,4 lần/1000 mũi (2 lần trong 5.000 mũi gần nhất, kim 7)` |
 | Đứt chỉ chưa có ngưỡng | `Xưởng chưa đặt ngưỡng cảnh báo đứt chỉ — chỉ hiển thị số đo` |
-| Bộ đếm vượt tổng | `Bộ đếm vượt tổng mũi (52.100/46.453) — kiểm tra tại máy` |
+| Thêu lặp | `≈ 1 items suy ra (52.100 / 46.453 mũi/mẫu, lấy phần nguyên) — chưa biết tổng khung` |
 | Sản lượng chưa tải (andon) | `Chưa có số` (giữ nguyên, không bao giờ in 0 thay thế) |
 | Dòng sản lượng bất thường | `⚠ Có 2 lần reset bộ đếm trong ca — số mũi có thể thiếu` |
 | Tổng thiếu đơn giá | `3 dòng chưa có đơn giá — chưa tính vào tổng tiền` |
@@ -327,7 +327,7 @@ rõ là mốc odometer máy, không phải từng kim). Mọi ô liên quan tớ
 **Tổng quan** — 1920×1080: ≥ 19 hàng máy không cuộn; 1366×768: ≥ 11 hàng; phần tử chữ to nhất
 màn là `Cần xử lý: N`, không phải lưới KPI; máy stale có `◐` ngay trong ô RPM và ô job; máy dừng
 41 phút hiện `41p` ngay trong cột trạng thái; bấm chip `Mất kết nối` lọc đúng và tạo token gỡ
-được; có cột bảo trì sort được; máy `currentStitch > totalStitches` hiện chuỗi "vượt tổng mũi",
+được; có cột bảo trì sort được; máy `currentStitch > totalStitches > 0` hiện số items suy ra thay cho phần trăm,
 không hiện 100%.
 
 **Chi tiết** — thấy được không cần cuộn ở 1080: trạng thái + thời lượng, lý do, job + ETA có nhãn

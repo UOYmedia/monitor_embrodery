@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { andonTone } from '../lib/andon'
 import {
-  estimatedFinish, formatMinutes, formatMinutesShort, jobProgress, overrunText, sparklinePoints,
+  estimatedFinish, formatMinutes, formatMinutesShort, jobProgress, repeatText, sparklinePoints,
   statusDuration,
 } from '../lib/derived'
 import { effectiveStatus, highestSeverity, unacknowledgedAlerts } from '../lib/fleet'
@@ -163,8 +163,8 @@ const FleetCard = memo(function FleetCard({
       <span className="card-progress">
         {progress === null ? (
           <span className="card-progress-none">Chưa có số mũi để tính tiến độ</span>
-        ) : progress.overrun ? (
-          <span className="cell-overrun">⚠ {overrunText(progress)}</span>
+        ) : progress.repeating ? (
+          <span className="cell-repeat">{repeatText(progress)}</span>
         ) : (
           <>
             <span className="progress progress-card" role="img" aria-label={`Tiến độ ${progress.percent} phần trăm`}>

@@ -68,7 +68,7 @@ test('resolveExternalId tra theo identity.serial, không phụ thuộc dạng id
 })
 
 
-test('counter resets survive transient overrun, restart, partial rejection and failure before valid recovery', async (t) => {
+test('counter resets survive invalid zero total, restart, partial rejection and failure before valid recovery', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'redthread-counter-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   let reply = { accepted: 1, machines: [{ externalMachineId: 1 }] }
@@ -84,6 +84,7 @@ test('counter resets survive transient overrun, restart, partial rejection and f
   assert.equal(posts.at(-1)[0].currentStitch, 1)
   const bad = bridgeMachine()
   bad.telemetry.job.value.currentStitch = 50
+  bad.telemetry.job.value.totalStitches = 0
   await connector.ingestMachine(bad)
   const good = bridgeMachine()
   good.telemetry.job.value.currentStitch = 8
@@ -163,4 +164,35 @@ test('a missing total preserves valid current counters; a missing current clears
   assert.equal(posts.at(-1)[0].currentStitch, null)
   await connector.heartbeat()
   assert.equal(posts.at(-1)[0].currentStitch, 9)
+})
+
+
+test('repeated counters flow through heartbeat after startup reset without repeated baseline clearing', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'redthread-repeat-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const posts = []
+  const connector = new Connector({ client: { event: async () => {}, heartbeat: async (ms) => {
+    posts.push(ms); return { machines: [{ externalMachineId: 1 }] }
+  } }, queueFile: join(directory, 'q'), stateFile: join(directory, 's'), logger: { info() {}, warn() {}, error() {} } })
+  await connector.init()
+  const m = bridgeMachine()
+  m.telemetry.job.value = { fileName: '4182912019_1_Front1.DST', currentStitch: 34628, totalStitches: 3912 }
+  await connector.ingestFleet([m])
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 34628)
+  assert.equal(posts.at(-1)[0].totalStitches, null)
+  m.telemetry.job.value.currentStitch = 46966
+  m.telemetry.status.value = 'stopped'
+  await connector.ingestMachine(m)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 46966)
+  assert.equal(posts.at(-1)[0].status, 'PAUSED')
+  assert.match(posts.at(-1)[0].statusNote, /12 items suy ra/)
+  m.telemetry.job.value = { fileName: 'B.DST', currentStitch: 0, totalStitches: 5000 }
+  await connector.ingestMachine(m)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 0)
+  assert.equal(posts.at(-1)[0].statusNote, '')
 })

@@ -227,7 +227,7 @@ console.log('\n=== N. tinhTrang: mot bo tu vung cho ca trang ===')
 const tt = (o) => A.tinhTrang(may(o))
 la('mui dang tang -> chay', tt({ tt: 'running' }), 'chay')
 la('mui CHAM tong -> hoanthanh (12,0% khung that, 10/13 may)', tt({ cur: 1000, tot: 1000 }), 'hoanthanh')
-la('mui vuot tong -> khong suy hoan thanh', tt({ cur: 1001, tot: 1000 }), 'chuaro')
+la('mui vuot tong -> khong suy hoan thanh', tt({ cur: 1001, tot: 1000 }), 'dung-lap')
 la('mui do dang -> dung', tt({ cur: 500, tot: 1000 }), 'dung')
 la('chua co mau (tot=0) -> cho, KHONG phai dung (75,8% khung that nam o day)', tt({ cur: 0, tot: 0 }), 'cho')
 la('co mau ma chua dat mui nao -> cho', tt({ cur: 0, tot: 1000 }), 'cho')
@@ -251,7 +251,7 @@ la('unknown KHONG duoc suy thanh dung', tt({ tt: 'unknown', cur: 500, tot: 1000 
 // 11 mã, không phải 7: bốn mã cuối là bốn lý do KHÁC NHAU khiến máy im, tách ra hồi 28/08.
 // Bảng này ghim cứng để không ai thêm mã mà quên đặt tên tiếng Việt cho nó.
 la('moi tinh trang deu co nhan tieng Viet', Object.keys(A.NHAN_TT).sort(),
-   ['chay', 'cho', 'chuaro', 'cum-im', 'dung', 'hoanthanh', 'loi', 'ngoai-gio', 'off', 'tat-han', 'tat-may'])
+   ['chay', 'cho', 'chuaro', 'cum-im', 'dung', 'dung-lap', 'hoanthanh', 'loi', 'ngoai-gio', 'off', 'tat-han', 'tat-may'])
 
 console.log('\n=== O. Dong ho: moi tinh trang mot cai, doc mot minh van hieu ===')
 la('dung giua mau', A.chuLau(may({ cur: 500, tot: 1000, tu: 400 })), 'dừng 6 phút 40 giây')
@@ -435,16 +435,30 @@ console.log('\n=== Q. Counter overrun: live status, warning and no invented comp
 const overrun = may({ id: 'overrun', tt: 'running', cur: 34628, tot: 3912 })
 const overrunCard = chuThe(overrun)
 la('live overrun van dang chay', A.tinhTrang(overrun), 'chay')
-la('the canh bao bo dem', overrunCard.some((c) => /Bộ đếm vượt tổng mũi/.test(c)), true)
+la('the hien items suy ra', overrunCard.some((c) => /≈ 8 items suy ra/.test(c)), true)
+la('lap khong canh bao', overrunCard.some((c) => /Bộ đếm vượt tổng mũi/.test(c)), false)
 la('khong co phan tram/hoan thanh/tat may', overrunCard.some((c) => /\d+%|HOÀN THÀNH|THỢ TẮT MÁY/.test(c)), false)
-la('tong=0 va current>0 van canh bao', chuThe(may({ cur: 4, tot: 0 })).some((c) => /Bộ đếm vượt tổng mũi/.test(c)), true)
+la('tong=0 va current>0 van canh bao', chuThe(may({ cur: 4, tot: 0 })).some((c) => /Chưa có tổng mũi\/mẫu hợp lệ/.test(c)), true)
 A.nhoViec.quet([may({ id: 'overrun', cur: 3912, tot: 3912 })])
 la('negative control: da luu so cu hoan thanh', A.nhoViec.doc('overrun').mui, 3912)
 A.nhoViec.quet([overrun])
-la('overrun xoa so nho cu', A.nhoViec.doc('overrun'), null)
+la('lap thay so nho cu bang counter hien tai', A.nhoViec.doc('overrun').mui, 34628)
 const lostOverrun = may({ id: 'overrun', kn: 'unknown', cur: 34628, tot: 3912 })
 A.datMay([lostOverrun, may({ id: 'other', tt: 'running' })])
 la('overrun roi mat tin hieu khong suy tat may', A.tinhTrang(lostOverrun), 'off')
+for (const [cur, items] of [[46966, 12], [46944, 12], [3913, 1], [34628, 8]]) {
+  const repeated = may({ tt: 'stopped', cur, tot: 3912 })
+  la('lap dung khong bao hoan thanh ' + cur, A.tinhTrang(repeated), 'dung-lap')
+  la('lap chi noi da dung ' + cur, chuThe(repeated).includes('ĐÃ DỪNG'), true)
+  la('lap khong suy dung giua mau ' + cur, chuThe(repeated).some((c) => /DỪNG GIỮA MẪU|Dừng giữa mẫu/.test(c)), false)
+  la('lap khong canh bao do mau ' + cur, A.dungGiuaMau(repeated), false)
+  la('lap lay phan nguyen ' + cur, chuThe(repeated).some((c) => c.includes('≈ ' + items + ' items suy ra')), true)
+  la('lap khong phan tram ' + cur, chuThe(repeated).some((c) => /\d+%|HOÀN THÀNH/.test(c)), false)
+}
+for (const kn of ['stale', 'unknown', 'offline']) {
+  la('khong suy items cu ' + kn, chuThe(may({ kn, cur: 46966, tot: 3912 })).some((c) => /items suy ra/.test(c)), false)
+}
+la('reset khong giu items cu', chuThe(may({ cur: 0, tot: 3912 })).some((c) => /items suy ra/.test(c)), false)
 const oldContractError = may({ kn: 'unknown', cur: 3912, tot: 3912 })
 oldContractError.telemetryError = { kind: 'contract', field: 'job.currentStitch' }
 la('old bridge rejected packets khong suy tat may', A.tinhTrang(oldContractError), 'chuaro')

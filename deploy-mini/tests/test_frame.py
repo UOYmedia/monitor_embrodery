@@ -72,5 +72,15 @@ broker._prev_state.clear()
 broker.controller_state_event('overrun-test', {'state': 0}, '2026-09-28T03:00:00Z')
 overrun = broker.controller_state_event('overrun-test', {'state': 15, 'curStitch': 34628, 'patternStitch': 3912}, '2026-09-28T03:00:02Z')
 assert '(hết mẫu)' not in overrun['message'], overrun
-assert 'bộ đếm vượt tổng mũi' in overrun['message'], overrun
+assert 'thêu lặp, ≈ 8 items suy ra' in overrun['message'], overrun
 print('  [8] overrun event keeps raw values without claiming completion OK')
+
+# Repeated pattern counters remain valid run/stop input across sample boundaries.
+repeat_dev = 'repeat-regression'
+for current, expected in [(3912, 'unknown'), (34628, 'running'), (46966, 'running'), (46966, 'stopped'), (0, 'stopped'), (10, 'running')]:
+    frame = broker.build_frame(repeat_dev, {'state': 0, 'curStitch': current, 'patternStitch': 3912, 'patternName': '4182912019_1_Front1.DST'})
+    assert frame['status'] == expected, (current, frame)
+    assert frame['job']['currentStitch'] == current, frame
+frame = broker.build_frame(repeat_dev, {'state': 0, 'curStitch': 0, 'patternStitch': 5000, 'patternName': 'B.DST'})
+assert frame['status'] == 'unknown', frame
+print('  [9] repeats preserve raw delta status; reset and pattern change OK')

@@ -72,9 +72,11 @@ RedThread phải có Machine ID 1–20 tương ứng M1_VN–M20_VN; M20 chưa c
 
 ## Bộ đếm bất nhất và phục hồi kết nối
 
-Khi bridge báo số mũi vượt tổng, connector giữ trạng thái máy (`RUNNING`, hoặc `PAUSED` nếu
-đang dừng mà chưa biết tiến độ), gửi cảnh báo qua `statusNote` và gửi cả hai bộ đếm là `null`.
-Mất kết nối hoặc gói bị từ chối cũng không được gửi lại bộ đếm cũ làm số mới.
+Khi counter vượt tổng dương của một mẫu, connector giữ trạng thái `RUNNING`/`PAUSED`, gửi
+`currentStitch` nguyên bản và `totalStitches: null`: tổng cả khung chưa được máy báo. `statusNote`
+ghi ≈ `floor(currentStitch / số mũi một mẫu)` items suy ra, không ghi hoàn thành cả khung hay sản lượng items.
+Tổng 0, sai kiểu, dữ liệu cũ và lỗi đọc vẫn chặn counter theo quy tắc an toàn. Cơ chế reset baseline
+bền qua restart và chờ heartbeat xác nhận vẫn giữ nguyên. Không ghi bù lịch sử.
 
 `data/state.json` lưu mốc cần xoá (`counterResets`) cho mỗi máy. Một bản tin hợp lệ đến sau
 cảnh báo không xoá mốc này: heartbeat tiếp theo vẫn phải gửi `null` và được RedThread xác

@@ -66,13 +66,14 @@ test('eventId ổn định theo nội dung và đủ 64 ký tự', () => {
 })
 
 
-test('overrun never becomes completed/offline and its counters never cross the RedThread guard', () => {
+test('repeats keep raw counters, infer items and never pretend a known full-frame total', () => {
   for (const status of ['running', 'stopped', 'paused', 'fault']) {
     const mapped = mapMachine(machine({ status, current: 34628, total: 3912 }))
     assert.equal(mapped.status, status === 'running' ? 'RUNNING' : status === 'fault' ? 'ERROR' : 'PAUSED')
-    assert.equal(mapped.currentStitch, null)
+    assert.equal(mapped.currentStitch, 34628)
     assert.equal(mapped.totalStitches, null)
-    assert.match(mapped.statusNote, /Bộ đếm vượt tổng/)
+    assert.match(mapped.statusNote, /8 items suy ra/)
+    assert.match(mapped.statusNote, /chưa biết tổng khung/)
   }
   for (const [current, total] of [[1, 0], [-1, 5], ['10', 20], [10, -1], [NaN, 10]]) {
     const mapped = mapMachine(machine({ current, total }))
@@ -86,4 +87,24 @@ test('overrun never becomes completed/offline and its counters never cross the R
   }
   assert.equal(mapMachine(machine({ current: 0, total: 0 })).currentStitch, 0)
   assert.equal(mapMachine(machine({ current: 3, total: null })).totalStitches, null)
+})
+
+
+test('floor item inference handles residual stitches, exact multiple, reset and stale data', () => {
+  for (const [current, count] of [[46966, 12], [46944, 12], [34628, 8], [3913, 1]]) {
+    for (const status of ['running', 'stopped']) {
+      const m = mapMachine(machine({ status, current, total: 3912 }))
+      assert.equal(m.currentStitch, current)
+      assert.equal(m.totalStitches, null)
+      assert.equal(m.status, status === 'running' ? 'RUNNING' : 'PAUSED')
+      assert.match(m.statusNote, new RegExp(`${count} items suy ra`))
+    }
+  }
+  const reset = mapMachine(machine({ status: 'stopped', current: 0, total: 7000, file: 'B.DST' }))
+  assert.equal(reset.status, 'IDLE')
+  assert.equal(reset.statusNote, '')
+  assert.equal(reset.totalStitches, 7000)
+  for (const connection of ['stale', 'offline', 'unknown']) {
+    assert.equal(mapMachine(machine({ current: 46966, total: 3912, connection })).statusNote, '')
+  }
 })

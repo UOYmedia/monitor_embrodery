@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDesignIndex } from '../hooks/useDesignIndex'
 import {
   effectivePrice, estimatedFinish, jobProgress, noThreadBreakThreshold, offlineReason,
-  overrunText, rpmRange, sparklinePoints, statusDurationText, threadBreakRate, threadBreakText,
+  repeatText, rpmRange, sparklinePoints, statusDurationText, threadBreakRate, threadBreakText,
 } from '../lib/derived'
 import { describeDesign } from '../lib/design'
 import { effectiveStatus, highestSeverity, unacknowledgedAlerts } from '../lib/fleet'
@@ -440,8 +440,8 @@ function JobBlock({ machine, api, timeZone, nowMs }: { machine: MachineView; api
       </dl>
 
       {progress && (
-        progress.overrun
-          ? <p className="detail-error" role="status">⚠ {overrunText(progress)}</p>
+        progress.repeating
+          ? <p className="derived" role="status">{repeatText(progress)}</p>
           : (
             <div className="progress progress-large" role="img" aria-label={`Tiến độ ${progress.percent} phần trăm`}>
               <span className="progress-bar" style={{ width: `${progress.percent}%` }} />

@@ -323,7 +323,7 @@ it('does not book suspect counters or the recovery jump, including after durable
   const log = newLog()
   log.record(snapshot(1000, '2026-08-14T03:00:00Z'), { machine, site })
   log.record(snapshot(1200, '2026-08-14T03:01:00Z'), { machine, site })
-  const bad = { ...snapshot(9000, '2026-08-14T03:02:00Z'), job: { value: { currentStitch: 34628, totalStitches: 3912, counterWarning: 'stitch-overrun' } } }
+  const bad = { ...snapshot(9000, '2026-08-14T03:02:00Z'), job: { value: { currentStitch: 34628, totalStitches: 0, counterWarning: 'stitch-overrun' } } }
   expect(log.record(bad, { machine, site })).toMatchObject({ counted: false, reason: 'counter-warning' })
   expect(log.cursorFor(machine.id)).toBeNull()
   expect(log.query()[0]).toMatchObject({ stitches: 200, anomalies: 1 })
@@ -333,4 +333,14 @@ it('does not book suspect counters or the recovery jump, including after durable
   expect(reloaded.record(snapshot(9500, '2026-08-14T03:03:00Z'), { machine, site }).reason).toBe('baseline')
   reloaded.record(snapshot(9700, '2026-08-14T03:04:00Z'), { machine, site })
   expect(reloaded.query()[0].stitches).toBe(400)
+})
+
+
+it('repeat metadata neither blocks independent odometer deltas nor becomes booked production', () => {
+  const log = newLog()
+  log.record(snapshot(1000, '2026-08-14T03:00:00Z'), { machine, site })
+  const job = { value: { currentStitch: 46966, totalStitches: 3912, inferredItems: 12, repeating: true } }
+  expect(log.record({ ...snapshot(null, '2026-08-14T03:01:00Z'), job }, { machine, site })).toMatchObject({ counted: false, reason: 'no-odometer' })
+  log.record({ ...snapshot(1200, '2026-08-14T03:01:00Z'), job }, { machine, site })
+  expect(log.query()[0]).toMatchObject({ stitches: 200, anomalies: 0 })
 })

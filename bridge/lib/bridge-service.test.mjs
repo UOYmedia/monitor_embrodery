@@ -498,7 +498,7 @@ describe('dial-in ingest', () => {
     expect(service.telemetryErrors.has(machine.identity.id)).toBe(false)
   })
 
-  it('ingests a real overrun, stays fresh, clears the warning on reset and ages on real loss', async () => {
+  it('ingests repeats, stays fresh, clears inferred items on reset and ages on real loss', async () => {
     const [machine] = await service.pairMany([dialIn()], technician)
     const record = service.findMachine(machine.identity.id)
     const at = new Date().toISOString()
@@ -508,7 +508,7 @@ describe('dial-in ingest', () => {
     }
     let view = service.machineView(record)
     expect(view.connection.state).toBe('online')
-    expect(view.telemetry.job.value).toMatchObject({ currentStitch: 34640, totalStitches: 3912, counterWarning: 'stitch-overrun' })
+    expect(view.telemetry.job.value).toMatchObject({ currentStitch: 34640, totalStitches: 3912, repeating: true, inferredItems: 8 })
     expect(view.telemetry.status.value).toBe('running')
     expect(view.telemetryError).toBeNull()
     service.acceptDialIn(record, { observedAt: at, status: 'stopped', job: { currentStitch: 0, totalStitches: 10000, fileName: 'B.DST' } }, { remote: '192.168.10.21' })

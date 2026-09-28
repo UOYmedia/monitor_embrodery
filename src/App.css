@@ -858,7 +858,7 @@
   font-variant-numeric: tabular-nums;
 }
 .cell-job .progress-slim { flex: 0 0 64px; height: 6px; margin-top: 0; border-radius: 3px; }
-.cell-overrun { color: #5a3600; font-weight: 600; }
+.cell-repeat { color: inherit; font-weight: 600; }
 .cell-maintenance { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .cell-maintenance.bt-overdue { color: var(--critical); font-weight: 700; }
 .cell-maintenance.bt-due { color: var(--warning); font-weight: 600; }

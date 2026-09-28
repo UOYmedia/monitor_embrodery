@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { andonTone } from '../lib/andon'
 import {
-  estimatedFinish, jobProgress, overrunText, statusDuration, formatMinutes, formatMinutesShort,
+  estimatedFinish, jobProgress, repeatText, statusDuration, formatMinutes, formatMinutesShort,
 } from '../lib/derived'
 import { effectiveStatus, highestSeverity, unacknowledgedAlerts } from '../lib/fleet'
 import { UNREAD, formatAge, formatClock, formatNumber, formatTime } from '../lib/format'
@@ -170,8 +170,8 @@ const FleetRow = memo(function FleetRow({
           </StaleCell>
         </span>
         <span className="row-sub">
-          {progress === null ? '' : progress.overrun ? (
-            <span className="cell-overrun">⚠ {overrunText(progress)}</span>
+          {progress === null ? '' : progress.repeating ? (
+            <span className="cell-repeat">{repeatText(progress)}</span>
           ) : (
             <>
               {/* Số phần trăm ra NGOÀI thanh: ở 8% thì chữ nằm trên nền xám, ở 92% nó nằm trên
