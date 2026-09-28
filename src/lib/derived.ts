@@ -52,28 +52,25 @@ function isLive(machine: MachineView): boolean {
 export type JobProgress = {
   currentStitch: number
   totalStitches: number
-} & ({ overrun: true; percent: null } | { overrun: false; percent: number })
+  inferredItems: number
+} & ({ repeating: true; percent: null } | { repeating: false; percent: number })
 
-/**
- * Tiến độ mũi, không kẹp trần.
- *
- * Kẹp về 100% là cách che một bộ đếm hỏng: 52.100/46.453 hiện thành "100%" trông y hệt một
- * máy sắp xong. Ở đây vượt tổng là một cờ riêng để giao diện in ra chữ cảnh báo.
- */
+/** Per-design total stays raw. Repeats reveal completed-item equivalents, not final frame size. */
 export function jobProgress(machine: MachineView): JobProgress | null {
-  if (machine.telemetryError?.kind === 'contract' && machine.telemetryError.field?.startsWith('job.')) return null
+  if (!isLive(machine) || machine.telemetryError) return null
   const job = machine.telemetry?.job?.value
-  if (!job || job.currentStitch === null || job.totalStitches === null) return null
-  const overrun = job.currentStitch > job.totalStitches
-  if (!job.totalStitches && !overrun) return null
-  const counts = { currentStitch: job.currentStitch, totalStitches: job.totalStitches }
-  return overrun
-    ? { ...counts, overrun: true, percent: null }
-    : { ...counts, overrun: false, percent: Math.round((job.currentStitch / job.totalStitches) * 100) }
+  if (!job || job.currentStitch === null || job.totalStitches === null ||
+      !Number.isSafeInteger(job.currentStitch) || !Number.isSafeInteger(job.totalStitches) ||
+      job.currentStitch < 0 || job.totalStitches <= 0) return null
+  const counts = { currentStitch: job.currentStitch, totalStitches: job.totalStitches,
+    inferredItems: Math.floor(job.currentStitch / job.totalStitches) }
+  return job.currentStitch > job.totalStitches
+    ? { ...counts, repeating: true, percent: null }
+    : { ...counts, repeating: false, percent: Math.round((job.currentStitch / job.totalStitches) * 100) }
 }
 
-export function overrunText(progress: JobProgress): string {
-  return `Bộ đếm vượt tổng mũi (${formatNumber(progress.currentStitch)}/${formatNumber(progress.totalStitches)}) — kiểm tra tại máy`
+export function repeatText(progress: JobProgress): string {
+  return `≈ ${formatNumber(progress.inferredItems)} items suy ra (${formatNumber(progress.currentStitch)} mũi ÷ ${formatNumber(progress.totalStitches)} mũi/mẫu, lấy phần nguyên) — chưa biết tổng khung`
 }
 
 // ---------------------------------------------------------------- ETA
@@ -91,7 +88,7 @@ export function estimatedFinish(machine: MachineView, nowMs: number, timeZone?: 
 
   const progress = jobProgress(machine)
   if (!progress) return unavailable('Không tính được (thiếu tổng mũi)', etaNote)
-  if (progress.overrun) return unavailable('Không tính được (bộ đếm vượt tổng mũi)', etaNote)
+  if (progress.repeating) return unavailable('Chưa biết tổng khung thêu lặp', etaNote)
 
   const rpm = machine.telemetry?.rpm?.value ?? null
   if (rpm === null || rpm <= 0) return unavailable('Không tính được (thiếu tốc độ máy)', etaNote)

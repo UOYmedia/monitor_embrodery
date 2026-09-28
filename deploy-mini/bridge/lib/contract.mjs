@@ -257,13 +257,16 @@ function normalizeJob(raw, context) {
     product: optionalString(raw.product, 'job.product', { maxLength: 120 }),
     needle: optionalNumber(raw.needle, 'job.needle', { min: 0, max: 64, integer: true }),
     threadColor: optionalString(raw.threadColor, 'job.threadColor', { maxLength: 60 }),
-    currentStitch: optionalNumber(raw.currentStitch, 'job.currentStitch', { min: 0, integer: true }),
-    totalStitches: optionalNumber(raw.totalStitches, 'job.totalStitches', { min: 0, integer: true }),
+    currentStitch: optionalNumber(raw.currentStitch, 'job.currentStitch', { min: 0, max: Number.MAX_SAFE_INTEGER, integer: true }),
+    totalStitches: optionalNumber(raw.totalStitches, 'job.totalStitches', { min: 0, max: Number.MAX_SAFE_INTEGER, integer: true }),
     elapsedSeconds: optionalNumber(raw.elapsedSeconds, 'job.elapsedSeconds', { min: 0 }),
   }
-  if (value.currentStitch !== null && value.totalStitches !== null && value.currentStitch > value.totalStitches) {
-    // Valid raw numbers can disagree without invalidating the live status/RPM.
-    // Preserve them for diagnosis; consumers must not use this pair as progress.
+  if (value.currentStitch !== null && value.totalStitches > 0) {
+    // The controller reports a per-design total; currentStitch spans repeated items.
+    // Derived items are not the configured final frame size or a production booking.
+    value.inferredItems = Math.floor(value.currentStitch / value.totalStitches)
+    value.repeating = value.currentStitch > value.totalStitches
+  } else if (value.currentStitch > 0 && value.totalStitches === 0) {
     value.counterWarning = 'stitch-overrun'
   }
   return Object.values(value).every((entry) => entry === null) ? null : reading(value, context)

@@ -113,17 +113,24 @@ bắt gói có phép. `capture` tồn tại đúng cho việc thứ hai.
    không có đường nạp mẫu qua mạng. Nạp mẫu vẫn là thao tác USB thủ công tại máy.
 6. **Không có lệnh.** Hợp đồng chỉ có chiều đọc. Không có trường lệnh, không có kênh ghi.
 
-### Bộ đếm mũi vượt tổng
+### Mẫu thêu lặp (Vu duyệt 2026-09-28)
 
-Cặp số nguyên không âm `job.currentStitch > job.totalStitches` vẫn được nhận, kể cả tổng
-bằng 0: trạng thái, RPM và độ mới của bản tin tiếp tục cập nhật. Bridge giữ nguyên hai số,
-thêm `job.value.counterWarning: "stitch-overrun"`; không kẹp, chia modulo hoặc đoán tổng mới.
-Trường sai kiểu/âm/phân số vẫn làm hỏng cả gói theo mục 2.
+`job.totalStitches` là số mũi của một mẫu; `job.currentStitch` có thể đếm cả lượt thêu lặp.
+Với tổng dương, bridge giữ hai số và suy `inferredItems = floor(currentStitch / totalStitches)`,
+`repeating = currentStitch > totalStitches`. Ví dụ 46.966 / 3.912 ⇒ khoảng 12 items; 34.628 / 3.912 ⇒ khoảng 8.
+Đây là số tương đương suy từ counter, không phải tổng items đã cấu hình, thành phẩm kiểm đếm hay bản ghi sản lượng.
+Không làm tròn lên; phần dư 22 mũi không thành item thứ 13.
 
-Consumer phải hiện cảnh báo, không suy hoàn thành, phần trăm hoặc ETA từ cặp số này. Cờ tự
-biến mất khi bản tin mới có cặp số hợp lệ. `odometer` là bộ đếm tích luỹ riêng, không được
-thay bằng `currentStitch`. Sổ sản lượng giữ nguyên phần đã ghi, bỏ khoảng có cảnh báo và
-lấy lại mốc ở lần đọc hợp lệ kế tiếp; không tự bù số mũi qua khoảng gián đoạn.
+Khi thêu lặp, consumer giữ trạng thái chạy/dừng, không cảnh báo vượt tổng, không suy hoàn thành,
+phần trăm cả khung hoặc ETA khi chưa biết tổng khung. Số items chỉ hiện khi dữ liệu online và hợp lệ.
+Đổi mẫu/reset tính lại từ snapshot hiện tại, không giữ số items của mẫu cũ. Trường hợp bằng đúng
+một mẫu sau reset vẫn giữ quy tắc hoàn thành mẫu hiện có; chưa có dữ liệu để khẳng định cả khung.
+
+Tổng 0 với counter dương vẫn không dùng để chia (giữ cờ chất lượng); thiếu tổng không suy items.
+Kiểu sai, âm/phân số vẫn làm hỏng cả gói. `odometer` là bộ đếm riêng, không thay bằng currentStitch;
+sổ sản lượng tiếp tục dùng delta odometer cùng giới hạn vật lý, không ghi items suy ra vào sản lượng.
+
+Nguồn thay quy tắc cảnh báo cũ: Buzz `3f8094cd8705be57b3aa07d1b77ac9f41d0e863a88096e922198d91e8832fbd2`.
 
 ## 3. Cấu trúc payload
 

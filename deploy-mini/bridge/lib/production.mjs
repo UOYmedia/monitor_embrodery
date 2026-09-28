@@ -98,7 +98,7 @@ export class ProductionLog {
     if (!machineId) return { counted: false, reason: 'no-machine' }
 
     const job = readValue(snapshot?.job)
-    if (job?.counterWarning === 'stitch-overrun' || (Number.isFinite(job?.currentStitch) && Number.isFinite(job?.totalStitches) && job.currentStitch > job.totalStitches)) {
+    if (job?.totalStitches === 0 && job?.currentStitch > 0) {
       const at = snapshot?.observedAt
       const cursor = this.document.cursors[machineId]
       if (cursor && Number.isFinite(Date.parse(at)) && Date.parse(at) >= Date.parse(cursor.at)) {

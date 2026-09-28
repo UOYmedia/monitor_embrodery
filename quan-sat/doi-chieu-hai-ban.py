@@ -43,7 +43,7 @@ JS_BAN = (os.path.normpath(_GAN) if os.path.exists(_GAN)
 NODE = shutil.which('node') or os.path.expanduser('~/node/bin/node')
 
 KN = ['online', 'stale', 'offline', 'unknown', 'connecting']
-SO = [(None, None), (0, 1000), (500, 1000), (1000, 1000), (1200, 1000), (500, 0), (0, 0)]
+SO = [(None, None), (0, 1000), (500, 1000), (1000, 1000), (1200, 1000), (500, 0), (0, 0), (34628, 3912), (46966, 3912), (46944, 3912)]
 TT = ['running', 'stopped', 'paused', 'unknown', 'fault']
 GIO = [3, 6, 12, 18, 19, 23]
 DAN = ['tat-ca-im', 'co-may-noi', 'mot-minh']

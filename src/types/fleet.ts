@@ -108,6 +108,9 @@ export interface ConnectionInfo {
 
 export interface JobReading {
   counterWarning?: 'stitch-overrun'
+  /** floor(currentStitch / per-design total), not configured final frame quantity. */
+  inferredItems?: number
+  repeating?: boolean
   fileName: string | null
   product: string | null
   needle: number | null

@@ -18,7 +18,7 @@ function stopped(minutesAgo: number, extra: Parameters<typeof makeMachine>[0] = 
 }
 
 describe('jobProgress', () => {
-  it('does not clamp an overrunning counter: 100% would hide a broken counter', () => {
+  it('does not clamp a repeating counter: final frame progress is unknown', () => {
     const observedAt = iso(0)
     const machine = makeMachine({
       telemetry: makeTelemetry({
@@ -31,7 +31,7 @@ describe('jobProgress', () => {
     })
     const progress = jobProgress(machine)
     expect(progress?.percent).toBeNull()
-    expect(progress?.overrun).toBe(true)
+    expect(progress?.repeating).toBe(true)
   })
 
   it('returns null when the controller never reported a total', () => {
@@ -73,7 +73,7 @@ describe('estimatedFinish', () => {
     expect(estimatedFinish(machine, baseNow).text).toBe('Không tính được (thiếu tốc độ máy)')
   })
 
-  it('refuses to estimate off an overrunning counter', () => {
+  it('refuses to estimate the finish time of an unknown repeated frame', () => {
     const observedAt = iso(0)
     const machine = makeMachine({
       telemetry: makeTelemetry({
@@ -84,7 +84,7 @@ describe('estimatedFinish', () => {
         },
       }),
     })
-    expect(estimatedFinish(machine, baseNow).text).toBe('Không tính được (bộ đếm vượt tổng mũi)')
+    expect(estimatedFinish(machine, baseNow).text).toBe('Chưa biết tổng khung thêu lặp')
   })
 
   it('carries the oldest input timestamp, not the newest', () => {
@@ -215,5 +215,28 @@ describe('rpm history', () => {
   it('draws nothing from a single point rather than a flat lie', () => {
     expect(sparklinePoints([650], 100, 20)).toBeNull()
     expect(sparklinePoints([0, 100], 100, 20)).toBe('0.0,20.0 100.0,0.0')
+  })
+})
+
+
+describe('repeated items are inferred without inventing full-frame progress', () => {
+  it.each([[46966, 12], [46944, 12], [34628, 8], [3913, 1]])('floor(%s / 3912) = %s', (currentStitch, inferredItems) => {
+    const m = makeMachine()
+    m.telemetry!.job!.value.currentStitch = currentStitch
+    m.telemetry!.job!.value.totalStitches = 3912
+    expect(jobProgress(m)).toMatchObject({ repeating: true, inferredItems, percent: null })
+    expect(estimatedFinish(m, baseNow).value).toBeNull()
+    m.connection.state = 'stale'
+    expect(jobProgress(m)).toBeNull()
+  })
+  it('reset, new pattern and invalid denominator cannot leak previous items', () => {
+    const m = makeMachine()
+    m.telemetry!.job!.value.currentStitch = 46966
+    m.telemetry!.job!.value.totalStitches = 3912
+    expect(jobProgress(m)?.inferredItems).toBe(12)
+    m.telemetry!.job!.value = { ...m.telemetry!.job!.value, currentStitch: 0, totalStitches: 7000, fileName: 'B.DST' }
+    expect(jobProgress(m)).toMatchObject({ inferredItems: 0, repeating: false })
+    m.telemetry!.job!.value.totalStitches = 0
+    expect(jobProgress(m)).toBeNull()
   })
 })

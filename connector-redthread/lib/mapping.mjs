@@ -55,19 +55,25 @@ export function mapMachine(machine, overrides = {}) {
   const job = readingValue(telemetry?.job) ?? {}
   let currentStitch = Number.isSafeInteger(job.currentStitch) && job.currentStitch >= 0 ? job.currentStitch : null
   let totalStitches = Number.isSafeInteger(job.totalStitches) && job.totalStitches >= 0 ? job.totalStitches : null
-  const counterWarning = job.counterWarning === 'stitch-overrun' ||
-    (currentStitch !== null && totalStitches !== null && currentStitch > totalStitches)
+  const repeating = currentStitch !== null && totalStitches > 0 && currentStitch > totalStitches
+  const inferredItems = repeating ? Math.floor(currentStitch / totalStitches) : null
+  const baseStitches = totalStitches
+  const counterWarning = currentStitch > 0 && totalStitches === 0
   const unreliable = counterWarning || OFFLINE_CONNECTIONS.has(connectionState) || Boolean(machine.telemetryError) ||
     (job.currentStitch != null && currentStitch === null) || (job.totalStitches != null && totalStitches === null)
   if (unreliable) { currentStitch = null; totalStitches = null }
+  // RedThread's total is the full job total. Never send the per-design denominator as that total.
+  else if (repeating) totalStitches = null
   const currentFile = typeof job.fileName === 'string' ? job.fileName : ''
 
   const status = OFFLINE_CONNECTIONS.has(connectionState)
     ? 'OFFLINE'
     : (bridgeStatus === 'stopped' || bridgeStatus === 'paused'
-        ? (counterWarning ? 'PAUSED' : stoppedStatus(currentStitch, totalStitches))
+        ? (counterWarning || repeating ? 'PAUSED' : stoppedStatus(currentStitch, totalStitches))
         : (STATUS_MAP[bridgeStatus] ?? 'OFFLINE'))
-  const statusNote = counterWarning ? 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ, cần kiểm tra tại máy.' : (status === 'COMPLETED' && currentFile ? `Xong mẫu ${currentFile}` : '')
+  const statusNote = counterWarning ? 'Chưa có tổng mũi/mẫu hợp lệ — chưa xác định số items.'
+    : repeating && !unreliable ? `Thêu lặp — ≈ ${inferredItems} items suy ra từ ${currentStitch} / ${baseStitches} mũi/mẫu (lấy phần nguyên); chưa biết tổng khung.`
+    : (status === 'COMPLETED' && currentFile ? `Xong mẫu ${currentFile}` : '')
   const errorCode = status === 'ERROR' ? latestFaultCode(machine) : ''
   const statusSince = typeof machine?.statusSince?.at === 'string' ? machine.statusSince.at : null
   const rpmValue = readingValue(telemetry?.rpm)

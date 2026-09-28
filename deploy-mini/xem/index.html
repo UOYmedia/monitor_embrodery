@@ -484,6 +484,7 @@ body {
     chay: 'ĐANG CHẠY',
     hoanthanh: 'HOÀN THÀNH',
     dung: 'DỪNG GIỮA MẪU',
+    'dung-lap': 'ĐÃ DỪNG',
     loi: 'LỖI',
     // `off` nay CHỈ còn nghĩa hẹp: máy im GIỮA LÚC mẫu còn dở, trong khi các máy khác vẫn nói.
     // Ba lý do im lặng còn lại đã tách ra ba chữ riêng bên dưới — trước 28/08 cả bốn dồn vào
@@ -496,11 +497,11 @@ body {
     cho: 'CHƯA CÓ MẪU',
     chuaro: 'CHƯA RÕ',
   }
-  var KY_HIEU_TT = { chay: '▶', hoanthanh: '✔', dung: '❙❙', loi: '✕', off: '⚡', cho: '·', chuaro: '?',
+  var KY_HIEU_TT = { chay: '▶', hoanthanh: '✔', dung: '❙❙', 'dung-lap': '❙❙', loi: '✕', off: '⚡', cho: '·', chuaro: '?',
                      'tat-han': '⏻', 'ngoai-gio': '☾', 'cum-im': '⚠', 'tat-may': '⏻' }
   /** Chữ đứng trước đồng hồ, để con số đọc một mình vẫn hiểu (ảnh chụp màn hình chẳng hạn). */
   var CHU_LAU = {
-    chay: 'chạy được ', hoanthanh: 'xong ', dung: 'dừng ', loi: 'lỗi ',
+    chay: 'chạy được ', hoanthanh: 'xong ', dung: 'dừng ', 'dung-lap': 'dừng ', loi: 'lỗi ',
     off: 'mất tín hiệu ', cho: 'rỗi ', chuaro: '',
     'tat-han': 'tắt hẳn ', 'ngoai-gio': 'im ', 'cum-im': 'cả xưởng im ', 'tat-may': 'tắt máy ',
   }
@@ -517,6 +518,7 @@ body {
   var KHOP_MOC = {
     chay: ['running'],
     dung: ['stopped', 'paused'],
+    'dung-lap': ['stopped', 'paused'],
     hoanthanh: ['stopped', 'paused'],
     cho: ['stopped', 'paused'],
     loi: ['fault'],
@@ -607,8 +609,18 @@ body {
 
   function boDemBatNhat(m) {
     var j = jobCua(m) || {}
-    return j.counterWarning === 'stitch-overrun' ||
-      (Number.isFinite(j.currentStitch) && Number.isFinite(j.totalStitches) && j.currentStitch > j.totalStitches)
+    return Number.isSafeInteger(j.currentStitch) && j.currentStitch > 0 && j.totalStitches === 0
+  }
+
+  function itemsSuyRa(m) {
+    var j = jobCua(m) || {}
+    return Number.isSafeInteger(j.currentStitch) && j.currentStitch >= 0 && Number.isSafeInteger(j.totalStitches) && j.totalStitches > 0
+      ? Math.floor(j.currentStitch / j.totalStitches) : null
+  }
+
+  function theuLap(m) {
+    var j = jobCua(m) || {}
+    return itemsSuyRa(m) !== null && j.currentStitch > j.totalStitches
   }
 
   // ------------------------------------------------- thang bằng chứng cho máy đã thôi phát (28/08)
@@ -693,7 +705,7 @@ body {
   }
 
   function viecDangDo(m) {
-    if (boDemBatNhat(m) || m.telemetryError) return null
+    if (boDemBatNhat(m) || theuLap(m) || m.telemetryError) return null
     var j = jobCua(m) || {}
     var x = dangDoTuSo(j.currentStitch, j.totalStitches)
     if (x !== null) return x
@@ -749,11 +761,12 @@ body {
     if (t === 'running') return 'chay'
     if (t !== 'stopped' && t !== 'paused') return 'chuaro'
     if (boDemBatNhat(m)) return 'chuaro'
+    if (theuLap(m)) return 'dung-lap'
     var j = jobCua(m)
     var cur = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
     var tot = j && typeof j.totalStitches === 'number' ? j.totalStitches : null
     if (tot !== null && tot > 0 && cur !== null) {
-      if (cur >= tot) return 'hoanthanh'
+      if (cur === tot) return 'hoanthanh'
       if (cur > 0) return 'dung'
     }
     return 'cho'
@@ -888,7 +901,8 @@ body {
     var j = jobCua(m)
     var h = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
     var t = j && typeof j.totalStitches === 'number' && j.totalStitches > 0 ? j.totalStitches : null
-    if (boDemBatNhat(m)) return ' · bộ đếm vượt tổng mũi, chưa xác định tiến độ'
+    if (boDemBatNhat(m)) return ' · chưa có tổng mũi/mẫu hợp lệ'
+    if (theuLap(m)) return ' · thêu lặp, chưa biết tổng khung'
     if (h === null || t === null) return ''
     return ' · ' + so(h) + '/' + so(t) + ' mũi' + (h < t ? ' (giữa mẫu)' : ' (hết mẫu)')
   }
@@ -1247,19 +1261,25 @@ body {
       hang.className = 'hang'
       var sos = document.createElement('span')
       sos.className = 'so'
-      sos.textContent = so(hien) + (tong !== null ? ' / ' + so(tong) : '') + ' mũi'
+      sos.textContent = theuLap(m) ? so(hien) + ' mũi đã thêu · ' + so(tong) + ' mũi/mẫu' : so(hien) + (tong !== null ? ' / ' + so(tong) : '') + ' mũi'
       // Tên mẫu đã có hàng riêng ngay trên, nên chỗ này đổi sang phần trăm — in tên mẫu hai lần
       // trên cùng một thẻ là làm thẻ dài ra chứ không thêm gì.
       var pt = document.createElement('span')
       pt.className = 'mau'
-      pt.textContent = (!m.telemetryError && !boDemBatNhat(m) && tong !== null && hien !== null) ? Math.floor((hien / tong) * 100) + '%' : ''
+      pt.textContent = (!m.telemetryError && !boDemBatNhat(m) && !theuLap(m) && kn === 'online' && tong !== null && hien !== null) ? Math.floor((hien / tong) * 100) + '%' : ''
       hang.appendChild(sos); hang.appendChild(pt)
       mui.appendChild(hang)
-      if (!m.telemetryError && !boDemBatNhat(m) && tong !== null && hien !== null) {
+      if (!m.telemetryError && !boDemBatNhat(m) && !theuLap(m) && kn === 'online' && tong !== null && hien !== null) {
         var th = document.createElement('div'); th.className = 'thanh'
         var i2 = document.createElement('i')
         i2.style.width = Math.max(0, Math.min(100, (hien / tong) * 100)) + '%'
         th.appendChild(i2); mui.appendChild(th)
+      }
+      if (!m.telemetryError && kn === 'online' && theuLap(m)) {
+        var lap = document.createElement('p')
+        lap.className = 'lap-items'
+        lap.textContent = '≈ ' + so(itemsSuyRa(m)) + ' items suy ra từ số mũi đã thêu ÷ mũi/mẫu (lấy phần nguyên). Chưa biết tổng khung.'
+        mui.appendChild(lap)
       }
       if (!conSong) {
         var ghi = document.createElement('div')
@@ -1278,7 +1298,7 @@ body {
     if (boDemBatNhat(m)) {
       var cb = document.createElement('div')
       cb.className = 'loi-doc'
-      cb.textContent = 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ. Kiểm tra số mũi và mẫu tại máy; trạng thái kết nối vẫn theo bản tin mới.'
+      cb.textContent = 'Chưa có tổng mũi/mẫu hợp lệ — chưa xác định số items. Trạng thái kết nối vẫn theo bản tin mới.'
       d.appendChild(cb)
     }
 
@@ -1303,7 +1323,7 @@ body {
       var s1 = document.createElement('span'); s1.textContent = 'Mã máy tự khai: '
       var s2 = document.createElement('b'); s2.textContent = String(mc.ma)
       mm.appendChild(s1); mm.appendChild(s2)
-      var ten2 = TEN_MA[String(mc.ma)]
+      var ten2 = theuLap(m) && String(mc.ma) === '2' ? 'đã dừng' : TEN_MA[String(mc.ma)]
       if (ten2) {
         var s2b = document.createElement('span')
         s2b.textContent = ' (' + ten2 + ')'

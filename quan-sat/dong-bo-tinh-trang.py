@@ -171,7 +171,7 @@ NGAY_NGHI = {int(x) for x in os.environ.get('NGAY_NGHI', '').replace(',', ' ').s
 # sử đã nằm trong Loki.
 # `cum-im` = 9 và `tat-may` = 10 (28/08) cũng nối đuôi, cùng một lý do.
 MA_TT = {'loi': 0, 'dung': 1, 'off': 2, 'chuaro': 3, 'hoanthanh': 4, 'cho': 5, 'chay': 6,
-         'tat-han': 7, 'ngoai-gio': 8, 'cum-im': 9, 'tat-may': 10}
+         'tat-han': 7, 'ngoai-gio': 8, 'cum-im': 9, 'tat-may': 10, 'dung-lap': 11}
 
 # Số máy tối thiểu trong đàn để "cả đàn cùng im" được coi là bằng chứng. Một máy im một mình thì
 # không có ai làm chứng — nói gì cũng là đoán, nên phải đủ hai máy trở lên mới dám kết luận.
@@ -184,6 +184,7 @@ MA_MUC = {'thuong': 0, 'canh-bao': 1, 'loi': 2}
 KHOP_MOC = {
     'chay': ('running',),
     'dung': ('stopped', 'paused'),
+    'dung-lap': ('stopped', 'paused'),
     'hoanthanh': ('stopped', 'paused'),
     'cho': ('stopped', 'paused'),
     'loi': ('fault',),
@@ -302,7 +303,20 @@ class SoNhoViec:
 def bo_dem_bat_nhat(m):
     j = job_cua(m) or {}
     cur, tot = j.get('currentStitch'), j.get('totalStitches')
-    return j.get('counterWarning') == 'stitch-overrun' or (type(cur) in (int, float) and type(tot) in (int, float) and cur > tot)
+    return type(cur) is int and cur > 0 and tot == 0
+
+
+def items_suy_ra(m):
+    j = job_cua(m) or {}
+    cur, tot = j.get('currentStitch'), j.get('totalStitches')
+    if type(cur) is int and type(tot) is int and cur >= 0 and tot > 0:
+        return cur // tot
+    return None
+
+
+def theu_lap(m):
+    j = job_cua(m) or {}
+    return items_suy_ra(m) is not None and j['currentStitch'] > j['totalStitches']
 
 
 def _dang_do_tu_so(cur, tot):
@@ -325,6 +339,8 @@ def dang_do_kem_nho(m, ma=None, so=None):
     hai giây trước không phải cùng một thứ, dù chữ in ra giống hệt nhau.
     """
     if bo_dem_bat_nhat(m) or m.get('telemetryError'):
+        return None, None, None
+    if theu_lap(m):
         return None, None, None
     x = viec_dang_do(m)
     if x is not None:
@@ -442,8 +458,10 @@ def tinh_trang(m, trong_gio=True, dan=None, dd=TU_TINH):
     j = job_cua(m) or {}
     cur = j.get('currentStitch')
     tot = j.get('totalStitches')
-    if isinstance(tot, (int, float)) and tot > 0 and isinstance(cur, (int, float)):
-        if cur >= tot:
+    if theu_lap(m):
+        return 'dung-lap'
+    if type(tot) is int and tot > 0 and type(cur) is int:
+        if cur == tot:
             return 'hoanthanh'
         if cur > 0:
             return 'dung'
@@ -495,7 +513,7 @@ def bao_loi(m, tt, dan=None, dd=TU_TINH, nho=None):
     ds = _canh_bao(m)
     so = len(ds)
     if bo_dem_bat_nhat(m) and tt != 'loi':
-        return 1, 'stitch-overrun', 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ; kiểm tra tại máy.', 'bridge', so + 1
+        return 1, 'stitch-overrun', 'Chưa có tổng mũi/mẫu hợp lệ — chưa xác định số items.', 'bridge', so + 1
 
     if tt == 'ngoai-gio':
         # Cả xưởng im sau 7 giờ tối là chuyện ĐÚNG như dự kiến, không phải bất thường ⇒ mức 0.
@@ -697,6 +715,8 @@ def vong(f):
             'ket_noi': _g(m, 'connection', 'state'),
             'mui': j.get('currentStitch'),
             'tong': j.get('totalStitches'),
+            'items_suy_ra': items_suy_ra(m) if _g(m, 'connection', 'state') == 'online' and not m.get('telemetryError') else None,
+            'theu_lap': theu_lap(m),
             'mau': j.get('fileName'),
             'tu_luc': tu_luc,
             'giay': None if giay is None else round(giay, 1),
@@ -733,6 +753,9 @@ def vong(f):
 # Thiếu phần tử thứ tư nghĩa là ĐANG TRONG GIỜ LÀM; thiếu phần tử thứ năm nghĩa là KHÔNG BIẾT GÌ VỀ
 # ĐÀN (`dan=None`) — cả hai mặc định giữ nguyên ý nghĩa của mọi ca viết trước, không phải sửa ca cũ.
 KIEM_TRA_LUAT = [
+    ('lap dang chay', {'connection': {'state': 'online'}, 'telemetry': {'status': {'value': 'running'}, 'job': {'value': {'currentStitch': 34628, 'totalStitches': 3912}}}}, 'chay'),
+    ('lap dung khong suy xong khung', {'connection': {'state': 'online'}, 'telemetry': {'status': {'value': 'stopped'}, 'job': {'value': {'currentStitch': 46966, 'totalStitches': 3912}}}}, 'dung-lap'),
+    ('lap dung dung boi so van chua biet khung', {'connection': {'state': 'online'}, 'telemetry': {'status': {'value': 'stopped'}, 'job': {'value': {'currentStitch': 46944, 'totalStitches': 3912}}}}, 'dung-lap'),
     ('offline -> tat han (may thuc su tat)',
      {'connection': {'state': 'offline'}, 'telemetry': {'status': {'value': 'running'}}}, 'tat-han'),
     ('unknown -> off = MAT TIN HIEU, khong phai may tat',
@@ -1030,18 +1053,18 @@ if __name__ == '__main__':
         tong += 1
         thieu = sorted({ca[2] for ca in KIEM_TRA_LUAT} - set(MA_TT))
         du = sorted(set(MA_TT) - {'chay', 'dung', 'hoanthanh', 'cho', 'loi', 'chuaro', 'off',
-                                  'tat-han', 'ngoai-gio', 'cum-im', 'tat-may'})
+                                  'tat-han', 'ngoai-gio', 'cum-im', 'tat-may', 'dung-lap'})
         if thieu or du:
             print('  HONG  bang MA_TT lech: thieu=%s thua=%s' % (thieu, du))
             hong += 1
         else:
-            print('  ok    bang MA_TT phu du 11 tinh trang')
+            print('  ok    bang MA_TT phu du 12 tinh trang')
 
         # Mã đã phát ra Loki thì VĨNH VIỄN không được đổi số: đổi là làm sai ngược cả lịch sử, và
         # `mappings` bên Grafana im lặng dán nhãn cũ lên số mới. Ca này ghim đúng bảng đang chạy.
         tong += 1
         chot = {'loi': 0, 'dung': 1, 'off': 2, 'chuaro': 3, 'hoanthanh': 4, 'cho': 5, 'chay': 6,
-                'tat-han': 7, 'ngoai-gio': 8, 'cum-im': 9, 'tat-may': 10}
+                'tat-han': 7, 'ngoai-gio': 8, 'cum-im': 9, 'tat-may': 10, 'dung-lap': 11}
         if MA_TT != chot:
             print('  HONG  MA_TT da bi danh so lai: %s' % (MA_TT,))
             hong += 1

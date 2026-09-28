@@ -921,6 +921,11 @@
                         "text": "thợ tắt máy",
                         "color": "text",
                         "index": 10
+                      },
+                      "11": {
+                        "color": "orange",
+                        "index": 11,
+                        "text": "ĐÃ DỪNG (THÊU LẶP)"
                       }
                     }
                   }
@@ -1568,6 +1573,11 @@
                         "text": "thợ tắt máy",
                         "color": "#6b6b7a",
                         "index": 10
+                      },
+                      "11": {
+                        "color": "orange",
+                        "index": 11,
+                        "text": "ĐÃ DỪNG (THÊU LẶP)"
                       }
                     }
                   }
@@ -1853,6 +1863,11 @@
                   "text": "THỢ TẮT MÁY",
                   "color": "#6b6b7a",
                   "index": 10
+                },
+                "11": {
+                  "color": "orange",
+                  "index": 11,
+                  "text": "ĐÃ DỪNG (THÊU LẶP)"
                 }
               }
             },

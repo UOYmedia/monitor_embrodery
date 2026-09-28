@@ -400,8 +400,9 @@ def controller_state_event(dev, body, at):
         cur = body.get('curStitch'); tot = body.get('patternStitch')
         them = ''
         if isinstance(cur, int) and isinstance(tot, int) and tot > 0:
-            them = ' · %d/%d mũi%s' % (cur, tot, ' (giữa mẫu)' if cur < tot else (' (hết mẫu)' if cur == tot else ' (bộ đếm vượt tổng mũi, chưa xác định tiến độ)'))
-        desc = 'Máy đổi mã trạng thái %s sang %s%s' % (_ten_ma(cu), _ten_ma(sid), them)
+            them = ' · %d/%d mũi%s' % (cur, tot, ' (giữa mẫu)' if cur < tot else (' (hết mẫu)' if cur == tot else ' (thêu lặp, ≈ %d items suy ra; chưa biết tổng khung)' % (cur // tot)))
+        ten_moi = '2 (đã dừng)' if sid == 2 and type(cur) is int and type(tot) is int and tot > 0 and cur > tot else _ten_ma(sid)
+        desc = 'Máy đổi mã trạng thái %s sang %s%s' % (_ten_ma(cu), ten_moi, them)
 
     code = str(sid)[:40]              # contract.mjs:224 chặn 40
     return {'id': 'state-' + code,    # <=46: contract.mjs:236 chặn 80, vượt là bridge TỪ CHỐI CẢ GÓI

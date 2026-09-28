@@ -38,7 +38,7 @@ describe('man hinh van hanh: tu vung tinh trang', () => {
 describe('quan-sat and xem share the counter-quality rules', () => {
   it('passes the Python self-check and the exhaustive Python/JS matrix', () => {
     const selfCheck = execFileSync('python3', ['-B', join(repo, 'quan-sat/dong-bo-tinh-trang.py'), '--tu-kiem'], { encoding: 'utf8' })
-    expect(selfCheck).toMatch(/74\/74 ca dat/)
+    expect(selfCheck).toMatch(/77\/77 ca dat/)
     execFileSync('python3', ['-B', join(repo, 'quan-sat/doi-chieu-hai-ban.py'), join(repo, 'deploy-mini/xem/index.html')], { encoding: 'utf8' })
     execFileSync(process.execPath, [join(repo, 'quan-sat/thu-man-hinh-xem.mjs')], { encoding: 'utf8' })
   })

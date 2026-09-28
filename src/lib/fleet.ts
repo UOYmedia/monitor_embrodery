@@ -331,11 +331,11 @@ export function distinctZones(machines: MachineView[], siteId: string | 'all'): 
 /**
  * Phần trăm tiến độ, KHÔNG kẹp trần 100%.
  *
- * Kẹp trần là cách che một bộ đếm hỏng. Chỗ hiển thị dùng `jobProgress()` trong `derived.ts`
- * để biết khi nào vượt tổng và in chữ cảnh báo thay vì thanh đầy.
+ * Khi counter đếm qua nhiều mẫu, chưa biết tổng khung. Chỗ hiển thị dùng `jobProgress()`
+ * trong `derived.ts` để hiện items suy ra thay cho một thanh đầy không có căn cứ.
  */
 export function jobProgressPercent(machine: MachineView): number | null {
-  if (machine.telemetryError?.kind === 'contract' && machine.telemetryError.field?.startsWith('job.')) return null
+  if (machine.connection.state !== 'online' || machine.telemetryError) return null
   const job = machine.telemetry?.job?.value
   if (!job || job.currentStitch === null || !job.totalStitches || job.currentStitch > job.totalStitches) return null
   return Math.round((job.currentStitch / job.totalStitches) * 100)
