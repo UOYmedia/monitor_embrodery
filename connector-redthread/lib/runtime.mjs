@@ -81,6 +81,7 @@ export class Runtime {
     socket.on('error', (error) => this.logger.error(`WebSocket lỗi: ${error.message}`))
     socket.on('close', () => {
       if (this.stopped) return
+      this.#run(() => this.connector.noteBridgeGap?.(), 'Bridge disconnected')
       this.#startPolling()
       this.reconnectTimer = setTimeout(() => this.#connect(), this.retryMs)
       this.reconnectTimer.unref?.()

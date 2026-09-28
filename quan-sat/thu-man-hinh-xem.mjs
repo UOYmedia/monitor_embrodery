@@ -129,7 +129,7 @@ ca('mã im không lẫn mã đang nói', [T.TT_IM.chay, T.TT_IM.dung, T.TT_IM.lo
 console.log('— dangDoTuSo —')
 ca('dở giữa chừng', T.dangDoTuSo(500, 1000), true)
 ca('xong tấm', T.dangDoTuSo(1000, 1000), false)
-ca('quá tấm', T.dangDoTuSo(1200, 1000), false)
+ca('quá tấm', T.dangDoTuSo(1200, 1000), null)
 ca('chưa động vào', T.dangDoTuSo(0, 1000), false)
 ca('không có tổng', T.dangDoTuSo(500, 0), null)
 ca('tổng không phải số', T.dangDoTuSo(500, null), null)

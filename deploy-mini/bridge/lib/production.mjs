@@ -97,6 +97,16 @@ export class ProductionLog {
     const machineId = machine?.id ?? snapshot?.machineId
     if (!machineId) return { counted: false, reason: 'no-machine' }
 
+    const job = readValue(snapshot?.job)
+    if (job?.counterWarning === 'stitch-overrun' || (Number.isFinite(job?.currentStitch) && Number.isFinite(job?.totalStitches) && job.currentStitch > job.totalStitches)) {
+      const at = snapshot?.observedAt
+      const cursor = this.document.cursors[machineId]
+      if (cursor && Number.isFinite(Date.parse(at)) && Date.parse(at) >= Date.parse(cursor.at)) {
+        this.bucketFor(at, { machine, site, machineId }).anomalies += 1
+        this.forget(machineId)
+      }
+      return { counted: false, reason: 'counter-warning' }
+    }
     const odometer = readValue(snapshot?.odometer)
     if (odometer === null || !Number.isFinite(odometer) || odometer < 0) return { counted: false, reason: 'no-odometer' }
     // Anything that is neither a machine reading nor a declared hand-typed one is not bookable.

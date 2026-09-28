@@ -262,7 +262,9 @@ function normalizeJob(raw, context) {
     elapsedSeconds: optionalNumber(raw.elapsedSeconds, 'job.elapsedSeconds', { min: 0 }),
   }
   if (value.currentStitch !== null && value.totalStitches !== null && value.currentStitch > value.totalStitches) {
-    fail('job.currentStitch không thể lớn hơn job.totalStitches.', 'job.currentStitch')
+    // Valid raw numbers can disagree without invalidating the live status/RPM.
+    // Preserve them for diagnosis; consumers must not use this pair as progress.
+    value.counterWarning = 'stitch-overrun'
   }
   return Object.values(value).every((entry) => entry === null) ? null : reading(value, context)
 }

@@ -400,7 +400,7 @@ def controller_state_event(dev, body, at):
         cur = body.get('curStitch'); tot = body.get('patternStitch')
         them = ''
         if isinstance(cur, int) and isinstance(tot, int) and tot > 0:
-            them = ' · %d/%d mũi%s' % (cur, tot, ' (giữa mẫu)' if cur < tot else ' (hết mẫu)')
+            them = ' · %d/%d mũi%s' % (cur, tot, ' (giữa mẫu)' if cur < tot else (' (hết mẫu)' if cur == tot else ' (bộ đếm vượt tổng mũi, chưa xác định tiến độ)'))
         desc = 'Máy đổi mã trạng thái %s sang %s%s' % (_ten_ma(cu), _ten_ma(sid), them)
 
     code = str(sid)[:40]              # contract.mjs:224 chặn 40

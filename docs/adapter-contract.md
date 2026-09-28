@@ -113,6 +113,18 @@ bắt gói có phép. `capture` tồn tại đúng cho việc thứ hai.
    không có đường nạp mẫu qua mạng. Nạp mẫu vẫn là thao tác USB thủ công tại máy.
 6. **Không có lệnh.** Hợp đồng chỉ có chiều đọc. Không có trường lệnh, không có kênh ghi.
 
+### Bộ đếm mũi vượt tổng
+
+Cặp số nguyên không âm `job.currentStitch > job.totalStitches` vẫn được nhận, kể cả tổng
+bằng 0: trạng thái, RPM và độ mới của bản tin tiếp tục cập nhật. Bridge giữ nguyên hai số,
+thêm `job.value.counterWarning: "stitch-overrun"`; không kẹp, chia modulo hoặc đoán tổng mới.
+Trường sai kiểu/âm/phân số vẫn làm hỏng cả gói theo mục 2.
+
+Consumer phải hiện cảnh báo, không suy hoàn thành, phần trăm hoặc ETA từ cặp số này. Cờ tự
+biến mất khi bản tin mới có cặp số hợp lệ. `odometer` là bộ đếm tích luỹ riêng, không được
+thay bằng `currentStitch`. Sổ sản lượng giữ nguyên phần đã ghi, bỏ khoảng có cảnh báo và
+lấy lại mốc ở lần đọc hợp lệ kế tiếp; không tự bù số mũi qua khoảng gián đoạn.
+
 ## 3. Cấu trúc payload
 
 ```jsonc

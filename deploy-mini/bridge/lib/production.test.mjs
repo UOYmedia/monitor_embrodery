@@ -317,3 +317,20 @@ describe('pieceRateAmount', () => {
     expect(pieceRateAmount(0, 1_200)).toBe(0)
   })
 })
+
+
+it('does not book suspect counters or the recovery jump, including after durable reload', async () => {
+  const log = newLog()
+  log.record(snapshot(1000, '2026-08-14T03:00:00Z'), { machine, site })
+  log.record(snapshot(1200, '2026-08-14T03:01:00Z'), { machine, site })
+  const bad = { ...snapshot(9000, '2026-08-14T03:02:00Z'), job: { value: { currentStitch: 34628, totalStitches: 3912, counterWarning: 'stitch-overrun' } } }
+  expect(log.record(bad, { machine, site })).toMatchObject({ counted: false, reason: 'counter-warning' })
+  expect(log.cursorFor(machine.id)).toBeNull()
+  expect(log.query()[0]).toMatchObject({ stitches: 200, anomalies: 1 })
+  await log.flush()
+  const reloaded = newLog()
+  await reloaded.load()
+  expect(reloaded.record(snapshot(9500, '2026-08-14T03:03:00Z'), { machine, site }).reason).toBe('baseline')
+  reloaded.record(snapshot(9700, '2026-08-14T03:04:00Z'), { machine, site })
+  expect(reloaded.query()[0].stitches).toBe(400)
+})

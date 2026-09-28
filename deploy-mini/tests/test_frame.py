@@ -65,3 +65,12 @@ assert a == b and a != c, (a, b, c)
 print('  [7] id ổn định theo trạng thái, đổi khi trạng thái đổi OK')
 
 print('== FRAME SELF-TEST PASS ==')
+
+
+# Raw controller counters disagree: event annotations must not claim completion.
+broker._prev_state.clear()
+broker.controller_state_event('overrun-test', {'state': 0}, '2026-09-28T03:00:00Z')
+overrun = broker.controller_state_event('overrun-test', {'state': 15, 'curStitch': 34628, 'patternStitch': 3912}, '2026-09-28T03:00:02Z')
+assert '(hết mẫu)' not in overrun['message'], overrun
+assert 'bộ đếm vượt tổng mũi' in overrun['message'], overrun
+print('  [8] overrun event keeps raw values without claiming completion OK')

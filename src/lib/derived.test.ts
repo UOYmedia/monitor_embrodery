@@ -30,7 +30,7 @@ describe('jobProgress', () => {
       }),
     })
     const progress = jobProgress(machine)
-    expect(progress?.percent).toBe(112)
+    expect(progress?.percent).toBeNull()
     expect(progress?.overrun).toBe(true)
   })
 
