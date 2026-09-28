@@ -248,7 +248,7 @@ function maintenanceScore(machine: MachineView): number {
 
 function progressOf(machine: MachineView): number {
   const job = machine.telemetry?.job?.value
-  if (!job || job.currentStitch === null || !job.totalStitches) return -1
+  if (!job || job.currentStitch === null || !job.totalStitches || job.currentStitch > job.totalStitches) return -1
   return job.currentStitch / job.totalStitches
 }
 
@@ -335,7 +335,8 @@ export function distinctZones(machines: MachineView[], siteId: string | 'all'): 
  * để biết khi nào vượt tổng và in chữ cảnh báo thay vì thanh đầy.
  */
 export function jobProgressPercent(machine: MachineView): number | null {
+  if (machine.telemetryError?.kind === 'contract' && machine.telemetryError.field?.startsWith('job.')) return null
   const job = machine.telemetry?.job?.value
-  if (!job || job.currentStitch === null || !job.totalStitches) return null
+  if (!job || job.currentStitch === null || !job.totalStitches || job.currentStitch > job.totalStitches) return null
   return Math.round((job.currentStitch / job.totalStitches) * 100)
 }

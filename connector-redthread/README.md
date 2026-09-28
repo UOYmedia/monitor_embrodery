@@ -68,3 +68,20 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.dahao.redthread-conne
 
 Gỡ service bằng `sudo launchctl bootout system/com.dahao.redthread-connector`. Trước khi bật service,
 RedThread phải có Machine ID 1–20 tương ứng M1_VN–M20_VN; M20 chưa có nguồn bridge nên giữ Offline.
+
+
+## Bộ đếm bất nhất và phục hồi kết nối
+
+Khi bridge báo số mũi vượt tổng, connector giữ trạng thái máy (`RUNNING`, hoặc `PAUSED` nếu
+đang dừng mà chưa biết tiến độ), gửi cảnh báo qua `statusNote` và gửi cả hai bộ đếm là `null`.
+Mất kết nối hoặc gói bị từ chối cũng không được gửi lại bộ đếm cũ làm số mới.
+
+`data/state.json` lưu mốc cần xoá (`counterResets`) cho mỗi máy. Một bản tin hợp lệ đến sau
+cảnh báo không xoá mốc này: heartbeat tiếp theo vẫn phải gửi `null` và được RedThread xác
+nhận đúng `externalMachineId` trong `machines[]`, không nằm trong `rejected[]`, rồi mới gửi
+số trở lại. HTTP 200 hoặc `accepted` tổng hợp chưa đủ. Cơ chế này áp dụng lúc khởi động và
+mất đường tới bridge; bỏ một khoảng đo tốt hơn cộng nhầm bước nhảy phục hồi vào sản lượng.
+
+Chuyển từ `OFFLINE` sang trạng thái nhận lại dùng thời điểm connector nhận lại bản tin và
+giữ mốc đó trong `statusTimes` cho heartbeat/restart, tránh ghi đè khoảng mất tín hiệu bằng
+`statusSince` cũ của bridge. Đây là sửa số liệu nhận từ nay, không tái tạo lịch sử đã mất.

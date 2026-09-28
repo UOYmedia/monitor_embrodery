@@ -107,6 +107,7 @@ export interface ConnectionInfo {
 }
 
 export interface JobReading {
+  counterWarning?: 'stitch-overrun'
   fileName: string | null
   product: string | null
   needle: number | null

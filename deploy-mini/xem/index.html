@@ -605,6 +605,12 @@ body {
     return (m && m.telemetry && m.telemetry.job && m.telemetry.job.value) || null
   }
 
+  function boDemBatNhat(m) {
+    var j = jobCua(m) || {}
+    return j.counterWarning === 'stitch-overrun' ||
+      (Number.isFinite(j.currentStitch) && Number.isFinite(j.totalStitches) && j.currentStitch > j.totalStitches)
+  }
+
   // ------------------------------------------------- thang bằng chứng cho máy đã thôi phát (28/08)
   //
   // Bản chép tay của `khao_sat` / `viec_dang_do` / nhánh im lặng trong `tinh_trang` của
@@ -654,6 +660,10 @@ body {
         for (var i = 0; i < (ds || []).length; i++) {
           var m = ds[i], id = m && m.identity && m.identity.id
           if (!id) continue
+          if (boDemBatNhat(m) || m.telemetryError) {
+            if (ban[id]) { delete ban[id]; chuaLuu = true }
+            continue
+          }
           var j = jobCua(m)
           if (!j || typeof j.totalStitches !== 'number' || typeof j.currentStitch !== 'number' ||
               j.totalStitches <= 0) continue
@@ -676,13 +686,14 @@ body {
   /** `true` đang thêu dở · `false` xong tấm / chưa nạp mẫu · `null` không đủ số để nói.
    *  `null` KHÔNG được quy về "chắc thợ tắt máy" — không biết thì phải nói là không biết. */
   function dangDoTuSo(cur, tot) {
-    if (typeof tot !== 'number' || typeof cur !== 'number' || tot <= 0) return null
-    if (cur >= tot) return false      // thêu xong tấm rồi mới im — tắt máy có chủ ý
+    if (!Number.isSafeInteger(tot) || !Number.isSafeInteger(cur) || tot <= 0 || cur < 0 || cur > tot) return null
+    if (cur === tot) return false      // thêu xong tấm rồi mới im — tắt máy có chủ ý
     if (cur <= 0) return false        // chưa động vào mẫu nào — cũng là tắt máy có chủ ý
     return true                       // im giữa lúc mẫu còn dở — đây mới là chuyện đáng gọi người
   }
 
   function viecDangDo(m) {
+    if (boDemBatNhat(m) || m.telemetryError) return null
     var j = jobCua(m) || {}
     var x = dangDoTuSo(j.currentStitch, j.totalStitches)
     if (x !== null) return x
@@ -716,6 +727,7 @@ body {
   function tinhTrang(m) {
     var kn = (m && m.connection && m.connection.state) || 'unknown'
     if (kn !== 'online' && kn !== 'stale') {
+      if (m.telemetryError && m.telemetryError.kind === 'contract') return 'chuaro'
       // Máy đã thôi phát. Xét từ bằng chứng CHẮC NHẤT xuống. Đồng hồ chỉ được nói ở đúng đây,
       // tức là SAU khi máy im — máy còn nói thì trạng thái thật luôn thắng, ca đêm vẫn ra `chay`.
       if (!trongGioLam()) return 'ngoai-gio'
@@ -736,6 +748,7 @@ body {
     if ((m.derivedAlerts || []).some(function (a) { return a && a.severity === 'critical' })) return 'loi'
     if (t === 'running') return 'chay'
     if (t !== 'stopped' && t !== 'paused') return 'chuaro'
+    if (boDemBatNhat(m)) return 'chuaro'
     var j = jobCua(m)
     var cur = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
     var tot = j && typeof j.totalStitches === 'number' ? j.totalStitches : null
@@ -875,6 +888,7 @@ body {
     var j = jobCua(m)
     var h = j && typeof j.currentStitch === 'number' ? j.currentStitch : null
     var t = j && typeof j.totalStitches === 'number' && j.totalStitches > 0 ? j.totalStitches : null
+    if (boDemBatNhat(m)) return ' · bộ đếm vượt tổng mũi, chưa xác định tiến độ'
     if (h === null || t === null) return ''
     return ' · ' + so(h) + '/' + so(t) + ' mũi' + (h < t ? ' (giữa mẫu)' : ' (hết mẫu)')
   }
@@ -1238,10 +1252,10 @@ body {
       // trên cùng một thẻ là làm thẻ dài ra chứ không thêm gì.
       var pt = document.createElement('span')
       pt.className = 'mau'
-      pt.textContent = (tong !== null && hien !== null) ? Math.floor((hien / tong) * 100) + '%' : ''
+      pt.textContent = (!m.telemetryError && !boDemBatNhat(m) && tong !== null && hien !== null) ? Math.floor((hien / tong) * 100) + '%' : ''
       hang.appendChild(sos); hang.appendChild(pt)
       mui.appendChild(hang)
-      if (tong !== null && hien !== null) {
+      if (!m.telemetryError && !boDemBatNhat(m) && tong !== null && hien !== null) {
         var th = document.createElement('div'); th.className = 'thanh'
         var i2 = document.createElement('i')
         i2.style.width = Math.max(0, Math.min(100, (hien / tong) * 100)) + '%'
@@ -1259,6 +1273,13 @@ body {
       tr.className = 'trong'
       tr.textContent = 'Máy chưa khai số mũi nào.'
       d.appendChild(tr)
+    }
+
+    if (boDemBatNhat(m)) {
+      var cb = document.createElement('div')
+      cb.className = 'loi-doc'
+      cb.textContent = 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ. Kiểm tra số mũi và mẫu tại máy; trạng thái kết nối vẫn theo bản tin mới.'
+      d.appendChild(cb)
     }
 
     // --- bridge đọc máy không nổi

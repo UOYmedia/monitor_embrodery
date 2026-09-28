@@ -40,7 +40,7 @@ test('suy trạng thái vận hành giống dashboard bridge', () => {
   assert.equal(mapMachine(machine({ status: 'stopped', current: 0, total: 20 })).status, 'IDLE')
   assert.equal(mapMachine(machine({ status: 'paused', current: 0, total: 0 })).status, 'IDLE')
   assert.equal(mapMachine(machine({ status: 'stopped', current: 10, total: null })).status, 'IDLE')
-  assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 0 })).status, 'IDLE')
+  assert.equal(mapMachine(machine({ status: 'paused', current: 10, total: 0 })).status, 'PAUSED')
   assert.equal(mapMachine(machine({ status: 'running', connection: 'stale' })).status, 'OFFLINE')
   assert.equal(mapMachine(machine({ status: 'running', connection: 'offline' })).status, 'OFFLINE')
   assert.equal(mapMachine(machine({ status: 'unknown' })).status, 'OFFLINE')
@@ -63,4 +63,27 @@ test('eventId ổn định theo nội dung và đủ 64 ký tự', () => {
   assert.equal(stableEventId(input), stableEventId({ ...input }))
   assert.equal(stableEventId(input).length, 64)
   assert.notEqual(stableEventId(input), stableEventId({ ...input, toStatus: 'ERROR' }))
+})
+
+
+test('overrun never becomes completed/offline and its counters never cross the RedThread guard', () => {
+  for (const status of ['running', 'stopped', 'paused', 'fault']) {
+    const mapped = mapMachine(machine({ status, current: 34628, total: 3912 }))
+    assert.equal(mapped.status, status === 'running' ? 'RUNNING' : status === 'fault' ? 'ERROR' : 'PAUSED')
+    assert.equal(mapped.currentStitch, null)
+    assert.equal(mapped.totalStitches, null)
+    assert.match(mapped.statusNote, /Bộ đếm vượt tổng/)
+  }
+  for (const [current, total] of [[1, 0], [-1, 5], ['10', 20], [10, -1], [NaN, 10]]) {
+    const mapped = mapMachine(machine({ current, total }))
+    assert.equal(mapped.currentStitch, null)
+    assert.equal(mapped.totalStitches, null)
+  }
+  for (const connection of ['stale', 'unknown', 'offline']) {
+    const mapped = mapMachine(machine({ connection, current: 34628, total: 3912 }))
+    assert.equal(mapped.status, 'OFFLINE')
+    assert.equal(mapped.currentStitch, null)
+  }
+  assert.equal(mapMachine(machine({ current: 0, total: 0 })).currentStitch, 0)
+  assert.equal(mapMachine(machine({ current: 3, total: null })).totalStitches, null)
 })

@@ -66,3 +66,101 @@ test('resolveExternalId tra theo identity.serial, không phụ thuộc dạng id
   assert.equal(connector.resolveExternalId('DEADBEEF0000'), null)
   assert.equal(connector.resolveExternalId(''), null)
 })
+
+
+test('counter resets survive transient overrun, restart, partial rejection and failure before valid recovery', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'redthread-counter-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let reply = { accepted: 1, machines: [{ externalMachineId: 1 }] }
+  const posts = []
+  const client = { event: async () => {}, heartbeat: async (machines) => { posts.push(machines); if (reply instanceof Error) throw reply; return reply } }
+  const options = { client, queueFile: join(directory, 'q.jsonl'), stateFile: join(directory, 's.json'), logger: { info() {}, warn() {}, error() {} } }
+  let connector = new Connector(options)
+  await connector.init()
+  await connector.ingestFleet([bridgeMachine()])
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null, 'first startup clears pre-fix remote baseline')
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 1)
+  const bad = bridgeMachine()
+  bad.telemetry.job.value.currentStitch = 50
+  await connector.ingestMachine(bad)
+  const good = bridgeMachine()
+  good.telemetry.job.value.currentStitch = 8
+  await connector.ingestMachine(good)
+  reply = new Error('network failed')
+  await assert.rejects(connector.heartbeat(), /network failed/)
+  assert.equal(posts.at(-1)[0].currentStitch, null)
+  connector = new Connector(options)
+  await connector.init()
+  await connector.ingestFleet([good])
+  reply = { accepted: 1, machines: [{ externalMachineId: 2 }], rejected: [{ externalMachineId: 1 }] }
+  await connector.heartbeat()
+  assert.ok(connector.state.counterResets['1'])
+  reply = { accepted: 1 }
+  await connector.heartbeat()
+  assert.ok(connector.state.counterResets['1'], 'ambiguous 200 is not a reset acknowledgement')
+  reply = { accepted: 1, machines: [{ externalMachineId: 1 }] }
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null)
+  assert.equal(connector.state.counterResets['1'], undefined)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 8)
+  await connector.noteBridgeGap()
+  await connector.heartbeat()
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null, 'cached counters stay suppressed throughout link loss')
+  await connector.ingestFleet([good])
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null, 'fresh reconnect also resets baseline')
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 8)
+})
+
+test('OFFLINE recovery uses receipt time and retains it in heartbeat after restart', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'redthread-recovery-time-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const events = [], posts = []
+  const now = '2026-09-28T03:51:00.000Z'
+  const options = { client: { event: async (e) => events.push(e), heartbeat: async (ms) => { posts.push(ms); return { machines: [{ externalMachineId: 1 }] } } }, queueFile: join(directory, 'q.jsonl'), stateFile: join(directory, 's.json'), now: () => new Date(now), logger: { info() {}, warn() {}, error() {} } }
+  let connector = new Connector(options)
+  await connector.init()
+  const offline = bridgeMachine('paused')
+  offline.connection.state = 'unknown'
+  await connector.ingestFleet([offline])
+  await connector.ingestMachine(bridgeMachine('paused'))
+  assert.equal(events.at(-1).occurredAt, now)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].statusSince, now)
+  connector = new Connector(options)
+  await connector.init()
+  await connector.ingestFleet([bridgeMachine('paused')])
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].statusSince, now)
+})
+
+
+test('a missing total preserves valid current counters; a missing current clears the baseline', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'redthread-null-total-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const posts = []
+  const connector = new Connector({ client: { event: async () => {}, heartbeat: async (ms) => { posts.push(ms); return { machines: [{ externalMachineId: 1 }] } } }, queueFile: join(directory, 'q'), stateFile: join(directory, 's'), logger: { info() {}, warn() {}, error() {} } })
+  await connector.init()
+  const m = bridgeMachine()
+  m.telemetry.job.value.totalStitches = null
+  await connector.ingestFleet([m])
+  await connector.heartbeat() // initial reset acknowledgement
+  m.telemetry.job.value.currentStitch = 2
+  await connector.ingestMachine(structuredClone(m))
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 2)
+  assert.equal(posts.at(-1)[0].totalStitches, null)
+  m.telemetry.job.value.currentStitch = null
+  await connector.ingestMachine(structuredClone(m))
+  m.telemetry.job.value.currentStitch = 9
+  await connector.ingestMachine(structuredClone(m))
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, null)
+  await connector.heartbeat()
+  assert.equal(posts.at(-1)[0].currentStitch, 9)
+})

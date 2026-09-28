@@ -49,13 +49,10 @@ function isLive(machine: MachineView): boolean {
 
 // ---------------------------------------------------------------- tiến độ job
 
-export interface JobProgress {
-  percent: number
+export type JobProgress = {
   currentStitch: number
   totalStitches: number
-  /** Bộ đếm vượt tổng mũi: dấu hiệu lỗi bộ đếm, cố ý KHÔNG kẹp trần 100%. */
-  overrun: boolean
-}
+} & ({ overrun: true; percent: null } | { overrun: false; percent: number })
 
 /**
  * Tiến độ mũi, không kẹp trần.
@@ -64,15 +61,15 @@ export interface JobProgress {
  * máy sắp xong. Ở đây vượt tổng là một cờ riêng để giao diện in ra chữ cảnh báo.
  */
 export function jobProgress(machine: MachineView): JobProgress | null {
+  if (machine.telemetryError?.kind === 'contract' && machine.telemetryError.field?.startsWith('job.')) return null
   const job = machine.telemetry?.job?.value
-  if (!job || job.currentStitch === null || !job.totalStitches) return null
-  const percent = Math.round((job.currentStitch / job.totalStitches) * 100)
-  return {
-    percent,
-    currentStitch: job.currentStitch,
-    totalStitches: job.totalStitches,
-    overrun: job.currentStitch > job.totalStitches,
-  }
+  if (!job || job.currentStitch === null || job.totalStitches === null) return null
+  const overrun = job.currentStitch > job.totalStitches
+  if (!job.totalStitches && !overrun) return null
+  const counts = { currentStitch: job.currentStitch, totalStitches: job.totalStitches }
+  return overrun
+    ? { ...counts, overrun: true, percent: null }
+    : { ...counts, overrun: false, percent: Math.round((job.currentStitch / job.totalStitches) * 100) }
 }
 
 export function overrunText(progress: JobProgress): string {

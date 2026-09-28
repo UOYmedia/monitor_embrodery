@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { EventQueue, readJson, writeJsonAtomic } from './json-store.mjs'
 import { heartbeatMachine, machineEvent, mapMachine } from './mapping.mjs'
 
-const EMPTY_STATE = Object.freeze({ lastPushAt: null, statuses: {}, repairCursor: 0, repairSerials: {} })
+const EMPTY_STATE = Object.freeze({ lastPushAt: null, statuses: {}, statusTimes: {}, counterResets: {}, repairCursor: 0, repairSerials: {} })
 
 function validDate(value) {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
@@ -35,8 +35,9 @@ export class Connector {
     this.gapMs = gapMs
     this.machines = new Map()
     this.warnedUnmapped = new Set()
-    this.state = { ...EMPTY_STATE, statuses: {}, repairSerials: {} }
+    this.state = { ...EMPTY_STATE, statuses: {}, statusTimes: {}, counterResets: {}, repairSerials: {} }
     this.initializedSnapshot = false
+    this.bridgeGap = false
     this.stats = { postsOk: 0, postsFailed: 0 }
   }
 
@@ -45,6 +46,8 @@ export class Connector {
     this.state = {
       lastPushAt: validDate(saved?.lastPushAt) ? saved.lastPushAt : null,
       statuses: saved?.statuses && typeof saved.statuses === 'object' ? saved.statuses : {},
+      statusTimes: saved?.statusTimes && typeof saved.statusTimes === 'object' ? saved.statusTimes : {},
+      counterResets: saved?.counterResets && typeof saved.counterResets === 'object' && !Array.isArray(saved.counterResets) ? saved.counterResets : {},
       repairCursor: Number.isInteger(saved?.repairCursor) && saved.repairCursor >= 0 ? saved.repairCursor : 0,
       repairSerials: saved?.repairSerials && !Array.isArray(saved.repairSerials) && typeof saved.repairSerials === 'object' ? saved.repairSerials : {},
     }
@@ -85,7 +88,30 @@ export class Connector {
         this.logger.warn(`Bỏ qua máy chưa map: ${id}`)
       }
     }
+    const key = String(mapped?.externalMachineId)
+    if (mapped && this.state.statuses[key] === mapped.status && validDate(this.state.statusTimes[key])) {
+      mapped.statusSince = this.state.statusTimes[key]
+    }
     return mapped
+  }
+
+  #transitionTime(mapped, previousStatus) {
+    const now = this.now().toISOString()
+    if (previousStatus === 'OFFLINE' && mapped.status !== 'OFFLINE') return now
+    const candidate = validDate(mapped.statusSince) ? mapped.statusSince : now
+    const previous = this.state.statusTimes[String(mapped.externalMachineId)]
+    return validDate(previous) && Date.parse(candidate) < Date.parse(previous) ? now : candidate
+  }
+
+  async noteBridgeGap() {
+    this.bridgeGap = true
+    for (const mapped of this.mappedMachines()) this.#resetCounter(mapped)
+    await this.#saveState()
+  }
+
+  #resetCounter(mapped) {
+    const key = String(mapped.externalMachineId)
+    this.state.counterResets[key] = (Number(this.state.counterResets[key]) || 0) + 1
   }
 
   async ingestMessage(message) {
@@ -99,6 +125,10 @@ export class Connector {
 
   async ingestFleet(machines) {
     if (!Array.isArray(machines)) throw new Error('fleet_state.machines phải là mảng')
+    if (this.bridgeGap) {
+      for (const machine of machines) { const mapped = this.#map(machine); if (mapped) this.#resetCounter(mapped) }
+      this.bridgeGap = false
+    }
     if (!this.initializedSnapshot) {
       this.machines = new Map(machines.map((machine) => [String(machine?.identity?.id), machine]))
       await this.#reconcileInitialSnapshot()
@@ -120,11 +150,14 @@ export class Connector {
     this.machines.set(bridgeId, machine)
     const current = this.#map(machine)
     if (!current) return
+    if (current.currentStitch === null) this.#resetCounter(current)
 
     const previousStatus = previousMapped?.status ?? this.state.statuses[String(current.externalMachineId)]
     if (previousStatus && previousStatus !== current.status) {
       this.logger.info(`Máy ${current.externalMachineId}: ${previousStatus} → ${current.status}`)
-      await this.#sendOrQueue(machineEvent(current, previousStatus, current.statusSince ?? this.now().toISOString()))
+      const occurredAt = this.#transitionTime(current, previousStatus)
+      await this.#sendOrQueue(machineEvent(current, previousStatus, occurredAt))
+      this.state.statusTimes[String(current.externalMachineId)] = occurredAt
     }
     this.state.statuses[String(current.externalMachineId)] = current.status
     await this.#saveState()
@@ -136,6 +169,9 @@ export class Connector {
     const gap = this.state.lastPushAt ? this.now().getTime() - Date.parse(this.state.lastPushAt) : 0
 
     for (const mapped of current) {
+      // Reconnect/startup cannot prove that no invalid frames were missed. Clear the remote
+      // baseline before sending another pair, including first rollout of this fix.
+      this.#resetCounter(mapped)
       const key = String(mapped.externalMachineId)
       const previousStatus = this.state.statuses[key]
       if (previousStatus && gap > this.gapMs && previousStatus !== 'OFFLINE') {
@@ -143,9 +179,12 @@ export class Connector {
         await this.#sendOrQueue(machineEvent(offline, previousStatus, this.state.lastPushAt))
         if (mapped.status !== 'OFFLINE') {
           await this.#sendOrQueue(machineEvent(mapped, 'OFFLINE', nowIso))
+          this.state.statusTimes[key] = nowIso
         }
       } else if (previousStatus && previousStatus !== mapped.status) {
-        await this.#sendOrQueue(machineEvent(mapped, previousStatus, mapped.statusSince ?? nowIso))
+        const occurredAt = this.#transitionTime(mapped, previousStatus)
+        await this.#sendOrQueue(machineEvent(mapped, previousStatus, occurredAt))
+        this.state.statusTimes[key] = occurredAt
       }
       this.state.statuses[key] = mapped.status
     }
@@ -175,10 +214,28 @@ export class Connector {
   }
 
   async heartbeat() {
-    const machines = this.mappedMachines().map(heartbeatMachine)
+    const resetVersions = { ...this.state.counterResets }
+    const machines = this.mappedMachines().map((mapped) => {
+      const payload = heartbeatMachine(mapped)
+      if (this.bridgeGap || resetVersions[String(mapped.externalMachineId)]) {
+        payload.currentStitch = null
+        payload.totalStitches = null
+      }
+      return payload
+    })
     if (machines.length === 0) return { accepted: 0 }
     try {
       const result = await this.client.heartbeat(machines)
+      // HTTP 200 can contain partial rejection. Only explicit per-machine acceptance
+      // acknowledges a reset; keep it on ambiguous responses, failures and concurrent input.
+      const rejected = new Set((result?.rejected ?? []).map((entry) => String(entry.externalMachineId)))
+      const accepted = new Set((result?.machines ?? []).map((entry) => String(entry.externalMachineId)))
+      for (const machine of machines) {
+        const key = String(machine.externalMachineId)
+        if (accepted.has(key) && !rejected.has(key) && resetVersions[key] && this.state.counterResets[key] === resetVersions[key]) {
+          delete this.state.counterResets[key]
+        }
+      }
       this.stats.postsOk += 1
       this.state.lastPushAt = this.now().toISOString()
       for (const machine of this.mappedMachines()) this.state.statuses[String(machine.externalMachineId)] = machine.status

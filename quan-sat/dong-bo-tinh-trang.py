@@ -256,6 +256,11 @@ class SoNhoViec:
 
     def ghi(self, ma, m):
         """Chép lại số mũi máy VỪA khai. Không khai được thì không đụng vào mục cũ."""
+        if bo_dem_bat_nhat(m) or m.get('telemetryError'):
+            if ma in self.may:
+                del self.may[ma]
+                self.ban = True
+            return
         j = job_cua(m) or {}
         cur, tot = j.get('currentStitch'), j.get('totalStitches')
         if not isinstance(tot, (int, float)) or not isinstance(cur, (int, float)) or tot <= 0:
@@ -294,11 +299,17 @@ class SoNhoViec:
         return True
 
 
+def bo_dem_bat_nhat(m):
+    j = job_cua(m) or {}
+    cur, tot = j.get('currentStitch'), j.get('totalStitches')
+    return j.get('counterWarning') == 'stitch-overrun' or (type(cur) in (int, float) and type(tot) in (int, float) and cur > tot)
+
+
 def _dang_do_tu_so(cur, tot):
     """Luật gốc, tách riêng để lời máy khai lúc này và lời nhớ trong sổ đi qua ĐÚNG MỘT bộ luật."""
-    if not isinstance(tot, (int, float)) or not isinstance(cur, (int, float)) or tot <= 0:
+    if type(tot) is not int or type(cur) is not int or tot <= 0 or cur < 0 or cur > tot:
         return None
-    if cur >= tot:
+    if cur == tot:
         return False            # thêu xong tấm rồi mới im — tắt máy có chủ ý
     if cur <= 0:
         return False            # chưa động vào mẫu nào — cũng là tắt máy có chủ ý
@@ -313,6 +324,8 @@ def dang_do_kem_nho(m, ma=None, so=None):
     lỗi. Một kết luận "thợ tắt máy" dựa trên số của ba ngày trước và một kết luận dựa trên số của
     hai giây trước không phải cùng một thứ, dù chữ in ra giống hệt nhau.
     """
+    if bo_dem_bat_nhat(m) or m.get('telemetryError'):
+        return None, None, None
     x = viec_dang_do(m)
     if x is not None:
         return x, 'song', None
@@ -386,6 +399,8 @@ TU_TINH = object()      # "chưa ai đưa `dang_do` sẵn, tự tính lấy" —
 def tinh_trang(m, trong_gio=True, dan=None, dd=TU_TINH):
     kn = _g(m, 'connection', 'state') or 'unknown'
     if kn not in ('online', 'stale'):
+        if isinstance(m.get('telemetryError'), dict) and m['telemetryError'].get('kind') == 'contract':
+            return 'chuaro'
         # ---- THANG BẰNG CHỨNG (28/08). Máy A15 cắm điện thì đẩy khung mỗi 2 giây kể cả lúc rảnh
         # (đo trên `602602704E7B`: 1 799 khung/giờ suốt đêm, `cur=0 tot=0 pat=`). Nên im lặng
         # KHÔNG BAO GIỜ nghĩa là "máy rảnh" — nó nghĩa là mất điện hoặc mất mạng, và việc còn lại
@@ -422,7 +437,7 @@ def tinh_trang(m, trong_gio=True, dan=None, dd=TU_TINH):
             return 'loi'
     if t == 'running':
         return 'chay'
-    if t not in ('stopped', 'paused'):
+    if t not in ('stopped', 'paused') or bo_dem_bat_nhat(m):
         return 'chuaro'
     j = job_cua(m) or {}
     cur = j.get('currentStitch')
@@ -479,6 +494,8 @@ def bao_loi(m, tt, dan=None, dd=TU_TINH, nho=None):
     """
     ds = _canh_bao(m)
     so = len(ds)
+    if bo_dem_bat_nhat(m) and tt != 'loi':
+        return 1, 'stitch-overrun', 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ; kiểm tra tại máy.', 'bridge', so + 1
 
     if tt == 'ngoai-gio':
         # Cả xưởng im sau 7 giờ tối là chuyện ĐÚNG như dự kiến, không phải bất thường ⇒ mức 0.
@@ -744,9 +761,9 @@ KIEM_TRA_LUAT = [
     ('dung o mui 0 -> cho, khong phai dung',
      {'connection': {'state': 'online'}, 'telemetry': {'status': {'value': 'stopped'},
       'job': {'value': {'currentStitch': 0, 'totalStitches': 35854}}}}, 'cho'),
-    ('khong biet tong mui -> cho',
+    ('mui duong nhung tong=0 -> chuaro',
      {'connection': {'state': 'online'}, 'telemetry': {'status': {'value': 'paused'},
-      'job': {'value': {'currentStitch': 500, 'totalStitches': 0}}}}, 'cho'),
+      'job': {'value': {'currentStitch': 500, 'totalStitches': 0}}}}, 'chuaro'),
 
     # --- giờ làm (27/08). Ba ca đầu là luật mới; ca thứ tư là CÁI CHỐT: đồng hồ không được
     # phép đè lên số liệu sống, không thì ca đêm chạy tới 2 giờ sáng bị bảng khai là đã tắt máy.
@@ -809,7 +826,7 @@ KIEM_TRA_LUAT = [
 KIEM_TRA_DANG_DO = [
     ('theu do dang',        {'currentStitch': 1200, 'totalStitches': 35854}, True),
     ('xong tam',            {'currentStitch': 35854, 'totalStitches': 35854}, False),
-    ('vuot qua tong',       {'currentStitch': 35900, 'totalStitches': 35854}, False),
+    ('vuot qua tong',       {'currentStitch': 35900, 'totalStitches': 35854}, None),
     ('chua bat dau',        {'currentStitch': 0, 'totalStitches': 35854}, False),
     ('khong co tong',       {'currentStitch': 1200, 'totalStitches': 0}, None),
     ('thieu han so mui',    {}, None),

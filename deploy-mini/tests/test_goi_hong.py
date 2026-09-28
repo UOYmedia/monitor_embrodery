@@ -70,6 +70,9 @@ try:
     moi = ma.replace("HOST='0.0.0.0'; PORT=3865", "HOST='127.0.0.1'; PORT=%d" % cong, 1)
     assert moi != ma, 'không thay được cổng trong broker.py — dòng HOST/PORT đã đổi dạng?'
     with open(ban_sao, 'w') as f: f.write(moi)
+    # Isolated fixture only; never copy operational AES credentials into the test broker.
+    with open(os.path.join(tmp, 'broker_secrets.py'), 'w') as f:
+        f.write("KEY = b'0000000000000000'\nIV = b'1111111111111111'\n")
 
     # Nạp bản sao như một module để mượn aes_enc_json dựng payload HỢP LỆ.
     # (Có `if __name__=="__main__"` nên import không tự khởi động server.)

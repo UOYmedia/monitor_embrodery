@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,10 +33,17 @@ describe('script chạy dưới launchd', () => {
     expect(nguon).not.toMatch(/exec\s+"\$\(command -v/)
   })
 
-  it('[2] chay-bridge.sh tìm được node dưới PATH tối thiểu của launchd', () => {
+  it('[2] chay-bridge.sh tìm được node dưới PATH tối thiểu của launchd', ({ onTestFinished }) => {
     const thuMuc = mkdtempSync(join(tmpdir(), 'launchd-'))
+    onTestFinished(() => rmSync(thuMuc, { recursive: true, force: true }))
+    // The wrapper now reads tokens/config before resolving node. Supply isolated non-secret
+    // fixtures: the test must not require a real gateway installation or read live credentials.
+    const app = join(thuMuc, 'gateway')
+    mkdirSync(app)
+    writeFileSync(join(app, 'bridge-tokens.env'), '# isolated test fixture\n')
+    writeFileSync(join(app, 'bridge.config.dahao-mqtt.json'), JSON.stringify({ host: '127.0.0.1' }))
     // Thay `exec` bằng echo để test không thật sự dựng bridge (cổng 8790 đang có người dùng).
-    const kich = readFileSync(wrapper, 'utf8').replace(/^exec "\$NODE".*$/m, 'echo "NODE=$NODE"; exit 0')
+    const kich = readFileSync(wrapper, 'utf8').replace('APP="$HOME/dahao-gateway"', `APP='${app.replaceAll("'", "'\\''")}'`).replace(/^exec "\$NODE".*$/m, 'echo "NODE=$NODE"; exit 0')
     const duong = join(thuMuc, 'thu.sh')
     writeFileSync(duong, kich)
     chmodSync(duong, 0o755)

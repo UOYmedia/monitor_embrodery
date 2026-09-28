@@ -268,3 +268,13 @@ describe('highestSeverity', () => {
     expect(highestSeverity([])).toBeNull()
   })
 })
+
+
+it('does not expose unreliable progress to Andon consumers', () => {
+  const machine = makeMachine()
+  machine.telemetry!.job!.value.currentStitch = 60_000
+  expect(jobProgressPercent(machine)).toBeNull()
+  machine.telemetry!.job!.value.currentStitch = 51_000
+  machine.telemetryError = { kind: 'contract', field: 'job.currentStitch', message: 'rejected', at: machine.telemetry!.observedAt }
+  expect(jobProgressPercent(machine)).toBeNull()
+})

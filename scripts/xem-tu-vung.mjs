@@ -30,6 +30,7 @@ js = js.slice(0, moc) + `
     nhatKy: nhatKy, datMay: function (v) { may = v },
     canhTuTinh: canhTuTinh, chuNgan: chuNgan, CANH_TU_TINH_BO_QUA: CANH_TU_TINH_BO_QUA,
     theMay: theMay, ghiThayDoi: ghiThayDoi,
+    nhoViec: nhoViec, viecDangDo: viecDangDo,
     tinhTrang: tinhTrang, chuLau: chuLau, NHAN_TT: NHAN_TT, TT_IM: TT_IM,
     // Ghim dong ho: moi ket luan ve may IM deu phu thuoc gio VN (trong gio lam ra tat-han,
     // ngoai gio ra ngoai-gio). Khoi cham dau ngoac nguoc o day: ca khoi nay nam trong mot chuoi
@@ -226,7 +227,7 @@ console.log('\n=== N. tinhTrang: mot bo tu vung cho ca trang ===')
 const tt = (o) => A.tinhTrang(may(o))
 la('mui dang tang -> chay', tt({ tt: 'running' }), 'chay')
 la('mui CHAM tong -> hoanthanh (12,0% khung that, 10/13 may)', tt({ cur: 1000, tot: 1000 }), 'hoanthanh')
-la('mui vuot tong (may dem lo mot nhip) -> van hoanthanh', tt({ cur: 1001, tot: 1000 }), 'hoanthanh')
+la('mui vuot tong -> khong suy hoan thanh', tt({ cur: 1001, tot: 1000 }), 'chuaro')
 la('mui do dang -> dung', tt({ cur: 500, tot: 1000 }), 'dung')
 la('chua co mau (tot=0) -> cho, KHONG phai dung (75,8% khung that nam o day)', tt({ cur: 0, tot: 0 }), 'cho')
 la('co mau ma chua dat mui nao -> cho', tt({ cur: 0, tot: 1000 }), 'cho')
@@ -428,6 +429,27 @@ const n4 = A.nhatKy.length
 A.ghiThayDoi(may({ id: 'loi3', tt: 'running' }), mayLoi({ id: 'loi3', hetSuKien: true }))
 la('su kien da bay mat thi van con dong cho canh bao',
    A.nhatKy.slice(n4).some((d) => /Đứt chỉ kim số 7/.test(d.chu)), true)
+
+
+console.log('\n=== Q. Counter overrun: live status, warning and no invented completion ===')
+const overrun = may({ id: 'overrun', tt: 'running', cur: 34628, tot: 3912 })
+const overrunCard = chuThe(overrun)
+la('live overrun van dang chay', A.tinhTrang(overrun), 'chay')
+la('the canh bao bo dem', overrunCard.some((c) => /Bộ đếm vượt tổng mũi/.test(c)), true)
+la('khong co phan tram/hoan thanh/tat may', overrunCard.some((c) => /\d+%|HOÀN THÀNH|THỢ TẮT MÁY/.test(c)), false)
+la('tong=0 va current>0 van canh bao', chuThe(may({ cur: 4, tot: 0 })).some((c) => /Bộ đếm vượt tổng mũi/.test(c)), true)
+A.nhoViec.quet([may({ id: 'overrun', cur: 3912, tot: 3912 })])
+la('negative control: da luu so cu hoan thanh', A.nhoViec.doc('overrun').mui, 3912)
+A.nhoViec.quet([overrun])
+la('overrun xoa so nho cu', A.nhoViec.doc('overrun'), null)
+const lostOverrun = may({ id: 'overrun', kn: 'unknown', cur: 34628, tot: 3912 })
+A.datMay([lostOverrun, may({ id: 'other', tt: 'running' })])
+la('overrun roi mat tin hieu khong suy tat may', A.tinhTrang(lostOverrun), 'off')
+const oldContractError = may({ kn: 'unknown', cur: 3912, tot: 3912 })
+oldContractError.telemetryError = { kind: 'contract', field: 'job.currentStitch' }
+la('old bridge rejected packets khong suy tat may', A.tinhTrang(oldContractError), 'chuaro')
+la('old rejected counters khong hien phan tram', chuThe(oldContractError).some((c) => /\d+%/.test(c)), false)
+la('counter reset removes warning', chuThe(may({ cur: 0, tot: 3912 })).some((c) => /Bộ đếm vượt tổng mũi/.test(c)), false)
 
 console.log('\n----------------------------------------')
 console.log(hong === 0 ? `TAT CA ${dat} PHEP THU DAT` : `${dat} dat, ${hong} HONG`)

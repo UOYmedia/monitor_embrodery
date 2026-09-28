@@ -28,6 +28,7 @@ import itertools
 import json
 import os
 import subprocess
+import shutil
 import sys
 import tempfile
 
@@ -39,7 +40,7 @@ _GAN = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                     '..', 'deploy-mini', 'xem', 'index.html')
 JS_BAN = (os.path.normpath(_GAN) if os.path.exists(_GAN)
           else os.path.expanduser('~/dahao-gateway/xem/index.html'))
-NODE = os.path.expanduser('~/node/bin/node')
+NODE = shutil.which('node') or os.path.expanduser('~/node/bin/node')
 
 KN = ['online', 'stale', 'offline', 'unknown', 'connecting']
 SO = [(None, None), (0, 1000), (500, 1000), (1000, 1000), (1200, 1000), (500, 0), (0, 0)]

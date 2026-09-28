@@ -53,16 +53,21 @@ export function mapMachine(machine, overrides = {}) {
   const bridgeStatus = readingValue(telemetry?.status) ?? 'unknown'
   const connectionState = machine?.connection?.state ?? 'unknown'
   const job = readingValue(telemetry?.job) ?? {}
-  const currentStitch = Number.isInteger(job.currentStitch) ? job.currentStitch : null
-  const totalStitches = Number.isInteger(job.totalStitches) ? job.totalStitches : null
+  let currentStitch = Number.isSafeInteger(job.currentStitch) && job.currentStitch >= 0 ? job.currentStitch : null
+  let totalStitches = Number.isSafeInteger(job.totalStitches) && job.totalStitches >= 0 ? job.totalStitches : null
+  const counterWarning = job.counterWarning === 'stitch-overrun' ||
+    (currentStitch !== null && totalStitches !== null && currentStitch > totalStitches)
+  const unreliable = counterWarning || OFFLINE_CONNECTIONS.has(connectionState) || Boolean(machine.telemetryError) ||
+    (job.currentStitch != null && currentStitch === null) || (job.totalStitches != null && totalStitches === null)
+  if (unreliable) { currentStitch = null; totalStitches = null }
   const currentFile = typeof job.fileName === 'string' ? job.fileName : ''
 
   const status = OFFLINE_CONNECTIONS.has(connectionState)
     ? 'OFFLINE'
     : (bridgeStatus === 'stopped' || bridgeStatus === 'paused'
-        ? stoppedStatus(currentStitch, totalStitches)
+        ? (counterWarning ? 'PAUSED' : stoppedStatus(currentStitch, totalStitches))
         : (STATUS_MAP[bridgeStatus] ?? 'OFFLINE'))
-  const statusNote = status === 'COMPLETED' && currentFile ? `Xong mẫu ${currentFile}` : ''
+  const statusNote = counterWarning ? 'Bộ đếm vượt tổng mũi — chưa xác định tiến độ, cần kiểm tra tại máy.' : (status === 'COMPLETED' && currentFile ? `Xong mẫu ${currentFile}` : '')
   const errorCode = status === 'ERROR' ? latestFaultCode(machine) : ''
   const statusSince = typeof machine?.statusSince?.at === 'string' ? machine.statusSince.at : null
   const rpmValue = readingValue(telemetry?.rpm)
